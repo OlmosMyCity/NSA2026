@@ -1,0 +1,126 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum UserState {
+  ACTIVE
+  INACTIVE
+}
+
+enum Environment {
+  SPACECRAFT
+  STATION
+  ROVER
+  LUNAR_BASE
+  MARS_BASE
+}
+
+enum MissionStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum HealthStatus {
+  OK
+  WARNING
+  CRITICAL
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  role         Role        @default(USER)
+  state        UserState   @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+
+  missions     Mission[]   @relation("MissionCreator")
+  astronaut    Astronaut?
+
+  @@map("users")
+}
+
+model Mission {
+  id          String        @id @default(uuid())
+  name        String
+  description String
+  environment Environment   @default(LUNAR_BASE)
+  status      MissionStatus @default(IN_PROGRESS)
+  startDate   DateTime
+  endDate     DateTime?
+  patchUrl    String?
+  createdById String
+  createdBy   User          @relation("MissionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  astronauts  Astronaut[]
+
+  @@map("missions")
+}
+
+model Astronaut {
+  id          String          @id @default(uuid())
+  missionId   String
+  mission     Mission         @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId      String?         @unique
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  role        String
+  age         Int
+  photoUrl    String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  readings    HealthReading[]
+
+  @@map("astronauts")
+}
+
+model HealthReading {
+  id             String       @id @default(uuid())
+  astronautId    String
+  astronaut      Astronaut    @relation(fields: [astronautId], references: [id], onDelete: Cascade)
+  
+  // 7 Indicadores Vitales (NASA Human Research Program)
+  heartRateBpm   Int
+  systolicMmHg   Int
+  diastolicMmHg  Int
+  glucoseMgDl    Float
+  temperatureC   Float
+  spo2Pct        Float
+  sleepHours     Float
+  mood           Int
+
+  // Diagnóstico clínico computado por evaluateReading
+  status         HealthStatus @default(OK)
+  alerts         Json         @default("[]")
+  recommendation String?
+  notes          String?
+
+  takenAt        DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  @@index([astronautId, takenAt])
+  @@map("health_readings")
+}
+
