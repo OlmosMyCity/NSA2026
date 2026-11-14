@@ -1,5 +1,6 @@
 import { BODY_ZONES, type BodyZoneId } from "./hazards.js";
 import type { DigitalTwinState, ZoneRiskLevel } from "./digitalTwin.js";
+import { classifyIndicator } from "./evaluateReading.js";
 
 export type RecommendedAction =
   | "re_measure"
@@ -91,7 +92,7 @@ export function decideByRules(state: DigitalTwinState): DecisionOutcome {
     state.zones.blood.indicators.find((i) => i.id === "spo2")?.value ?? null;
   const acuteHypoxiaRisk =
     spo2Value !== null &&
-    spo2Value < 95 &&
+    classifyIndicator("spo2", spo2Value) !== "OK" &&
     state.zones.blood.hazardLoad.breakdown.hostileEnvironment >= 0.75;
 
   const escalar =

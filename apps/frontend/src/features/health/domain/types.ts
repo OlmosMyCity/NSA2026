@@ -46,9 +46,20 @@ export interface HealthReadingInput {
   takenAt?: string;
 }
 
+/** Alerta con el formato que persiste el backend en `HealthReading.alerts`. */
+export interface HealthAlert {
+  indicator: string;
+  level: Exclude<ApiHealthStatus, 'OK'>;
+  message: string;
+  value: number;
+}
+
+/** Signos vitales medidos (mismos campos que el backend). */
+export type Vitals = Omit<HealthReadingInput, 'astronautId' | 'notes' | 'takenAt'>;
+
 export interface EvaluationResult {
   status: ApiHealthStatus;
-  alerts: string[];
+  alerts: HealthAlert[];
   recommendation: string;
 }
 
@@ -91,19 +102,15 @@ export type SpaceHazard =
   | 'gravity'
   | 'hostileEnvironment';
 
-/** Rango cerrado [min, max]; un extremo `undefined` significa sin límite. */
-export interface Range {
-  min?: number;
-  max?: number;
-}
-
 /**
- * Umbrales de un indicador. Un valor es verde si cae en `green`,
- * ámbar si cae en alguno de `amber`, y rojo en cualquier otro caso.
+ * Tramo de un indicador. Los tramos van en orden ascendente y gana el primero cuyo
+ * límite superior contiene el valor (`lt` lo excluye, `lte` lo incluye). El último
+ * tramo no tiene límite: por construcción la tabla no deja huecos.
  */
-export interface IndicatorThresholds {
-  green: Range;
-  amber: Range[];
+export interface StatusSegment {
+  status: Exclude<HealthStatus, 'unknown'>;
+  lt?: number;
+  lte?: number;
 }
 
 export interface IndicatorDefinition {
@@ -112,7 +119,8 @@ export interface IndicatorDefinition {
   unit: string;
   zone: BodyZoneId;
   hazards: SpaceHazard[];
-  thresholds: IndicatorThresholds;
+  /** Copia de HEALTH_BANDS del backend; ver apps/backend/tests/unit/healthRulesParity.test.ts. */
+  segments: StatusSegment[];
   /** Paso y límites físicos razonables para inputs y ejes de gráficas. */
   input: { min: number; max: number; step: number };
 }

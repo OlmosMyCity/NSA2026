@@ -481,13 +481,17 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
                   </p>
                 ) : (
                   <ul className="space-y-1.5">
-                    {evaluation.alerts.map((alert, i) => (
+                    {evaluation.alerts.map((alert) => (
                       <li
-                        key={i}
+                        key={alert.indicator}
                         className="text-xs text-blueberry flex items-start gap-2"
                       >
-                        <AlertTriangle className="h-4 w-4 text-status-critical flex-shrink-0 mt-0.5" />
-                        <span>{alert}</span>
+                        <AlertTriangle
+                          className={`h-4 w-4 flex-shrink-0 mt-0.5 ${
+                            alert.level === 'CRITICAL' ? 'text-status-critical' : 'text-status-caution'
+                          }`}
+                        />
+                        <span>{alert.message}</span>
                       </li>
                     ))}
                   </ul>

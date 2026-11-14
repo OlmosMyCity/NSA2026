@@ -6,7 +6,7 @@
  *   npx prisma db seed -- --reset → borra TODA la base y la vuelve a sembrar
  *
  * - Los IDs de usuarios, misiones y astronautas coinciden con el mock del frontend
- *   (`apps/frontend/src/features/common/mocks/mockDb.ts`): astro-01, mission-01…
+ *   (`apps/frontend/src/features/common/mocks/mockData.ts`): astro-01, mission-01…
  *   Así el dashboard de demo (astro-01) y las trayectorias 3D (mission-01) encuentran sus datos.
  * - Lecturas, incidentes y directivas usan IDs con prefijo `seed-` para poder
  *   reemplazarlos sin tocar datos reales (p. ej. lecturas que llegan de Vision AI).
@@ -342,10 +342,14 @@ async function main() {
   }
 
   // 1. Usuarios (upsert por email para respetar cuentas existentes)
-  const [adminHash, crewHash] = await Promise.all([
-    bcrypt.hash("HrpFlight#2026", 10),
-    bcrypt.hash("OrionCrew#4IV", 10),
-  ]);
+  // Las contraseñas de demo solo se permiten fuera de producción; en producción deben venir del entorno.
+  const isProduction = process.env.NODE_ENV === "production";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || (isProduction ? undefined : "HrpFlight#2026");
+  const crewPassword = process.env.SEED_CREW_PASSWORD || (isProduction ? undefined : "OrionCrew#4IV");
+  if (!adminPassword || !crewPassword) {
+    throw new Error("En producción defina SEED_ADMIN_PASSWORD y SEED_CREW_PASSWORD antes de ejecutar el seed.");
+  }
+  const [adminHash, crewHash] = await Promise.all([bcrypt.hash(adminPassword, 10), bcrypt.hash(crewPassword, 10)]);
   const admin = await prisma.user.upsert({
     where: { email: "elena.rodriguez@nasa.gov" },
     update: { name: "Dra. Elena Rodriguez", role: Role.ADMIN, passwordHash: adminHash, deletedAt: null },

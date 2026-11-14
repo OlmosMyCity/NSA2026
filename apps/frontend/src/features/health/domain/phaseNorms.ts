@@ -1,5 +1,5 @@
 import { INDICATORS } from './indicators';
-import type { IndicatorId, IndicatorThresholds } from './types';
+import type { IndicatorId, StatusSegment } from './types';
 
 export type PhasePhysiologyRegime = 'earth_baseline' | 'launch_ascent' | 'microgravity' | 'entry_landing';
 
@@ -8,7 +8,8 @@ export interface PhaseRegimeInfo {
   label: string;
   note: string;
   source: string;
-  overrides: Partial<Record<IndicatorId, IndicatorThresholds>>;
+  /** Tramos por indicador para esta fase (mismo formato contiguo que INDICATORS). */
+  overrides: Partial<Record<IndicatorId, StatusSegment[]>>;
 }
 
 const REGIMES: Record<PhasePhysiologyRegime, PhaseRegimeInfo> = {
@@ -25,28 +26,10 @@ const REGIMES: Record<PhasePhysiologyRegime, PhaseRegimeInfo> = {
     note: 'Transient sympathetic tachycardia (70–135 bpm) and pressor response (SBP 100–155 mmHg) are physiologically normal under +Gx/+Gz acceleration.',
     source: 'NASA-STD-3001 Vol. 2 (LEL Acceleration) & NASA HRP Ascent Telemetry',
     overrides: {
-      heartRate: {
-        green: { min: 60, max: 135 },
-        amber: [
-          { min: 45, max: 59 },
-          { min: 136, max: 155 },
-        ],
-      },
-      systolic: {
-        green: { min: 95, max: 155 },
-        amber: [
-          { min: 85, max: 94 },
-          { min: 156, max: 170 },
-        ],
-      },
-      diastolic: {
-        green: { max: 95 },
-        amber: [{ min: 96, max: 105 }],
-      },
-      spo2: {
-        green: { min: 94 },
-        amber: [{ min: 91, max: 93.99 }],
-      },
+      heartRate: [{ status: 'red', lt: 45 }, { status: 'amber', lt: 60 }, { status: 'green', lte: 135 }, { status: 'amber', lte: 155 }, { status: 'red' }],
+      systolic: [{ status: 'red', lt: 85 }, { status: 'amber', lt: 95 }, { status: 'green', lte: 155 }, { status: 'amber', lte: 170 }, { status: 'red' }],
+      diastolic: [{ status: 'green', lte: 95 }, { status: 'amber', lte: 105 }, { status: 'red' }],
+      spo2: [{ status: 'red', lt: 91 }, { status: 'amber', lt: 94 }, { status: 'green' }],
     },
   },
   microgravity: {
@@ -55,24 +38,9 @@ const REGIMES: Record<PhasePhysiologyRegime, PhaseRegimeInfo> = {
     note: 'Cephalad fluid shift and cardiovascular unloading lower resting HR (45–88 bpm) and SBP (85–125 mmHg); orbital sleep averages ≥ 6.5 h/day.',
     source: 'NASA HRP Cardiovascular & Circadian Studies / NASA-STD-3001 Vol. 1',
     overrides: {
-      heartRate: {
-        green: { min: 45, max: 88 },
-        amber: [
-          { min: 38, max: 44 },
-          { min: 89, max: 100 },
-        ],
-      },
-      systolic: {
-        green: { min: 85, max: 125 },
-        amber: [
-          { min: 78, max: 84 },
-          { min: 126, max: 139 },
-        ],
-      },
-      sleepHours: {
-        green: { min: 6.5 },
-        amber: [{ min: 5.5, max: 6.49 }],
-      },
+      heartRate: [{ status: 'red', lt: 38 }, { status: 'amber', lt: 45 }, { status: 'green', lte: 88 }, { status: 'amber', lte: 100 }, { status: 'red' }],
+      systolic: [{ status: 'red', lt: 78 }, { status: 'amber', lt: 85 }, { status: 'green', lte: 125 }, { status: 'amber', lt: 140 }, { status: 'red' }],
+      sleepHours: [{ status: 'red', lt: 5.5 }, { status: 'amber', lt: 6.5 }, { status: 'green' }],
     },
   },
   entry_landing: {
@@ -81,24 +49,9 @@ const REGIMES: Record<PhasePhysiologyRegime, PhaseRegimeInfo> = {
     note: 'Deceleration +Gx/+Gz load and post-flight orthostatic stress widen expected HR (65–130 bpm) and SBP (85–145 mmHg).',
     source: 'NASA-STD-3001 Vol. 1 & 2 (Reentry & Orthostatic Intolerance)',
     overrides: {
-      heartRate: {
-        green: { min: 55, max: 130 },
-        amber: [
-          { min: 45, max: 54 },
-          { min: 131, max: 150 },
-        ],
-      },
-      systolic: {
-        green: { min: 85, max: 145 },
-        amber: [
-          { min: 75, max: 84 },
-          { min: 146, max: 165 },
-        ],
-      },
-      spo2: {
-        green: { min: 94 },
-        amber: [{ min: 91, max: 93.99 }],
-      },
+      heartRate: [{ status: 'red', lt: 45 }, { status: 'amber', lt: 55 }, { status: 'green', lte: 130 }, { status: 'amber', lte: 150 }, { status: 'red' }],
+      systolic: [{ status: 'red', lt: 75 }, { status: 'amber', lt: 85 }, { status: 'green', lte: 145 }, { status: 'amber', lte: 165 }, { status: 'red' }],
+      spo2: [{ status: 'red', lt: 91 }, { status: 'amber', lt: 94 }, { status: 'green' }],
     },
   },
 };
@@ -128,10 +81,11 @@ export function getPhaseRegime(phaseId?: string | null): PhaseRegimeInfo {
   return REGIMES[regime];
 }
 
-export function getIndicatorThresholds(
-  indicator: IndicatorId,
-  phaseId?: string | null,
-): IndicatorThresholds {
-  const info = getPhaseRegime(phaseId);
-  return info.overrides[indicator] ?? INDICATORS[indicator].thresholds;
+/**
+ * Tramos de un indicador en una fase de misión. Sin fase (o en 1-G) son los de INDICATORS,
+ * que coinciden con HEALTH_BANDS del backend (lo que se guarda y ve el Flight Surgeon).
+ * Las normas por fase solo ajustan la lectura contextual en el visor de la misión.
+ */
+export function getIndicatorSegments(indicator: IndicatorId, phaseId?: string | null): StatusSegment[] {
+  return getPhaseRegime(phaseId).overrides[indicator] ?? INDICATORS[indicator].segments;
 }

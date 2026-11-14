@@ -10,6 +10,7 @@ import {
 } from '../domain/types';
 import type { ApiHealthReading } from '../domain/api-adapter';
 import { buildMockHistory } from '../mocks/healthHistory';
+import { evaluateVitals } from '../domain/evaluate';
 
 interface Paginated<T> {
   data: T[];
@@ -21,7 +22,7 @@ class HealthService {
    * Evalúa inmediatamente los 7 indicadores según los umbrales de la NASA HRP.
    */
   evaluate(input: Omit<HealthReadingInput, 'astronautId'>): EvaluationResult {
-    return mockDb.evaluateReading(input);
+    return evaluateVitals(input);
   }
 
   async createReading(input: HealthReadingInput): Promise<HealthReading> {
@@ -40,7 +41,7 @@ class HealthService {
         sleepHours: input.sleepHours,
         mood: input.mood,
         status: evaluation.status,
-        alerts: evaluation.alerts,
+        alerts: evaluation.alerts.map((a) => a.message),
         recommendation: evaluation.recommendation,
         notes: input.notes || null,
         takenAt: input.takenAt || new Date().toISOString(),

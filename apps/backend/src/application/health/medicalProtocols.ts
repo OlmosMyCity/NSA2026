@@ -180,13 +180,26 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocol> = {
       "Verificar bucle térmico del traje/cabina y notificar al Cirujano de Vuelo.",
     ],
   },
+  PROTO_MILD_HYPOTHERMIA: {
+    id: "PROTO_MILD_HYPOTHERMIA",
+    title: "Vigilancia de Hipotermia Leve",
+    indicator: "temperature",
+    severity: "WARNING",
+    summary:
+      "PRECAUCIÓN [PROTO_MILD_HYPOTHERMIA]: Hipotermia leve (35.5–36.0 °C). Revisar termorregulación del traje/cabina, abrigar y reevaluar en 2 horas.",
+    immediateActions: [
+      "Verificar la temperatura de cabina y el sistema térmico del traje.",
+      "Añadir capas térmicas e ingerir líquidos tibios.",
+      "Repetir la medición en 2 horas; escalar si baja de 35.5 °C.",
+    ],
+  },
   PROTO_SUBFEBRILE: {
     id: "PROTO_SUBFEBRILE",
     title: "Vigilancia Térmica e Inmunológica",
     indicator: "temperature",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_SUBFEBRILE]: Febrícula (37.6–38.0 °C). Vigilar síntomas inmunológicos, hidratar y reevaluar en 4 horas.",
+      "PRECAUCIÓN [PROTO_SUBFEBRILE]: Febrícula (>37.5–38.0 °C). Vigilar síntomas inmunológicos, hidratar y reevaluar en 4 horas.",
     immediateActions: [
       "Controlar temperatura cada 4 horas e hidratar.",
       "Vigilar síntomas respiratorios o exposición a radiación.",

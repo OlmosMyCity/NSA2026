@@ -6,61 +6,14 @@ import { AuthResponse, AuthUser, LoginInput, RegisterInput } from '../domain/typ
 
 class AuthService {
   async login(credentials: LoginInput): Promise<AuthResponse> {
-    if (ENV.USE_MOCKS) {
-      // Simulación con las credenciales de prueba oficiales del seed
-      const email = credentials.email.trim().toLowerCase();
-      const password = credentials.password;
-
-      if (email === 'elena.rodriguez@nasa.gov' && password === 'HrpFlight#2026') {
-        const response: AuthResponse = {
-          user: {
-            id: 'user-admin-01',
-            email: 'elena.rodriguez@nasa.gov',
-            name: 'Dra. Elena Rodriguez',
-            role: 'ADMIN',
-          },
-          token: `simulated-jwt-token-admin-${Date.now()}`,
-        };
-        authStorage.setToken(response.token);
-        authStorage.setUser(response.user);
-        return response;
-      }
-
-      if (email === 'r.wiseman@nasa.gov' && password === 'OrionCrew#4IV') {
-        const response: AuthResponse = {
-          user: {
-            id: 'user-crew-01',
-            email: 'r.wiseman@nasa.gov',
-            name: 'Reid Wiseman',
-            role: 'USER',
-            astronautId: 'astro-01',
-          },
-          token: `simulated-jwt-token-crew-${Date.now()}`,
-        };
-        authStorage.setToken(response.token);
-        authStorage.setUser(response.user);
-        return response;
-      }
-
-      // Comprobar si es un usuario recién registrado en el mock
-      const existingUser = mockDb.users.find((u) => u.email.toLowerCase() === email);
-      if (existingUser && password.length >= 6) {
-        const response: AuthResponse = {
-          user: {
-            id: existingUser.id,
-            email: existingUser.email,
-            name: existingUser.name,
-            role: existingUser.role,
-            astronautId: existingUser.astronautId,
-          },
-          token: `simulated-jwt-token-registered-${Date.now()}`,
-        };
-        authStorage.setToken(response.token);
-        authStorage.setUser(response.user);
-        return response;
-      }
-
-      throw new ApiError('Credenciales de acceso orbital inválidas o no autorizadas.', 401);
+    // Comparación literal con process.env: Next.js la resuelve en el build y, con los mocks
+    // apagados, elimina este import dinámico y las credenciales de demo del bundle.
+    if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true') {
+      const { mockLogin } = await import('../mocks/mockLogin');
+      const response = mockLogin(credentials);
+      authStorage.setToken(response.token);
+      authStorage.setUser(response.user);
+      return response;
     }
 
     try {

@@ -1,4 +1,4 @@
-import { evaluateIndicator } from './evaluate';
+import { evaluateIndicator, nominalBounds } from './evaluate';
 import { INDICATORS } from './indicators';
 import type { HealthStatus, IndicatorId, IndicatorReading } from './types';
 
@@ -41,7 +41,7 @@ export function buildTrend(
 /** Dominio Y: datos + rango verde completo, con margen, dentro de los límites físicos. */
 export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [number, number] {
   const def = INDICATORS[indicator];
-  const { green } = def.thresholds;
+  const green = nominalBounds(indicator);
   const values = points.map((p) => p.value);
   let lo = Math.min(...values, green.min ?? Infinity);
   let hi = Math.max(...values, green.max ?? -Infinity);
@@ -52,19 +52,18 @@ export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [numb
 }
 
 /**
- * Bandas verde/ámbar/rojo que cubren [lo, hi]. Se muestrea el dominio y se
- * agrupan tramos contiguos con el mismo estado, así no hay que razonar a mano
- * sobre cada combinación de umbrales abiertos/cerrados.
+ * Bandas verde/ámbar/rojo que cubren [lo, hi], calculadas directamente de los tramos
+ * del indicador. Como los tramos son contiguos, las bandas tampoco dejan huecos.
  */
-export function statusBands(indicator: IndicatorId, [lo, hi]: [number, number], steps = 400): StatusBand[] {
+export function statusBands(indicator: IndicatorId, [lo, hi]: [number, number]): StatusBand[] {
   const bands: StatusBand[] = [];
-  const dv = (hi - lo) / steps;
-  for (let i = 0; i < steps; i++) {
-    const a = lo + i * dv;
-    const status = evaluateIndicator(indicator, a + dv / 2).status as StatusBand['status'];
-    const last = bands.at(-1);
-    if (last && last.status === status) last.to = a + dv;
-    else bands.push({ from: a, to: a + dv, status });
+  let from = -Infinity;
+  for (const s of INDICATORS[indicator].segments) {
+    const to = s.lt ?? s.lte ?? Infinity;
+    const a = Math.max(from, lo);
+    const b = Math.min(to, hi);
+    if (b > a) bands.push({ from: a, to: b, status: s.status });
+    from = to;
   }
   return bands;
 }
