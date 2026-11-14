@@ -1,0 +1,78 @@
+/**
+ * Manejo seguro de persistencia de sesión en localStorage (compatible con SSR)
+ */
+
+const TOKEN_KEY = 'artemis_auth_token';
+const USER_KEY = 'artemis_auth_user';
+
+export interface StoredUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'USER';
+  astronautId?: string;
+}
+
+export const authStorage = {
+  getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  },
+
+  setToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+      document.cookie = `artemis_auth_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+      window.dispatchEvent(new Event('artemis:auth-change'));
+    } catch {
+      // Ignorar si localStorage está bloqueado
+    }
+  },
+
+  getUser(): StoredUser | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem(USER_KEY);
+      return data ? (JSON.parse(data) as StoredUser) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  setUser(user: StoredUser): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      document.cookie = `artemis_auth_role=${encodeURIComponent(user.role)}; path=/; max-age=86400; SameSite=Lax`;
+      window.dispatchEvent(new Event('artemis:auth-change'));
+    } catch {
+      // Ignorar
+    }
+  },
+
+  clearSession(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      document.cookie = 'artemis_auth_token=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'artemis_auth_role=; path=/; max-age=0; SameSite=Lax';
+      window.dispatchEvent(new Event('artemis:auth-change'));
+    } catch {
+      // Ignorar
+    }
+  },
+
+  notifyUnauthorized(): void {
+    this.clearSession();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('artemis:unauthorized'));
+    }
+  },
+};
+

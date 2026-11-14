@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   ORBVITAL · ARTEMIS IV — Global Design System Tokens
+   Edit colors (HSL), typography, sizing, spacing, radii & motion in :root
+   ========================================================================== */
+:root {
+  /* --- Brand Identity Palette (HSL Channels — Adapted for Dark Lunar Backdrop) --- */
+  --hsl-blueberry: 223 29% 26%; /* Blueberry Skin #2F3A55 (primary fills & deep accents) */
+  --hsl-berry:     220 20% 45%; /* Berry Bloom    #5C6B8A (hover fills & borders) */
+  --hsl-stem:      228  2% 44%; /* Stem Grey      #6E6F73 */
+  --hsl-yogurt:     27 16% 89%; /* Yogurt Tint    #E7E2DE (warm lunar corona tint) */
+  --hsl-plate:      80 14% 96%; /* Plate White    #F5F6F3 (high-contrast crisp ink) */
+
+  /* --- Brand Identity Colors (Explicit HSL) --- */
+  --color-blueberry: hsl(223, 29%, 26%);
+  --color-berry:     hsl(220, 20%, 45%);
+  --color-stem:      hsl(228, 2%, 44%);
+  --color-yogurt:    hsl(27, 16%, 89%);
+  --color-plate:     hsl(80, 14%, 96%);
+
+  /* --- Ink Colors Harmonized with web1.jpg (Lunar Eclipse & Corona) --- */
+  --hsl-ink-primary:   80 14% 96%; /* Plate White — crisp legibility over dark space */
+  --hsl-ink-secondary: 220 32% 76%; /* Luminous Berry Bloom — icons & secondary links */
+  --hsl-ink-muted:     27 12% 72%; /* Warm Lunar Stem — harmonized with moon corona */
+
+  /* --- Semantic Surface Hierarchy (Dark Translucent Blueberry Glass) --- */
+  --hsl-canvas:           223 29% 5%;
+  --hsl-surface-elevated: 223 29% 10%;
+  --hsl-surface-tinted:    27 12% 16%;
+  --hsl-surface-subtle:   223 24% 14%;
+  --hsl-surface-hover:    223 26% 19%;
+  --hsl-border-subtle:    220 18% 26%;
+
+  --bg-canvas:         hsl(var(--hsl-canvas));
+  --bg-surface:        hsl(var(--hsl-surface-elevated) / 0.56);
+  --bg-surface-tinted: hsl(var(--hsl-surface-tinted) / 0.52);
+  --bg-surface-subtle: hsl(var(--hsl-surface-subtle) / 0.62);
+  --bg-surface-hover:  hsl(var(--hsl-surface-hover) / 0.78);
+
+  /* --- Semantic Ink Hierarchy --- */
+  --text-primary:   hsl(var(--hsl-ink-primary));
+  --text-secondary: hsl(var(--hsl-ink-secondary));
+  --text-muted:     hsl(var(--hsl-ink-muted));
+  --text-on-accent: hsl(var(--hsl-plate));
+
+  /* --- Borders --- */
+  --border-subtle: hsl(var(--hsl-border-subtle) / 0.72);
+  --border-strong: hsl(220, 24%, 56%, 0.42);
+  --border-focus:  hsl(var(--hsl-ink-secondary));
+
+  /* --- Clinical Telemetry Status (Luminous Dark-Mode HSL) --- */
+  --hsl-status-nominal:  152 55% 58%;
+  --hsl-status-caution:   36 88% 62%;
+  --hsl-status-critical: 354 78% 66%;
+
+  --status-nominal:        hsl(var(--hsl-status-nominal));
+  --status-nominal-bg:     hsl(152 42% 15% / 0.55);
+  --status-nominal-border: hsl(152 45% 42% / 0.45);
+
+  --status-caution:        hsl(var(--hsl-status-caution));
+  --status-caution-bg:     hsl(36 58% 16% / 0.55);
+  --status-caution-border: hsl(36 70% 48% / 0.45);
+
+  --status-critical:        hsl(var(--hsl-status-critical));
+  --status-critical-bg:     hsl(354 52% 17% / 0.55);
+  --status-critical-border: hsl(354 64% 52% / 0.45);
+
+  /* --- Typography Families (Apple San Francisco Stack + Space Mono Terminal) --- */
+  --font-sans:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', var(--font-public-sans), system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', var(--font-public-sans), system-ui, sans-serif;
+  --font-mono:    var(--font-space-mono), ui-monospace, 'Courier New', Menlo, monospace;
+
+  /* --- Fluid Type Scale --- */
+  --text-xs:      0.75rem;    /* 12px */
+  --text-sm:      0.875rem;   /* 14px */
+  --text-base:    1rem;       /* 16px */
+  --text-lg:      1.125rem;   /* 18px */
+  --text-xl:      1.375rem;   /* 22px */
+  --text-2xl:     1.75rem;    /* 28px */
+  --text-3xl:     2.25rem;    /* 36px */
+  --text-display: clamp(2.35rem, 4.8vw, 4.25rem);
+
+  /* --- Layout & Spacing Scale --- */
+  --container-max: 78rem;
+  --header-height: 4rem;
+
+  /* --- Radii (Subtle Industrial Brutalism — crisp architectural edges) --- */
+  --radius-sm:   2px;
+  --radius-md:   2px;
+  --radius-lg:   3px;
+  --radius-xl:   4px;
+  --radius-pill: 2px;
+
+  /* --- Flat Structural Elevation (No floating soft drop-shadows) --- */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+
+  /* --- Apple-Style Motion Grammar --- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:   cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-press: 100ms;
+  --duration-ui:    220ms;
+  --duration-panel: 340ms;
+}
+
+/* --- Base Document Defaults --- */
+html {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: transparent;
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  caret-color: var(--text-primary);
+}
+
+/* --- Browser Surface Craft (Selection, Focus, Scrollbars, Links) --- */
+::selection {
+  background-color: hsl(var(--hsl-berry) / 0.42);
+  color: var(--color-plate);
+}
+
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Custom Scrollbar from Palette */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--hsl-berry) / 0.32);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--bg-canvas);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--hsl-blueberry) / 0.55);
+}
+
+/* --- Industrial Editorial Surfaces (Flat, Crisp Rules, No Floating Blur Blobs) --- */
+.surface-card {
+  background-color: hsl(var(--hsl-surface-elevated) / 0.84);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.surface-tinted {
+  background-color: hsl(var(--hsl-surface-tinted) / 0.82);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.surface-elevated {
+  background-color: hsl(var(--hsl-surface-elevated) / 0.88);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.chrome-translucent {
+  background-color: hsl(var(--hsl-canvas) / 0.88);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* --- Standardized Flat Editorial Primitives (Single-Level Container System) --- */
+.ui-callout {
+  border-left: 2px solid hsl(var(--hsl-ink-secondary) / 0.7);
+  padding-left: 1rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.ui-callout-critical {
+  border-left: 2px solid var(--status-critical);
+  padding-left: 1rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.ui-callout-caution {
+  border-left: 2px solid var(--status-caution);
+  padding-left: 1rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.ui-callout-nominal {
+  border-left: 2px solid var(--status-nominal);
+  padding-left: 1rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.ui-input,
+.ui-select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: transparent;
+  padding: 0.5rem 0;
+  color: var(--text-primary);
+  border-radius: 0;
+  transition: border-color var(--duration-ui) var(--ease-out-expo);
+}
+
+.ui-input:focus,
+.ui-select:focus {
+  border-bottom-color: var(--text-primary);
+  outline: none;
+}
+
+.ui-select option {
+  background-color: hsl(var(--hsl-canvas));
+  color: var(--text-primary);
+}
+
+.ui-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ui-tab {
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 0.75rem;
+  color: var(--text-muted);
+  transition: color var(--duration-ui) var(--ease-out-expo),
+              border-color var(--duration-ui) var(--ease-out-expo);
+}
+
+.ui-tab:hover {
+  color: var(--text-primary);
+}
+
+.ui-tab-active {
+  border-bottom-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ui-rule {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Tabular numbers for vital signs, clocks, and telemetry metrics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Pointer-Down Tactile Press Response (Zero Latency) --- */
+.tactile-press {
+  transition: transform var(--duration-ui) var(--ease-out-expo),
+              background-color var(--duration-ui) var(--ease-out-expo),
+              border-color var(--duration-ui) var(--ease-out-expo),
+              box-shadow var(--duration-ui) var(--ease-out-expo);
+}
+
+.tactile-press:active {
+  transform: scale(0.975);
+  transition-duration: var(--duration-press);
+  transition-timing-function: ease-out;
+}
+
+/* --- Entrance / Materialization Motion --- */
+@keyframes panel-materialize {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-materialize {
+  animation: panel-materialize var(--duration-panel) var(--ease-out-expo) both;
+}
+
+/* --- Accessibility: Reduced Motion & Reduced Transparency --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tactile-press:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .chrome-translucent {
+    background-color: var(--bg-canvas);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

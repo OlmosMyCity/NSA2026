@@ -1,6 +1,8 @@
 node_modules
 dist
 build
+.next
+out
 coverage
 .env
 .env.*
@@ -10,3 +12,7 @@ coverage
 Thumbs.db
 .antigravity/
 */.venv
+skills/
+.skills/
+.agents/
+skills-lock.json
