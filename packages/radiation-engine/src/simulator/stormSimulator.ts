@@ -1,13 +1,36 @@
-import { RadiationEngineState, GOESXrayReading, GOESProtonReading, NOAAStormScale } from '../types';
+import {
+  RadiationEngineState,
+  GOESXrayReading,
+  GOESProtonReading,
+  NOAAStormScale
+} from '../types';
+import { computeSolarWindMetrics } from '../clients/noaaSwpcClient';
 import { DoseCalculator } from '../physics/doseCalculator';
 import { SepPredictionEngine } from '../physics/sepPrediction';
+import { SolarWindImpactPredictor } from '../physics/solarWindImpact';
 import { MitigationRulesEngine } from '../alert/mitigationRules';
 
-export type SimulationScenarioId = 'NOMINAL' | 'FLARE_EARLY_WARNING' | 'PEAK_STORM_S4';
+export type SimulationScenarioId =
+  | 'NOMINAL'
+  | 'FLARE_EARLY_WARNING'
+  | 'PEAK_STORM_S4'
+  | 'SIDE_MISS_CME';
+
+export interface CustomSimulationParams {
+  sourceLocation: string;
+  flareClass?: 'C' | 'M' | 'X';
+  cmeSpeedKmS?: number;
+  halfAngleDeg?: number;
+  solarWindSpeedKmS?: number;
+  densityPcm3?: number;
+  bzNt?: number;
+  moonPhaseAngleDeg?: number;
+}
 
 export class StormSimulator {
   private doseCalculator = new DoseCalculator();
   private sepEngine = new SepPredictionEngine();
+  private impactPredictor = new SolarWindImpactPredictor();
   private mitigationEngine = new MitigationRulesEngine();
 
   /**
@@ -18,15 +41,13 @@ export class StormSimulator {
 
     switch (scenarioId) {
       case 'FLARE_EARLY_WARNING': {
-        // Escenario: Fulguración masiva Clase X4.5 detectada.
-        // Aún no llegan los protones (flujo bajo en pfu), pero la ventana de alerta temprana está activa con 48 min de anticipación.
         const xray: GOESXrayReading = {
           timestamp: now,
           satellite: 18,
           fluxShort: 4.8e-5,
           fluxLong: 4.5e-4, // Clase X4.5
           currentClass: 'X4.5',
-          derivativePerMinute: 8.5e-5 // Subida vertiginosa
+          derivativePerMinute: 8.5e-5
         };
 
         const protons: GOESProtonReading[] = [
@@ -35,47 +56,85 @@ export class StormSimulator {
           { timestamp: now, energyChannel: '>=100 MeV', fluxPfu: 0.1 }
         ];
 
+        const solarWind = computeSolarWindMetrics({
+          timestamp: now,
+          speedKmS: 680,
+          densityPcm3: 14.5,
+          temperatureK: 240000,
+          btNt: 16.2,
+          bzNt: -11.4
+        });
+
         const earlyWarning = this.sepEngine.evaluateEarlyWarning(xray);
-        // Ajustar tiempo específico del escenario para la demo
         earlyWarning.estimatedProtonArrivalMinutes = 48;
         earlyWarning.predictedStormScale = 'S4_SEVERE';
 
-        const stormScale: NOAAStormScale = 'S0_NOMINAL'; // Aún no impactan
+        const impactPrediction = this.impactPredictor.predictImpact({
+          sourceLocation: 'N14W42',
+          coneHalfAngleDeg: 52,
+          cmeSpeedKmS: 1450,
+          solarWind,
+          predictedStormScale: 'S4_SEVERE',
+          sepArrivalMinutes: 48,
+          moonPhaseAngleDeg: 95
+        });
+
         const doses = this.doseCalculator.getAllShieldingEstimates(protons[0].fluxPfu);
         const mitigation = this.mitigationEngine.generateProtocol('S4_SEVERE');
 
         return {
           timestamp: now,
           isSimulated: true,
-          activeScenario: 'FLARE_EARLY_WARNING (X4.5 Solar Flare Detected - Early Warning Countdown Active)',
+          activeScenario:
+            'FLARE_EARLY_WARNING (X4.5 Solar Flare @ N14W42 - Early Warning Countdown Active)',
           probabilities: this.getProbabilitiesForStorm(),
           currentTelemetry: {
             latestXray: xray,
             latestProtons: protons,
-            stormScale: stormScale
+            stormScale: 'S0_NOMINAL'
           },
-          earlyWarning: earlyWarning,
+          solarWind,
+          earlyWarning,
+          impactPrediction,
           biologicalDoses: doses,
-          mitigation: mitigation
+          mitigation
         };
       }
 
       case 'PEAK_STORM_S4': {
-        // Escenario: El pico de protones ha impactado la nave (14,500 pfu, Tormenta S4 Severa)
         const xray: GOESXrayReading = {
           timestamp: now,
           satellite: 18,
           fluxShort: 2.1e-5,
           fluxLong: 1.8e-4,
           currentClass: 'X1.8',
-          derivativePerMinute: -1.2e-6 // Meseta / declive
+          derivativePerMinute: -1.2e-6
         };
 
         const protons: GOESProtonReading[] = [
-          { timestamp: now, energyChannel: '>=10 MeV', fluxPfu: 14500 }, // S4
+          { timestamp: now, energyChannel: '>=10 MeV', fluxPfu: 14500 },
           { timestamp: now, energyChannel: '>=50 MeV', fluxPfu: 3200 },
           { timestamp: now, energyChannel: '>=100 MeV', fluxPfu: 840 }
         ];
+
+        const solarWind = computeSolarWindMetrics({
+          timestamp: now,
+          speedKmS: 1120,
+          densityPcm3: 28.0,
+          temperatureK: 520000,
+          btNt: 32.0,
+          bzNt: -24.5
+        });
+
+        const impactPrediction = this.impactPredictor.predictImpact({
+          sourceLocation: 'S08W32',
+          coneHalfAngleDeg: 60,
+          cmeSpeedKmS: 1650,
+          solarWind,
+          predictedStormScale: 'S4_SEVERE',
+          sepArrivalMinutes: 0,
+          moonPhaseAngleDeg: 110
+        });
 
         const stormScale: NOAAStormScale = 'S4_SEVERE';
         const doses = this.doseCalculator.getAllShieldingEstimates(protons[0].fluxPfu);
@@ -84,13 +143,14 @@ export class StormSimulator {
         return {
           timestamp: now,
           isSimulated: true,
-          activeScenario: 'PEAK_STORM_S4 (Extreme SPE Flux Active - Mandatory Shelter)',
+          activeScenario: 'PEAK_STORM_S4 (Extreme SPE & Solar Wind Shock Active - Mandatory Shelter)',
           probabilities: this.getProbabilitiesForStorm(),
           currentTelemetry: {
             latestXray: xray,
             latestProtons: protons,
-            stormScale: stormScale
+            stormScale
           },
+          solarWind,
           earlyWarning: {
             isWarningActive: false,
             triggerEvent: 'Solar Particle Event (S4) Peak Flux In Progress',
@@ -100,8 +160,73 @@ export class StormSimulator {
             predictedStormScale: 'S4_SEVERE',
             confidenceScore: 1.0
           },
+          impactPrediction,
           biologicalDoses: doses,
-          mitigation: mitigation
+          mitigation
+        };
+      }
+
+      case 'SIDE_MISS_CME': {
+        const xray: GOESXrayReading = {
+          timestamp: now,
+          satellite: 18,
+          fluxShort: 3.1e-5,
+          fluxLong: 2.5e-4,
+          currentClass: 'X2.5',
+          derivativePerMinute: 4.2e-5
+        };
+
+        const protons: GOESProtonReading[] = [
+          { timestamp: now, energyChannel: '>=10 MeV', fluxPfu: 1.1 },
+          { timestamp: now, energyChannel: '>=50 MeV', fluxPfu: 0.12 },
+          { timestamp: now, energyChannel: '>=100 MeV', fluxPfu: 0.02 }
+        ];
+
+        const solarWind = computeSolarWindMetrics({
+          timestamp: now,
+          speedKmS: 460,
+          densityPcm3: 6.0,
+          temperatureK: 110000,
+          btNt: 6.2,
+          bzNt: -2.0
+        });
+
+        const impactPrediction = this.impactPredictor.predictImpact({
+          sourceLocation: 'S18E72',
+          coneHalfAngleDeg: 34,
+          cmeSpeedKmS: 1200,
+          solarWind,
+          predictedStormScale: 'S0_NOMINAL',
+          sepArrivalMinutes: null,
+          moonPhaseAngleDeg: 90
+        });
+
+        const doses = this.doseCalculator.getAllShieldingEstimates(protons[0].fluxPfu);
+        const mitigation = this.mitigationEngine.generateProtocol('S0_NOMINAL');
+
+        return {
+          timestamp: now,
+          isSimulated: true,
+          activeScenario: 'SIDE_MISS_CME (X2.5 East-Limb Flare @ S18E72 - Trajectory Misses Cislunar)',
+          probabilities: this.getProbabilitiesNominal(),
+          currentTelemetry: {
+            latestXray: xray,
+            latestProtons: protons,
+            stormScale: 'S0_NOMINAL'
+          },
+          solarWind,
+          earlyWarning: {
+            isWarningActive: false,
+            triggerEvent: 'X2.5 East-Limb CME (S18E72) - Projected Deep Space Miss',
+            flareOnsetTimestamp: now,
+            estimatedProtonArrivalMinutes: null,
+            estimatedPeakFluxPfu: 15,
+            predictedStormScale: 'S0_NOMINAL',
+            confidenceScore: 0.85
+          },
+          impactPrediction,
+          biologicalDoses: doses,
+          mitigation
         };
       }
 
@@ -122,19 +247,39 @@ export class StormSimulator {
           { timestamp: now, energyChannel: '>=100 MeV', fluxPfu: 0.01 }
         ];
 
+        const solarWind = computeSolarWindMetrics({
+          timestamp: now,
+          speedKmS: 410,
+          densityPcm3: 4.8,
+          temperatureK: 92000,
+          btNt: 5.1,
+          bzNt: -1.2
+        });
+
+        const impactPrediction = this.impactPredictor.predictImpact({
+          sourceLocation: 'N05W12',
+          coneHalfAngleDeg: 25,
+          cmeSpeedKmS: 410,
+          solarWind,
+          predictedStormScale: 'S0_NOMINAL',
+          sepArrivalMinutes: null,
+          moonPhaseAngleDeg: 90
+        });
+
         const doses = this.doseCalculator.getAllShieldingEstimates(protons[0].fluxPfu);
         const mitigation = this.mitigationEngine.generateProtocol('S0_NOMINAL');
 
         return {
           timestamp: now,
           isSimulated: true,
-          activeScenario: 'NOMINAL (Quiet Solar Conditions)',
+          activeScenario: 'NOMINAL (Quiet Solar Wind Conditions)',
           probabilities: this.getProbabilitiesNominal(),
           currentTelemetry: {
             latestXray: xray,
             latestProtons: protons,
             stormScale: 'S0_NOMINAL'
           },
+          solarWind,
           earlyWarning: {
             isWarningActive: false,
             triggerEvent: null,
@@ -144,11 +289,87 @@ export class StormSimulator {
             predictedStormScale: 'S0_NOMINAL',
             confidenceScore: 0.05
           },
+          impactPrediction,
           biologicalDoses: doses,
-          mitigation: mitigation
+          mitigation
         };
       }
     }
+  }
+
+  /**
+   * Simula un evento personalizado a partir de una coordenada heliográfica (ej. "N15W45" o "S20E70")
+   */
+  simulateCustomEvent(params: CustomSimulationParams): RadiationEngineState {
+    const now = new Date().toISOString();
+    const flareClass = params.flareClass ?? 'X';
+    const fluxLong = flareClass === 'X' ? 2.8e-4 : flareClass === 'M' ? 6.0e-5 : 3.0e-6;
+    const currentClass = flareClass === 'X' ? 'X2.8' : flareClass === 'M' ? 'M6.0' : 'C3.0';
+
+    const xray: GOESXrayReading = {
+      timestamp: now,
+      satellite: 18,
+      fluxShort: fluxLong * 0.12,
+      fluxLong,
+      currentClass,
+      derivativePerMinute: fluxLong * 0.15
+    };
+
+    const solarWind = computeSolarWindMetrics({
+      timestamp: now,
+      speedKmS: params.solarWindSpeedKmS ?? (flareClass === 'X' ? 780 : 520),
+      densityPcm3: params.densityPcm3 ?? (flareClass === 'X' ? 16 : 8),
+      temperatureK: 220000,
+      btNt: 18,
+      bzNt: params.bzNt ?? (flareClass === 'X' ? -14 : -5)
+    });
+
+    const earlyWarning = this.sepEngine.evaluateEarlyWarning(xray);
+    const impactPrediction = this.impactPredictor.predictImpact({
+      sourceLocation: params.sourceLocation,
+      coneHalfAngleDeg: params.halfAngleDeg ?? (flareClass === 'X' ? 48 : 35),
+      cmeSpeedKmS: params.cmeSpeedKmS ?? (flareClass === 'X' ? 1350 : 750),
+      solarWind,
+      predictedStormScale: earlyWarning.predictedStormScale,
+      sepArrivalMinutes: earlyWarning.estimatedProtonArrivalMinutes,
+      moonPhaseAngleDeg: params.moonPhaseAngleDeg ?? 90
+    });
+
+    const isDirectOrGlancing = impactPrediction.primaryImpactZone !== 'DEEP_SPACE_MISS';
+    if (!isDirectOrGlancing) {
+      earlyWarning.isWarningActive = false;
+      earlyWarning.predictedStormScale = 'S0_NOMINAL';
+    }
+
+    const activeFluxPfu = isDirectOrGlancing && flareClass === 'X' ? 120 : 1.5;
+    const protons: GOESProtonReading[] = [
+      { timestamp: now, energyChannel: '>=10 MeV', fluxPfu: activeFluxPfu },
+      { timestamp: now, energyChannel: '>=50 MeV', fluxPfu: activeFluxPfu * 0.2 },
+      { timestamp: now, energyChannel: '>=100 MeV', fluxPfu: activeFluxPfu * 0.04 }
+    ];
+
+    const stormScale = this.mitigationEngine.evaluateStormScale(activeFluxPfu);
+    const doses = this.doseCalculator.getAllShieldingEstimates(activeFluxPfu);
+    const mitigation = this.mitigationEngine.generateProtocol(
+      isDirectOrGlancing ? earlyWarning.predictedStormScale : 'S0_NOMINAL'
+    );
+
+    return {
+      timestamp: now,
+      isSimulated: true,
+      activeScenario: `CUSTOM (${currentClass} @ ${impactPrediction.sourceLocation} -> ${impactPrediction.primaryImpactZone})`,
+      probabilities: isDirectOrGlancing ? this.getProbabilitiesForStorm() : this.getProbabilitiesNominal(),
+      currentTelemetry: {
+        latestXray: xray,
+        latestProtons: protons,
+        stormScale
+      },
+      solarWind,
+      earlyWarning,
+      impactPrediction,
+      biologicalDoses: doses,
+      mitigation
+    };
   }
 
   private getProbabilitiesForStorm() {

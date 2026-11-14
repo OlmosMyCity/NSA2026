@@ -40,9 +40,33 @@
 
     <nav class="panel" id="views" aria-label="Opciones">
       <button type="button" id="guide-btn" hidden>Volver a cámara guiada</button>
+      <button type="button" id="solar-btn" aria-pressed="true" aria-controls="solar-wind-panel">Viento Solar</button>
       <button type="button" id="science-btn" aria-expanded="false" aria-controls="science">Ciencia</button>
       <button type="button" id="help-btn" aria-label="Ayuda">?</button>
     </nav>
+
+    <aside class="panel" id="solar-wind-panel" aria-label="Predicción de viento solar">
+      <div class="sw-header">
+        <span class="sw-title">Viento Solar &amp; Impacto</span>
+        <span class="sw-badge" id="sw-zone-badge">NOMINAL</span>
+      </div>
+      <label class="sw-select-wrap">
+        <span>Escenario</span>
+        <select id="sw-scenario">
+          <option value="NOMINAL">Nominal (410 km/s · S0)</option>
+          <option value="FLARE_EARLY_WARNING">Fulguración X4.5 · N14W42 (Impacto Directo)</option>
+          <option value="PEAK_STORM_S4">Tormenta Severa S4 · S08W32 (1120 km/s)</option>
+          <option value="SIDE_MISS_CME">CME Desviada X2.5 · S18E72 (Sin Impacto)</option>
+        </select>
+      </label>
+      <dl class="sw-metrics">
+        <dt>Velocidad</dt><dd id="sw-speed">410 km/s</dd>
+        <dt>Densidad / Bz</dt><dd id="sw-density">4.8 p/cm³ · -1.2 nT</dd>
+        <dt>Magnetopausa</dt><dd id="sw-mp">10.6 Re</dd>
+        <dt>Origen / ETA</dt><dd id="sw-eta">N05W12 · —</dd>
+      </dl>
+      <div class="sw-targets" id="sw-targets"></div>
+    </aside>
 
     <aside class="panel" id="science" hidden>
       <h2>Ciencia de esta fase</h2>

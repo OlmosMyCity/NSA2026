@@ -61,6 +61,47 @@ export interface RadiationMitigationProtocol {
     medicalCountermeasures: string[];
     actionChecklist: string[];
 }
+export interface SolarWindReading {
+    timestamp: string;
+    speedKmS: number;
+    densityPcm3: number;
+    temperatureK: number;
+    btNt: number;
+    bzNt: number;
+    dynamicPressureNpa: number;
+    parkerSpiralAngleDeg: number;
+    parkerFootpointLonDeg: number;
+}
+export type ImpactTargetId = 'EARTH_MAGNETOSPHERE' | 'CISLUNAR_TRANSIT' | 'GATEWAY_NRHO' | 'LUNAR_SURFACE';
+export type TargetExposureStatus = 'DIRECT_HIT' | 'GLANCING_BLOW' | 'MAGNETOSPHERE_SHIELDED' | 'MISS';
+export type PrimaryImpactZone = 'CISLUNAR_AND_EARTH_DIRECT' | 'FLANK_GLANCING_BLOW' | 'DEEP_SPACE_MISS';
+export type GeomagneticGScale = 'G0' | 'G1' | 'G2' | 'G3' | 'G4' | 'G5';
+export interface ImpactTargetPrediction {
+    target: ImpactTargetId;
+    label: string;
+    status: TargetExposureStatus;
+    impactProbabilityPct: number;
+    estimatedArrivalMinutes: number | null;
+    cmeArrivalHours: number | null;
+    expectedDoseMultiplier: number;
+    notes: string;
+}
+export interface SolarWindImpactPrediction {
+    sourceLocation: string;
+    sourceLatDeg: number;
+    sourceLonDeg: number;
+    coneHalfAngleDeg: number;
+    cmeSpeedKmS: number;
+    angularOffsetFromEarthDeg: number;
+    parkerFootpointLonDeg: number;
+    magneticConnectionScore: number;
+    magnetopauseStandoffRe: number;
+    primaryImpactZone: PrimaryImpactZone;
+    predictedStormScale: NOAAStormScale;
+    geomagneticGScale: GeomagneticGScale;
+    targets: ImpactTargetPrediction[];
+    summary: string;
+}
 export interface RadiationEngineState {
     timestamp: string;
     isSimulated: boolean;
@@ -73,7 +114,9 @@ export interface RadiationEngineState {
         latestProtons: GOESProtonReading[];
         stormScale: NOAAStormScale;
     };
+    solarWind: SolarWindReading;
     earlyWarning: EarlyWarningWindow;
+    impactPrediction: SolarWindImpactPrediction;
     biologicalDoses: Record<ShieldingType, BiologicalDoseEstimate>;
     mitigation: RadiationMitigationProtocol;
 }

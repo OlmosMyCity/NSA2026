@@ -11,6 +11,7 @@ import { createTimeline, formatMET } from "./timeline.js";
 import { createTour, phaseIndexAt } from "./tour.js";
 import { createMoonOrbit, createNrho, createTrajectory } from "./trajectory.js";
 import { createShip } from "./vehicles.js";
+import { createSolarWindLayer } from "./solarWind.js";
 
 const $ = (id) => document.getElementById(id);
 const SUN_DIR_ECI = [1, 0, 0]; // dirección fija del Sol (solo para iluminar)
@@ -60,6 +61,174 @@ async function main() {
   const nrho = mission.nrho ? createNrho(scene, frames, mission.nrho) : null;
 
   const { ship, gateway, setLook } = createShip(scene);
+  const solarWindLayer = createSolarWindLayer(scene, bodies.earth.radius_km / KM_PER_UNIT);
+
+  // --- Viento Solar & Predicción de Impacto ---
+  const SOLAR_PRESETS = {
+    NOMINAL: {
+      activeScenario: "NOMINAL",
+      solarWind: { speedKmS: 410, densityPcm3: 4.8, bzNt: -1.2 },
+      currentTelemetry: { stormScale: "S0_NOMINAL" },
+      earlyWarning: { isWarningActive: false, estimatedProtonArrivalMinutes: null },
+      impactPrediction: {
+        sourceLocation: "N05W12",
+        sourceLatDeg: 5,
+        sourceLonDeg: 12,
+        coneHalfAngleDeg: 25,
+        magnetopauseStandoffRe: 10.6,
+        primaryImpactZone: "DEEP_SPACE_MISS",
+        targets: [
+          { target: "EARTH_MAGNETOSPHERE", label: "Tierra", status: "MAGNETOSPHERE_SHIELDED", cmeArrivalHours: null },
+          { target: "CISLUNAR_TRANSIT", label: "Tránsito", status: "MISS", cmeArrivalHours: null },
+          { target: "GATEWAY_NRHO", label: "Gateway", status: "MISS", cmeArrivalHours: null },
+          { target: "LUNAR_SURFACE", label: "Luna", status: "MISS", cmeArrivalHours: null },
+        ],
+      },
+    },
+    FLARE_EARLY_WARNING: {
+      activeScenario: "FLARE_EARLY_WARNING",
+      solarWind: { speedKmS: 680, densityPcm3: 14.5, bzNt: -11.4 },
+      currentTelemetry: { stormScale: "S0_NOMINAL" },
+      earlyWarning: { isWarningActive: true, estimatedProtonArrivalMinutes: 48 },
+      impactPrediction: {
+        sourceLocation: "N14W42",
+        sourceLatDeg: 14,
+        sourceLonDeg: 42,
+        coneHalfAngleDeg: 52,
+        magnetopauseStandoffRe: 7.4,
+        primaryImpactZone: "CISLUNAR_AND_EARTH_DIRECT",
+        targets: [
+          { target: "EARTH_MAGNETOSPHERE", label: "Tierra", status: "MAGNETOSPHERE_SHIELDED", cmeArrivalHours: 32.9 },
+          { target: "CISLUNAR_TRANSIT", label: "Tránsito", status: "DIRECT_HIT", cmeArrivalHours: 32.9 },
+          { target: "GATEWAY_NRHO", label: "Gateway", status: "DIRECT_HIT", cmeArrivalHours: 32.9 },
+          { target: "LUNAR_SURFACE", label: "Luna", status: "DIRECT_HIT", cmeArrivalHours: 32.9 },
+        ],
+      },
+    },
+    PEAK_STORM_S4: {
+      activeScenario: "PEAK_STORM_S4",
+      solarWind: { speedKmS: 1120, densityPcm3: 28.0, bzNt: -24.5 },
+      currentTelemetry: { stormScale: "S4_SEVERE" },
+      earlyWarning: { isWarningActive: false, estimatedProtonArrivalMinutes: 0 },
+      impactPrediction: {
+        sourceLocation: "S08W32",
+        sourceLatDeg: -8,
+        sourceLonDeg: 32,
+        coneHalfAngleDeg: 60,
+        magnetopauseStandoffRe: 5.5,
+        primaryImpactZone: "CISLUNAR_AND_EARTH_DIRECT",
+        targets: [
+          { target: "EARTH_MAGNETOSPHERE", label: "Tierra", status: "DIRECT_HIT", cmeArrivalHours: 27.4 },
+          { target: "CISLUNAR_TRANSIT", label: "Tránsito", status: "DIRECT_HIT", cmeArrivalHours: 27.4 },
+          { target: "GATEWAY_NRHO", label: "Gateway", status: "DIRECT_HIT", cmeArrivalHours: 27.4 },
+          { target: "LUNAR_SURFACE", label: "Luna", status: "DIRECT_HIT", cmeArrivalHours: 27.4 },
+        ],
+      },
+    },
+    SIDE_MISS_CME: {
+      activeScenario: "SIDE_MISS_CME",
+      solarWind: { speedKmS: 460, densityPcm3: 6.0, bzNt: -2.0 },
+      currentTelemetry: { stormScale: "S0_NOMINAL" },
+      earlyWarning: { isWarningActive: false, estimatedProtonArrivalMinutes: null },
+      impactPrediction: {
+        sourceLocation: "S18E72",
+        sourceLatDeg: -18,
+        sourceLonDeg: -72,
+        coneHalfAngleDeg: 34,
+        magnetopauseStandoffRe: 9.8,
+        primaryImpactZone: "DEEP_SPACE_MISS",
+        targets: [
+          { target: "EARTH_MAGNETOSPHERE", label: "Tierra", status: "MISS", cmeArrivalHours: null },
+          { target: "CISLUNAR_TRANSIT", label: "Tránsito", status: "MISS", cmeArrivalHours: null },
+          { target: "GATEWAY_NRHO", label: "Gateway", status: "MISS", cmeArrivalHours: null },
+          { target: "LUNAR_SURFACE", label: "Luna", status: "MISS", cmeArrivalHours: null },
+        ],
+      },
+    },
+  };
+
+  const TARGET_SHORT = {
+    EARTH_MAGNETOSPHERE: "Tierra",
+    CISLUNAR_TRANSIT: "Tránsito",
+    GATEWAY_NRHO: "Gateway",
+    LUNAR_SURFACE: "Luna",
+  };
+  const STATUS_TAG = {
+    DIRECT_HIT: { text: "IMPACTO", cls: "hit" },
+    GLANCING_BLOW: { text: "ROCE", cls: "glancing" },
+    MAGNETOSPHERE_SHIELDED: { text: "ESCUDO", cls: "shielded" },
+    MISS: { text: "DESVÍO", cls: "miss" },
+  };
+
+  function applySolarWindState(swState) {
+    solarWindLayer.setWeatherState(swState);
+    const sw = swState.solarWind || {};
+    const imp = swState.impactPrediction || {};
+    const sepMin = swState.earlyWarning?.estimatedProtonArrivalMinutes;
+    const cmeH = imp.targets?.find((x) => x.cmeArrivalHours != null)?.cmeArrivalHours;
+
+    $("sw-speed").textContent = `${Math.round(sw.speedKmS ?? 410)} km/s`;
+    $("sw-density").textContent = `${Number(sw.densityPcm3 ?? 4.8).toFixed(1)} p/cm³ · ${Number(sw.bzNt ?? -1.2).toFixed(1)} nT`;
+    $("sw-mp").textContent = `${Number(imp.magnetopauseStandoffRe ?? 10.6).toFixed(1)} Re`;
+    const etaText = sepMin != null ? `SEP ${sepMin}m` : cmeH != null ? `CME ${cmeH}h` : "Sin impacto";
+    $("sw-eta").textContent = `${imp.sourceLocation || "N05W12"} · ${etaText}`;
+
+    const badge = $("sw-zone-badge");
+    badge.className = "sw-badge";
+    if (imp.primaryImpactZone === "CISLUNAR_AND_EARTH_DIRECT") {
+      badge.textContent = swState.currentTelemetry?.stormScale === "S4_SEVERE" ? "TORMENTA S4" : "IMPACTO DIRECTO";
+      badge.classList.add(swState.currentTelemetry?.stormScale === "S4_SEVERE" ? "danger" : "warn");
+    } else if (imp.primaryImpactZone === "FLANK_GLANCING_BLOW") {
+      badge.textContent = "ROZAMIENTO";
+      badge.classList.add("warn");
+    } else {
+      badge.textContent = String(swState.activeScenario || "").includes("MISS") ? "SIN IMPACTO" : "NOMINAL";
+    }
+
+    const targetsEl = $("sw-targets");
+    targetsEl.innerHTML = "";
+    for (const t of imp.targets || []) {
+      const stInfo = STATUS_TAG[t.status] || STATUS_TAG.MISS;
+      const div = document.createElement("div");
+      div.className = `sw-target ${stInfo.cls}`;
+      div.innerHTML = `<span>${TARGET_SHORT[t.target] || t.label}</span><b>${stInfo.text}</b>`;
+      targetsEl.appendChild(div);
+    }
+  }
+
+  applySolarWindState(SOLAR_PRESETS.NOMINAL);
+  $("sw-scenario")?.addEventListener("change", (e) => {
+    const preset = SOLAR_PRESETS[e.target.value];
+    if (preset) {
+      applySolarWindState(preset);
+      window.parent?.postMessage(
+        { source: "artemis-viewer", type: "solarScenarioChanged", scenario: e.target.value },
+        window.location.origin
+      );
+    }
+  });
+
+  function toggleSolarWind() {
+    const next = !solarWindLayer.isVisible();
+    solarWindLayer.setVisible(next);
+    $("solar-btn")?.setAttribute("aria-pressed", String(next));
+    const panel = $("solar-wind-panel");
+    if (panel) panel.hidden = !next;
+  }
+  $("solar-btn")?.addEventListener("click", toggleSolarWind);
+
+  window.addEventListener("message", (e) => {
+    if (e.origin !== window.location.origin) return;
+    if (e.data?.source === "artemis-host" && e.data?.type === "solarWind" && e.data.payload) {
+      applySolarWindState(e.data.payload);
+      const sel = $("sw-scenario");
+      if (sel && e.data.payload.activeScenario && SOLAR_PRESETS[e.data.payload.activeScenario]) {
+        sel.value = e.data.payload.activeScenario;
+      }
+    } else if (e.data?.source === "artemis-host" && e.data?.type === "shelterMode") {
+      solarWindLayer.setShelterActive(Boolean(e.data.active));
+    }
+  });
 
   // Etiquetas
   const labels = createLabels($("labels"), camera);
@@ -260,6 +429,7 @@ async function main() {
       l: manual(() => setFocus("moon")),
       m: manual(() => applyShot(OVERVIEW)),
       c: toggleScience,
+      w: toggleSolarWind,
       e: () => (showLabels = !showLabels),
       g: () => setGuided(true),
       h: () => (help.open ? help.close() : help.showModal()),
@@ -427,6 +597,15 @@ async function main() {
     for (const m of maneuvers) rel(frames.toFrame(frame, m.r, m.e.t), m.item.pos);
 
     labels.update(showLabels, occluders);
+    solarWindLayer.update(
+      elapsed,
+      sun,
+      earthC,
+      moonC,
+      nrho && gateway.visible ? gateway.position : null,
+      ship.visible ? ship.position : null,
+      camera.position
+    );
 
     renderer.render(scene, camera);
     requestAnimationFrame(frameLoop);

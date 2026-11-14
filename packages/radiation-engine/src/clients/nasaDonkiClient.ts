@@ -39,11 +39,11 @@ export class NasaDonkiClient {
         activityId: item.associatedCMEID || item.time21_5 || 'CME-DONKI',
         catalog: item.catalog || 'SWPC_ANNEX',
         startTime: item.time21_5,
-        sourceLocation: item.sourceLocation || 'Solar Disk',
-        halfAngle: item.halfAngle || 45,
-        speed: item.speed || 600,
+        sourceLocation: item.sourceLocation || 'N00W00',
+        halfAngle: typeof item.halfAngle === 'number' ? item.halfAngle : 45,
+        speed: typeof item.speed === 'number' ? item.speed : 600,
         type: item.type || 'C',
-        isEarthOrMoonTargeted: item.isEarthGB || true,
+        isEarthOrMoonTargeted: Boolean(item.isEarthGB),
         estimatedShockArrivalTime: item.enlilList?.[0]?.estimatedShockArrivalTime
       }));
     } catch (err) {

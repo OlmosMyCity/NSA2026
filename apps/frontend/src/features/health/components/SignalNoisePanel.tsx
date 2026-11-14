@@ -36,7 +36,7 @@ const SHIELDING_OPTIONS: { value: ShieldingType; label: string }[] = [
 const SOURCE_LABELS: Record<BiodosimetryTriageResult['source'], string> = {
   'backend-bridge': 'API Bridge + ML',
   'signal-noise-fastapi': 'FastAPI ML Engine',
-  'local-simulation': 'Simulación Local Calibrada',
+  'local-simulation': 'Calibrated Local Model',
 };
 
 export function SignalNoisePanel({
@@ -85,28 +85,28 @@ export function SignalNoisePanel({
   const bars = triage
     ? [
         {
-          label: 'Radiación Ionizante (HZE / SPE)',
+          label: 'Ionizing Radiation (HZE / SPE)',
           pct: triage.attribution.ionizingRadiationPct,
-          barClass: 'bg-rose-500',
-          textClass: 'text-rose-300',
+          barClass: 'bg-status-critical',
+          textClass: 'text-status-critical',
         },
         {
-          label: 'Microgravedad / Cambio de Fluidos',
+          label: 'Microgravity / Fluid Shift',
           pct: triage.attribution.microgravityStressPct,
-          barClass: 'bg-amber-400',
-          textClass: 'text-amber-300',
+          barClass: 'bg-status-caution',
+          textClass: 'text-status-caution',
         },
         {
-          label: 'Privación de Sueño / Estrés Psicológico',
+          label: 'Sleep Deprivation / Psych Stress',
           pct: triage.attribution.sleepPsychStressPct,
-          barClass: 'bg-cyan-400',
-          textClass: 'text-cyan-300',
+          barClass: 'bg-berry',
+          textClass: 'text-berry',
         },
         {
-          label: 'Línea Base Nominal',
+          label: 'Nominal Baseline',
           pct: triage.attribution.nominalPct,
-          barClass: 'bg-emerald-400',
-          textClass: 'text-emerald-300',
+          barClass: 'bg-status-nominal',
+          textClass: 'text-status-nominal',
         },
       ]
     : [];
@@ -114,48 +114,48 @@ export function SignalNoisePanel({
   return (
     <section
       aria-label="Signal vs. Noise Attribution"
-      className="rounded-2xl border border-white/10 bg-space-950/60 p-5 sm:p-6 backdrop-blur-sm space-y-5"
+      className="surface-card p-5 sm:p-6 space-y-5"
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-white/10 pb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-line pb-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-telemetry-cyan">
+          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-berry">
             <Cpu className="h-4 w-4" aria-hidden="true" />
-            <span>Signal vs. Noise Attribution · Biodosimetría</span>
+            <span>Signal vs. Noise Attribution · Biodosimetry</span>
           </div>
-          <h2 className="mt-1 text-lg font-semibold text-white">
-            Fusión de Sensores: Radiación vs. Ruido Fisiológico
+          <h2 className="mt-1 text-lg font-semibold text-blueberry">
+            Sensor Fusion: Radiation vs. Physiological Noise
           </h2>
-          <p className="mt-0.5 text-xs text-slate-400">
-            Separa daño genotóxico real (γ-H2AX / FDXR) de estrés oxidativo por sueño o microgravedad (8-OHdG).
+          <p className="mt-0.5 text-xs text-stem">
+            Separates true genotoxic DNA damage (γ-H2AX / FDXR) from oxidative stress caused by sleep loss or microgravity (8-OHdG).
           </p>
         </div>
 
         {result && (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-[11px] text-slate-300">
-            <Radio className="h-3 w-3 text-telemetry-cyan" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 self-start rounded-md border border-line bg-surface-subtle px-3 py-1 font-mono text-[11px] text-blueberry">
+            <Radio className="h-3 w-3 text-berry" aria-hidden="true" />
             {SOURCE_LABELS[result.source]}
           </span>
         )}
       </div>
 
-      {/* Controles de Simulación */}
+      {/* Simulation Controls */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 mr-1">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-telemetry-cyan" aria-hidden="true" />
-            Escenario:
+          <span className="inline-flex items-center gap-1.5 text-xs font-mono text-stem mr-1">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+            Scenario:
           </span>
           <button
             type="button"
             onClick={() => setScenario('LIVE_READING')}
-            className={`rounded-lg px-2.5 py-1.5 font-mono text-xs transition ${
+            className={`tactile-press rounded-md px-2.5 py-1.5 font-mono text-xs transition ${
               scenario === 'LIVE_READING'
-                ? 'border border-telemetry-cyan/60 bg-telemetry-cyan/15 text-telemetry-cyan'
-                : 'border border-white/10 bg-white/5 text-slate-300 hover:border-white/25'
+                ? 'border border-berry bg-surface-hover text-blueberry font-semibold'
+                : 'border border-line text-stem hover:text-blueberry'
             }`}
           >
-            Lectura Actual
+            Live Reading
           </button>
           {(
             Object.entries(SIMULATION_PRESETS) as [
@@ -170,10 +170,10 @@ export function SignalNoisePanel({
                 setScenario(key);
                 setShielding(preset.payload.shieldingType);
               }}
-              className={`rounded-lg px-2.5 py-1.5 font-mono text-xs transition ${
+              className={`tactile-press rounded-md px-2.5 py-1.5 font-mono text-xs transition ${
                 scenario === key
-                  ? 'border border-telemetry-cyan/60 bg-telemetry-cyan/15 text-telemetry-cyan'
-                  : 'border border-white/10 bg-white/5 text-slate-300 hover:border-white/25'
+                  ? 'border border-berry bg-surface-hover text-blueberry font-semibold'
+                  : 'border border-line text-stem hover:text-blueberry'
               }`}
             >
               {preset.label}
@@ -182,14 +182,14 @@ export function SignalNoisePanel({
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor="shielding-select" className="text-xs font-mono text-slate-400">
-            Blindaje:
+          <label htmlFor="shielding-select" className="text-xs font-mono text-stem">
+            Shielding:
           </label>
           <select
             id="shielding-select"
             value={shielding}
             onChange={(e) => setShielding(e.target.value as ShieldingType)}
-            className="rounded-lg border border-white/15 bg-space-950 px-2.5 py-1.5 font-mono text-xs text-white focus:border-telemetry-cyan focus:outline-none"
+            className="rounded-md border border-line bg-canvas px-2.5 py-1.5 font-mono text-xs text-blueberry focus:border-berry focus:outline-none"
           >
             {SHIELDING_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -200,87 +200,115 @@ export function SignalNoisePanel({
         </div>
       </div>
 
-      {/* Estado de Alerta / Falsa Alarma */}
+      {/* Model Input Telemetry Traceability */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 font-mono text-[11px]">
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">Dose Rate</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            {activePayload.doseRateMicroSvPerHour.toFixed(0)} µSv/h
+          </span>
+        </div>
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">Storm Scale</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            S{activePayload.stormScaleLevel}
+          </span>
+        </div>
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">γ-H2AX</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            {activePayload.gammaH2axFociPerCell.toFixed(1)} foci
+          </span>
+        </div>
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">FDXR Fold</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            {activePayload.fdxrFoldChange.toFixed(2)}×
+          </span>
+        </div>
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">8-OHdG</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            {activePayload.urine8OhdgNgMg.toFixed(1)} ng/mg
+          </span>
+        </div>
+        <div className="rounded-md border border-line bg-surface-subtle px-2.5 py-1.5">
+          <span className="block text-stem">Sleep / HR</span>
+          <span className="text-blueberry font-semibold tabular-nums">
+            {activePayload.sleepHours.toFixed(1)}h · {activePayload.heartRateBpm} bpm
+          </span>
+        </div>
+      </div>
+
+      {/* Alert / False-Positive Filter Status */}
       {triage && (
         <div
-          className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+          className={`flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between ${
             isGenotoxicAlert
-              ? 'border-rose-500/40 bg-rose-500/10'
+              ? 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)]'
               : isFalsePositiveFiltered
-              ? 'border-amber-400/40 bg-amber-400/10'
-              : 'border-emerald-400/30 bg-emerald-400/10'
+                ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)]'
+                : 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)]'
           }`}
         >
           <div className="flex items-start gap-3">
             {isGenotoxicAlert ? (
-              <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
+              <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-status-critical" aria-hidden="true" />
             ) : isFalsePositiveFiltered ? (
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-status-caution" aria-hidden="true" />
             ) : (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" aria-hidden="true" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-status-nominal" aria-hidden="true" />
             )}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`font-mono text-xs font-bold uppercase tracking-wider ${
                     isGenotoxicAlert
-                      ? 'text-rose-300'
+                      ? 'text-status-critical'
                       : isFalsePositiveFiltered
-                      ? 'text-amber-300'
-                      : 'text-emerald-300'
+                        ? 'text-status-caution'
+                        : 'text-status-nominal'
                   }`}
                 >
                   {isGenotoxicAlert
-                    ? 'Alerta Genotóxica Real'
+                    ? 'Confirmed Genotoxic Radiation Alert'
                     : isFalsePositiveFiltered
-                    ? 'Falsa Alarma Filtrada (Ruido Fisiológico)'
-                    : 'Sin Riesgo Genotóxico Agudo'}
+                      ? 'False Positive Filtered (Physiological Noise)'
+                      : 'No Acute Genotoxic Risk'}
                 </span>
-                <span className="rounded bg-black/30 px-2 py-0.5 font-mono text-[11px] text-slate-300">
-                  Confianza: {(triage.confidence * 100).toFixed(0)}%
+                <span className="rounded-md border border-line bg-canvas/70 px-2 py-0.5 font-mono text-[11px] text-blueberry tabular-nums">
+                  Confidence: {(triage.confidence * 100).toFixed(0)}%
                 </span>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-slate-200">{triage.explanation}</p>
+              <p className="mt-1 text-xs leading-relaxed text-blueberry">{triage.explanation}</p>
             </div>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2 font-mono text-[11px] text-slate-300">
-            <span className="rounded-md border border-white/10 bg-black/25 px-2 py-1">
-              Dosis: {activePayload.doseRateMicroSvPerHour.toFixed(0)} µSv/h
-            </span>
-            <span className="rounded-md border border-white/10 bg-black/25 px-2 py-1">
-              γ-H2AX: {activePayload.gammaH2axFociPerCell.toFixed(1)} foci
-            </span>
-            <span className="rounded-md border border-white/10 bg-black/25 px-2 py-1">
-              8-OHdG: {activePayload.urine8OhdgNgMg.toFixed(1)} ng/mg
-            </span>
           </div>
         </div>
       )}
 
-      {/* Barras de Atribución Causal */}
+      {/* Attribution Bars & Clinical Guidance */}
       <div className={`grid gap-6 ${compact ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+          <div className="flex items-center justify-between text-xs font-mono text-stem">
             <span className="flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-telemetry-cyan" aria-hidden="true" />
-              Atribución Causal del Modelo
+              <Activity className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+              Causal Attribution Breakdown
             </span>
-            {isLoading && <span className="text-telemetry-cyan">Analizando...</span>}
+            {isLoading && <span className="text-berry">Evaluating…</span>}
           </div>
 
           <div className="space-y-2.5">
             {bars.map((bar) => (
               <div key={bar.label} className="space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-300">{bar.label}</span>
-                  <span className={`font-mono font-semibold ${bar.textClass}`}>
+                  <span className="text-blueberry">{bar.label}</span>
+                  <span className={`font-mono font-semibold tabular-nums ${bar.textClass}`}>
                     {bar.pct.toFixed(1)}%
                   </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 w-full overflow-hidden rounded-sm bg-surface-subtle">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${bar.barClass}`}
+                    className={`h-full transition-all duration-500 ${bar.barClass}`}
                     style={{ width: `${Math.min(100, Math.max(0, bar.pct))}%` }}
                   />
                 </div>
@@ -289,17 +317,16 @@ export function SignalNoisePanel({
           </div>
         </div>
 
-        {/* Recomendaciones Clínicas Diferenciadas */}
         {triage && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2.5">
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-telemetry-cyan">
+          <div className="rounded-md border border-line bg-surface-subtle p-4 space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-berry">
               <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-              <span>Conducta Clínica Diferenciada</span>
+              <span>Differentiated Clinical Protocol</span>
             </div>
-            <ul className="space-y-2 text-xs leading-relaxed text-slate-300">
+            <ul className="space-y-2 text-xs leading-relaxed text-blueberry">
               {triage.clinicalGuidance.map((item) => (
                 <li key={item} className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-telemetry-cyan" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-sm bg-berry" />
                   <span>{item}</span>
                 </li>
               ))}

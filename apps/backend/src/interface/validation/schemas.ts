@@ -193,7 +193,9 @@ export const directivesSchema = z.object({
 });
 
 export const radiationSimulateSchema = z.object({
-  scenario: z.enum(["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4", "RESET"]).optional(),
+  scenario: z
+    .enum(["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4", "SIDE_MISS_CME", "RESET"])
+    .optional(),
 });
 
 export const biodosimetryTriageSchema = z.object({

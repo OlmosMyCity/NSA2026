@@ -266,9 +266,98 @@ kbd {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* Panel de Viento Solar y Predicción de Impacto */
+#solar-wind-panel {
+  left: 12px;
+  bottom: 84px;
+  width: 286px;
+  font-size: 12px;
+}
+#solar-wind-panel .sw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#solar-wind-panel .sw-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#solar-wind-panel .sw-badge {
+  font: 600 10px var(--mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+}
+#solar-wind-panel .sw-badge.warn {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fcd34d;
+}
+#solar-wind-panel .sw-badge.danger {
+  background: rgba(244, 63, 94, 0.24);
+  border-color: rgba(244, 63, 94, 0.65);
+  color: #fda4af;
+}
+#solar-wind-panel .sw-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+#solar-wind-panel .sw-select-wrap select {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+#solar-wind-panel .sw-metrics {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  margin: 0 0 8px;
+}
+#solar-wind-panel .sw-metrics dt { color: var(--muted); }
+#solar-wind-panel .sw-metrics dd {
+  margin: 0;
+  text-align: right;
+  font: 500 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+#solar-wind-panel .sw-targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+#solar-wind-panel .sw-target {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+#solar-wind-panel .sw-target b {
+  font: 600 10px var(--mono);
+}
+#solar-wind-panel .sw-target.hit b { color: #fb7185; }
+#solar-wind-panel .sw-target.glancing b { color: #fbbf24; }
+#solar-wind-panel .sw-target.shielded b { color: #38bdf8; }
+#solar-wind-panel .sw-target.miss b { color: var(--muted); }
+
 /* Pantallas bajas: se quitan las gráficas antes que los datos */
-@media (max-height: 640px) {
+@media (max-height: 680px) {
   #hud .spark { display: none; }
+  #solar-wind-panel .sw-metrics { display: none; }
 }
 
 /* Celular: telemetría arriba, vistas en una fila y paneles como hoja inferior */
@@ -278,6 +367,7 @@ kbd {
   #hud .brand, #hud .spark, #hud .secondary { display: none; }
   #hud .met { font-size: 16px; }
   #hud .vehicle { margin-bottom: 4px; }
+  #solar-wind-panel { display: none; }
   #views { top: auto; bottom: 66px; right: 8px; padding: 5px; }
   #science { top: auto; bottom: 114px; left: 8px; right: 8px; width: auto; max-height: 42vh; }
   #event-card { left: 8px; bottom: 114px; width: auto; right: 8px; }

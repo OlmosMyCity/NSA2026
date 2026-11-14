@@ -1,4 +1,12 @@
-import { NOAASolarProbability, GOESXrayReading, GOESProtonReading } from '../types';
+import { NOAASolarProbability, GOESXrayReading, GOESProtonReading, SolarWindReading } from '../types';
+export declare function computeSolarWindMetrics(params: {
+    timestamp: string;
+    speedKmS: number;
+    densityPcm3: number;
+    temperatureK: number;
+    btNt: number;
+    bzNt: number;
+}): SolarWindReading;
 export interface NoaaFetchOptions {
     strict?: boolean;
 }
@@ -18,6 +26,10 @@ export declare class NoaaSwpcClient {
      * Obtiene la telemetría de protones de alta energía (para evaluar tormenta en curso)
      */
     getLatestProtons(options?: NoaaFetchOptions): Promise<GOESProtonReading[]>;
+    /**
+     * Obtiene telemetría de viento solar (plasma y campo magnético IMF) de DSCOVR/ACE en L1
+     */
+    getLatestSolarWind(): Promise<SolarWindReading>;
     /**
      * Convierte flujo de rayos X (W/m²) a la escala oficial de fulguraciones (A, B, C, M, X)
      */

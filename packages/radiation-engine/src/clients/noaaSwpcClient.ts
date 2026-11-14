@@ -1,4 +1,38 @@
-import { NOAASolarProbability, GOESXrayReading, GOESProtonReading } from '../types';
+import { NOAASolarProbability, GOESXrayReading, GOESProtonReading, SolarWindReading } from '../types';
+
+const AU_KM = 149597870.7;
+const OMEGA_SUN_RAD_S = 2.7e-6; // Solar equatorial synodic rotation rate (rad/s)
+const PROTON_MASS_PDYN_COEFF = 1.6726e-6; // Converts n (cm^-3) * v^2 (km/s)^2 to nPa
+
+export function computeSolarWindMetrics(params: {
+  timestamp: string;
+  speedKmS: number;
+  densityPcm3: number;
+  temperatureK: number;
+  btNt: number;
+  bzNt: number;
+}): SolarWindReading {
+  const speedKmS = Math.max(200, params.speedKmS);
+  const densityPcm3 = Math.max(0.1, params.densityPcm3);
+  const dynamicPressureNpa = Number(
+    (PROTON_MASS_PDYN_COEFF * densityPcm3 * speedKmS * speedKmS).toFixed(2)
+  );
+  const spiralRad = (OMEGA_SUN_RAD_S * AU_KM) / speedKmS;
+  const parkerSpiralAngleDeg = Number(((Math.atan(spiralRad) * 180) / Math.PI).toFixed(1));
+  const parkerFootpointLonDeg = Number(Math.min(89, (spiralRad * 180) / Math.PI).toFixed(1));
+
+  return {
+    timestamp: params.timestamp,
+    speedKmS: Number(speedKmS.toFixed(1)),
+    densityPcm3: Number(densityPcm3.toFixed(2)),
+    temperatureK: Math.round(params.temperatureK),
+    btNt: Number(params.btNt.toFixed(2)),
+    bzNt: Number(params.bzNt.toFixed(2)),
+    dynamicPressureNpa,
+    parkerSpiralAngleDeg,
+    parkerFootpointLonDeg
+  };
+}
 
 export interface NoaaFetchOptions {
   strict?: boolean;
@@ -115,6 +149,57 @@ export class NoaaSwpcClient {
         { timestamp: new Date().toISOString(), energyChannel: '>=50 MeV', fluxPfu: 0.1 },
         { timestamp: new Date().toISOString(), energyChannel: '>=100 MeV', fluxPfu: 0.02 }
       ];
+    }
+  }
+
+  /**
+   * Obtiene telemetría de viento solar (plasma y campo magnético IMF) de DSCOVR/ACE en L1
+   */
+  async getLatestSolarWind(): Promise<SolarWindReading> {
+    try {
+      const [plasmaRes, magRes] = await Promise.all([
+        fetch(`${this.baseUrl}/products/solar-wind/plasma-2-hour.json`),
+        fetch(`${this.baseUrl}/products/solar-wind/mag-2-hour.json`)
+      ]);
+
+      if (!plasmaRes.ok || !magRes.ok) {
+        throw new Error(`NOAA solar wind HTTP error: plasma=${plasmaRes.status}, mag=${magRes.status}`);
+      }
+
+      const plasmaRows = (await plasmaRes.json()) as unknown[][];
+      const magRows = (await magRes.json()) as unknown[][];
+
+      // Row 0 is header: ["time_tag","density","speed","temperature"]
+      const latestPlasma = Array.isArray(plasmaRows)
+        ? [...plasmaRows].reverse().find((r, idx) => idx < plasmaRows.length - 1 && r?.[1] != null && r?.[2] != null)
+        : undefined;
+      // Row 0 is header: ["time_tag","bx_gsm","by_gsm","bz_gsm","lon_gsm","lat_gsm","bt"]
+      const latestMag = Array.isArray(magRows)
+        ? [...magRows].reverse().find((r, idx) => idx < magRows.length - 1 && r?.[3] != null && r?.[6] != null)
+        : undefined;
+
+      if (!latestPlasma || !latestMag) {
+        throw new Error('NOAA solar wind JSON did not contain valid telemetry rows');
+      }
+
+      return computeSolarWindMetrics({
+        timestamp: String(latestPlasma[0] ?? new Date().toISOString()),
+        densityPcm3: Number(latestPlasma[1]),
+        speedKmS: Number(latestPlasma[2]),
+        temperatureK: Number(latestPlasma[3] ?? 95000),
+        bzNt: Number(latestMag[3]),
+        btNt: Number(latestMag[6])
+      });
+    } catch (err) {
+      console.warn('[NoaaSwpcClient] Error fetching solar wind, using fallback:', err);
+      return computeSolarWindMetrics({
+        timestamp: new Date().toISOString(),
+        speedKmS: 420,
+        densityPcm3: 5.2,
+        temperatureK: 98000,
+        btNt: 5.4,
+        bzNt: -1.8
+      });
     }
   }
 

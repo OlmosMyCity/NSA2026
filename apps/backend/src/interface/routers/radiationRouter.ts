@@ -48,3 +48,34 @@ radiationRouter.post(
     }
   }
 );
+
+radiationRouter.post("/predict-impact", (req: Request, res: Response) => {
+  const body = (req.body || {}) as {
+    sourceLocation?: string;
+    flareClass?: "C" | "M" | "X";
+    cmeSpeedKmS?: number;
+    halfAngleDeg?: number;
+    solarWindSpeedKmS?: number;
+    densityPcm3?: number;
+    bzNt?: number;
+    moonPhaseAngleDeg?: number;
+  };
+
+  if (!body.sourceLocation || typeof body.sourceLocation !== "string") {
+    res.status(400).json({ error: "sourceLocation is required (e.g. 'N14W42' or 'S18E72')" });
+    return;
+  }
+
+  const state = radiationEngine.simulateCustomEvent({
+    sourceLocation: body.sourceLocation,
+    flareClass: body.flareClass,
+    cmeSpeedKmS: body.cmeSpeedKmS,
+    halfAngleDeg: body.halfAngleDeg,
+    solarWindSpeedKmS: body.solarWindSpeedKmS,
+    densityPcm3: body.densityPcm3,
+    bzNt: body.bzNt,
+    moonPhaseAngleDeg: body.moonPhaseAngleDeg,
+  });
+
+  res.json(state);
+});
