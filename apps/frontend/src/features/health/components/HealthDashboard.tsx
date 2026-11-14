@@ -91,6 +91,8 @@ export function HealthDashboard() {
     [whatIf.active, effectiveRows, baseZones]
   );
 
+  const [evalNonce, setEvalNonce] = useState(0);
+
   useEffect(() => {
     if (effectiveRows.length === 0) return;
     let alive = true;
@@ -115,7 +117,9 @@ export function HealthDashboard() {
     return () => {
       alive = false;
     };
-  }, [effectiveRows, whatIf.environment, whatIf.stormScale, whatIf.shielding, whatIf.freeTextMood]);
+    // Solo dispara al cargar lecturas reales o al pulsar "Evaluate Triage" / "Reset"
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, evalNonce]);
 
   const focusZone = (zone: BodyZoneId) => {
     setSelected(zone);
@@ -191,8 +195,14 @@ export function HealthDashboard() {
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
         <WhatIfPanel
           value={whatIf}
+          baseline={latest}
+          isEvaluating={decisionLoading}
           onChange={setWhatIf}
-          onReset={() => setWhatIf(INITIAL_WHAT_IF)}
+          onApply={() => setEvalNonce((n) => n + 1)}
+          onReset={() => {
+            setWhatIf(INITIAL_WHAT_IF);
+            setEvalNonce((n) => n + 1);
+          }}
         />
         <EmptyState
           title="No readings recorded yet"
@@ -230,15 +240,7 @@ export function HealthDashboard() {
         </div>
       )}
 
-      <WhatIfPanel
-        value={whatIf}
-        onChange={setWhatIf}
-        onReset={() => setWhatIf(INITIAL_WHAT_IF)}
-      />
-
-      <TriageDecisionCard decision={decision} isLoading={decisionLoading} />
-
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start">
         <div
           ref={viewerRef}
           className="relative scroll-mt-24 overflow-hidden surface-tinted rounded-lg"
@@ -288,13 +290,29 @@ export function HealthDashboard() {
           </p>
         </div>
 
-        <div className="surface-card">
-          <ZoneDetailPanel
-            zone={selected}
-            summary={selected ? zones[selected] : null}
-            twinZone={selected && twin ? twin.zones[selected] : null}
-            modelScore={selected && decision ? decision.modelEstimate.score[selected] : null}
+        <div className="space-y-4">
+          <div className="surface-card">
+            <ZoneDetailPanel
+              zone={selected}
+              summary={selected ? zones[selected] : null}
+              twinZone={selected && twin ? twin.zones[selected] : null}
+              modelScore={selected && decision ? decision.modelEstimate.score[selected] : null}
+            />
+          </div>
+
+          <WhatIfPanel
+            value={whatIf}
+            baseline={latest}
+            isEvaluating={decisionLoading}
+            onChange={setWhatIf}
+            onApply={() => setEvalNonce((n) => n + 1)}
+            onReset={() => {
+              setWhatIf(INITIAL_WHAT_IF);
+              setEvalNonce((n) => n + 1);
+            }}
           />
+
+          <TriageDecisionCard decision={decision} isLoading={decisionLoading} />
         </div>
       </section>
 
