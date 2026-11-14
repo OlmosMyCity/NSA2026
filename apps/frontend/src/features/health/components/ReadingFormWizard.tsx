@@ -57,20 +57,25 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
         const res = await astronautService.list({ limit: 50 });
         const isAdmin = user?.role === 'ADMIN';
         const myAstro = res.data.find((a) => a.userId === user?.id || a.id === user?.astronautId);
-        const visibleCrew = isAdmin || !myAstro ? res.data : [myAstro];
+        // Un USER solo registra sus propias lecturas (el backend rechaza las ajenas con 403).
+        const visibleCrew = isAdmin ? res.data : myAstro ? [myAstro] : [];
 
         setAstronauts(visibleCrew);
-        if (!isAdmin && myAstro) {
-          setSelectedAstronautId(myAstro.id);
-        } else if (!selectedAstronautId && visibleCrew.length > 0) {
-          setSelectedAstronautId(myAstro ? myAstro.id : visibleCrew[0].id);
+        if (!isAdmin) {
+          setSelectedAstronautId(myAstro?.id ?? '');
+        } else {
+          // ADMIN: respeta ?astronautId si existe; si no, el primero de la lista.
+          setSelectedAstronautId((current) =>
+            visibleCrew.some((a) => a.id === current) ? current : (visibleCrew[0]?.id ?? '')
+          );
         }
-      } catch {
-        // Fallback
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : 'Unable to load the crew list.');
       }
     };
     loadCrew();
-  }, [user, selectedAstronautId]);
+    // Solo al cambiar de usuario: elegir otra opción del selector no debe recargar la lista.
+  }, [user]);
 
   useEffect(() => {
     const result = healthService.evaluate({
@@ -202,19 +207,26 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
         >
           Monitored Crew Member *
         </label>
-        <select
-          id="select-astronaut"
-          value={selectedAstronautId}
-          disabled={user?.role !== 'ADMIN' && astronauts.length <= 1}
-          onChange={(e) => setSelectedAstronautId(e.target.value)}
-          className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm text-blueberry focus:border-blueberry focus:outline-none disabled:opacity-75 [&>option]:bg-canvas [&>option]:text-blueberry"
-        >
-          {astronauts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} — {a.role}
-            </option>
-          ))}
-        </select>
+        {user?.role === 'ADMIN' ? (
+          <select
+            id="select-astronaut"
+            value={selectedAstronautId}
+            onChange={(e) => setSelectedAstronautId(e.target.value)}
+            className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
+          >
+            {astronauts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} — {a.role}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p id="select-astronaut" className="mt-2 border-b border-line py-2 text-sm text-blueberry">
+            {astronauts[0]
+              ? `${astronauts[0].name} — ${astronauts[0].role}`
+              : 'Your account is not linked to a crew member yet. Ask the Flight Surgeon to add you to a crew.'}
+          </p>
+        )}
       </div>
 
       {errorMessage && (
@@ -577,8 +589,11 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
             <div />
           )}
 
+          {/* Keys distintas: si React reutilizara el botón, el clic en "Next step" que lleva
+              al último paso cambiaría su type a submit y enviaría el formulario sin confirmar. */}
           {currentStep < 4 ? (
             <button
+              key="next"
               type="button"
               onClick={handleNext}
               className="tactile-press flex items-center gap-2 rounded-sm bg-blueberry px-6 py-2.5 text-xs font-semibold text-plate hover:bg-berry"
@@ -588,8 +603,9 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
             </button>
           ) : (
             <button
+              key="submit"
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !selectedAstronautId}
               className="tactile-press flex items-center gap-2 rounded-sm bg-blueberry px-7 py-3 text-xs font-semibold text-plate hover:bg-berry disabled:opacity-50"
             >
               {isSubmitting ? (

@@ -40,16 +40,19 @@ export function FlightSurgeonConsole() {
   const [directiveText, setDirectiveText] = useState<string>('');
   const [isSendingDirective, setIsSendingDirective] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [directiveError, setDirectiveError] = useState<string | null>(null);
 
   const fetchTriage = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const res = await adminTriageService.getTriageOverview();
       setCrew(res.crew);
       setMetrics(res.metrics);
       setActiveRadiationIncident(res.activeRadiationIncident ?? null);
-    } catch (err) {
-      console.error('Error fetching flight surgeon triage:', err);
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : 'Unable to load crew triage.');
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +64,7 @@ export function FlightSurgeonConsole() {
 
   const handleSendDirective = async () => {
     if (!selectedCrew || !directiveText.trim()) return;
+    setDirectiveError(null);
     try {
       setIsSendingDirective(true);
       const res = await adminTriageService.sendClinicalDirectives(
@@ -71,8 +75,8 @@ export function FlightSurgeonConsole() {
       setDirectiveText('');
       setTimeout(() => setFeedbackMessage(null), 4000);
       await fetchTriage();
-    } catch (err) {
-      console.error('Error sending directive:', err);
+    } catch (err: unknown) {
+      setDirectiveError(err instanceof Error ? err.message : 'The directive could not be transmitted. Try again.');
     } finally {
       setIsSendingDirective(false);
     }
@@ -247,7 +251,12 @@ export function FlightSurgeonConsole() {
       </div>
 
       {/* Triage grid */}
-      {isLoading ? (
+      {loadError ? (
+        <div role="alert" className="ui-callout-critical flex items-start gap-2 text-sm text-status-critical">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{loadError}</span>
+        </div>
+      ) : isLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
             <SkeletonCard key={i} />
@@ -463,6 +472,7 @@ export function FlightSurgeonConsole() {
                       setSelectedCrew(astronaut);
                       setDirectiveText('');
                       setFeedbackMessage(null);
+                      setDirectiveError(null);
                     }}
                     className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry hover:bg-surface-tinted"
                   >
@@ -534,6 +544,13 @@ export function FlightSurgeonConsole() {
                     member&apos;s medical record.
                   </span>
                 </div>
+
+                {directiveError && (
+                  <div role="alert" className="ui-callout-critical flex items-start gap-2 text-xs text-status-critical">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{directiveError}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
                   <button

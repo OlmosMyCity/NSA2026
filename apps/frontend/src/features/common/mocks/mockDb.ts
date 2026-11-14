@@ -330,6 +330,9 @@ class MockDatabase {
 
       const storedReadings = localStorage.getItem('artemis_mock_readings');
       if (storedReadings) this.readings = JSON.parse(storedReadings);
+
+      const storedUsers = localStorage.getItem('artemis_mock_users');
+      if (storedUsers) this.users = JSON.parse(storedUsers);
     } catch {
       // Ignorar fallback
     }
@@ -341,6 +344,7 @@ class MockDatabase {
       localStorage.setItem('artemis_mock_missions', JSON.stringify(this.missions));
       localStorage.setItem('artemis_mock_astronauts', JSON.stringify(this.astronauts));
       localStorage.setItem('artemis_mock_readings', JSON.stringify(this.readings));
+      localStorage.setItem('artemis_mock_users', JSON.stringify(this.users));
     } catch {
       // Ignorar fallback
     }

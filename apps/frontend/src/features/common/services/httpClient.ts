@@ -88,9 +88,10 @@ class HttpClient {
       );
     }
 
-    // Manejo de expiración o ausencia de sesión (401)
+    // Manejo de expiración o ausencia de sesión (401). En peticiones anónimas (login,
+    // registro) un 401 es "credenciales inválidas", no una sesión vencida.
     if (response.status === 401) {
-      authStorage.notifyUnauthorized();
+      if (!skipAuth) authStorage.notifyUnauthorized();
       let errorMsg = 'Sesión no autorizada o expirada. Por favor inicie sesión nuevamente.';
       try {
         const errorData = await response.json();

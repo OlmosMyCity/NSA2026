@@ -6,10 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '@/features/common/services/httpClient';
 import { AlertCircle } from 'lucide-react';
+import { safeReturnUrl } from '../utils/safeReturnUrl';
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const returnUrl = safeReturnUrl(searchParams.get('returnUrl'));
   const { login, isAuthenticated } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -26,9 +28,9 @@ export function LoginForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.push(returnUrl);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ export function LoginForm() {
     try {
       setIsSubmitting(true);
       await login({ email: email.trim(), password });
-      router.push('/');
+      router.push(returnUrl);
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);

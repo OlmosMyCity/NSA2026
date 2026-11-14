@@ -12,6 +12,7 @@ import { StreakBanner } from '@/features/routine/components/StreakBanner';
 import { BadgeGrid } from '@/features/routine/components/BadgeGrid';
 import { RoutineChecklist } from '@/features/routine/components/RoutineChecklist';
 import { Users, RefreshCw } from 'lucide-react';
+import { EmptyState } from '@/features/common/components/EmptyState';
 
 export default function RoutinePage() {
   const { user } = useAuth();
@@ -19,30 +20,32 @@ export default function RoutinePage() {
   const [selectedAstronautId, setSelectedAstronautId] = useState<string>('');
   const [routineState, setRoutineState] = useState<AstronautRoutineState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     async function loadCrew() {
       try {
-        const res = await astronautService.list({ limit: 50 });
-        setAstronauts(res.data);
-
-        if (res.data.length > 0) {
-          const matched = res.data.find((a) =>
-            a.name.toLowerCase().includes(user?.name?.toLowerCase() || ''),
-          );
-          const initialId = matched ? matched.id : res.data[0].id;
-          setSelectedAstronautId(initialId);
-          setRoutineState(routineService.getRoutineState(initialId));
-        }
-      } catch (err) {
-        console.error('Error loading astronauts for routine:', err);
+        setLoadError(null);
+        // ADMIN revisa a cualquier tripulante; un USER solo ve su propia rutina.
+        const crew = isAdmin
+          ? (await astronautService.list({ limit: 50 })).data
+          : user?.astronautId
+            ? [await astronautService.getById(user.astronautId)]
+            : [];
+        setAstronauts(crew);
+        const initialId = crew[0]?.id ?? '';
+        setSelectedAstronautId(initialId);
+        setRoutineState(initialId ? routineService.getRoutineState(initialId) : null);
+      } catch (err: unknown) {
+        setLoadError(err instanceof Error ? err.message : 'Unable to load the crew list.');
       } finally {
         setIsLoading(false);
       }
     }
 
     loadCrew();
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleSelectAstronaut = (astroId: string) => {
     setSelectedAstronautId(astroId);
@@ -71,6 +74,7 @@ export default function RoutinePage() {
               </p>
             </div>
 
+            {isAdmin && (
             <div className="flex items-center gap-2.5">
               <span className="text-xs font-semibold text-stem flex items-center gap-1.5">
                 <Users className="h-4 w-4 text-berry" />
@@ -90,13 +94,23 @@ export default function RoutinePage() {
                 ))}
               </select>
             </div>
+            )}
           </div>
 
-          {isLoading || !routineState ? (
+          {loadError ? (
+            <p role="alert" className="ui-callout-critical text-sm text-status-critical">
+              {loadError}
+            </p>
+          ) : isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-stem">
               <RefreshCw className="h-7 w-7 animate-spin text-berry mb-3" />
               <p className="text-sm font-medium">Loading crew operational protocol...</p>
             </div>
+          ) : !routineState ? (
+            <EmptyState
+              title="No crew profile linked"
+              description="Your account is not linked to a crew member yet. Ask the Flight Surgeon to add you to a mission's crew."
+            />
           ) : (
             <div className="space-y-10">
               <StreakBanner streakDays={routineState.streakDays} badges={routineState.badges} />
@@ -114,9 +128,9 @@ export default function RoutinePage() {
                       {currentAstronaut?.name || 'Astronaut'}
                     </span>
                   </div>
-                  <span className="ui-badge text-status-nominal">
-                    <span className="h-2 w-2 rounded-full bg-status-nominal" aria-hidden="true" />
-                    <span>Live sync active</span>
+                  <span className="ui-badge text-stem">
+                    <span className="h-2 w-2 rounded-full bg-stem" aria-hidden="true" />
+                    <span>Saved on this device</span>
                   </span>
                 </div>
 

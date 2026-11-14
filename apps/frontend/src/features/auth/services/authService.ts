@@ -44,13 +44,15 @@ class AuthService {
         email,
         name: input.name.trim(),
         role: 'USER' as const,
+        // Solo modo mock (localStorage del navegador): el backend real guarda un hash bcrypt.
+        passwordHash: input.password,
       };
 
       mockDb.users.push(newUser);
       mockDb.save();
 
       const response: AuthResponse = {
-        user: newUser,
+        user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },
         token: `simulated-jwt-token-registered-${Date.now()}`,
       };
 

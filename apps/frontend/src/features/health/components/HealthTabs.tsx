@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Rocket } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { astronautService } from '@/features/astronauts/services/astronautService';
@@ -17,6 +17,8 @@ const TABS = [
 export function HealthTabs() {
   const pathname = usePathname();
   const { user } = useAuth();
+  // El ADMIN navega entre pestañas sin perder al tripulante seleccionado.
+  const query = useSearchParams().toString();
   const [missionId, setMissionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function HealthTabs() {
           return (
             <Link
               key={t.href}
-              href={t.href}
+              href={query ? `${t.href}?${query}` : t.href}
               aria-current={active ? 'page' : undefined}
               className={`ui-tab text-xs font-semibold ${active ? 'ui-tab-active' : ''}`}
             >

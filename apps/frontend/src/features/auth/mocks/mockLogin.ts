@@ -41,7 +41,8 @@ export function mockLogin(credentials: LoginInput): AuthResponse {
 
   // Comprobar si es un usuario recién registrado en el mock
   const existingUser = mockDb.users.find((u) => u.email.toLowerCase() === email);
-  if (existingUser && password.length >= 6) {
+  // Solo cuentas registradas en el mock, con la contraseña que se guardó al registrarse.
+  if (existingUser?.passwordHash && existingUser.passwordHash === password) {
     const response: AuthResponse = {
       user: {
         id: existingUser.id,

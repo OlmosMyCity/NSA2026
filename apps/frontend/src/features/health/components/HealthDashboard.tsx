@@ -14,6 +14,7 @@ import { STATUS_THEME } from '../domain/status-theme';
 import type { BodyZoneId, IndicatorEvaluation, IndicatorId } from '../domain/types';
 import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
+import { NoMonitoredAstronaut } from './NoMonitoredAstronaut';
 import {
   evaluateDigitalTwinRemote,
   type DecisionResult,
@@ -170,6 +171,8 @@ export function HealthDashboard() {
   const baseline = latest
     ? { heartRateBpm: latest.heartRateBpm, spo2Pct: latest.spo2Pct, sleepHours: latest.sleepHours }
     : null;
+
+  if (!isResolving && !astronautId) return <NoMonitoredAstronaut />;
 
   if (isResolving || isLoading) {
     return (

@@ -19,8 +19,9 @@ interface AstronautCardProps {
 }
 
 export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const { user, isAdmin } = useAuth();
+  // Solo el Flight Surgeon o el propio tripulante pueden registrar sus mediciones.
+  const canLogReading = isAdmin || user?.astronautId === astronaut.id;
 
   return (
     <article className="surface-card group flex flex-col justify-between p-5 transition-colors hover:border-line-strong">
@@ -76,13 +77,17 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
       </div>
 
       <div className="mt-6 flex items-center justify-between text-xs">
-        <Link
-          href={`/readings/new?astronautId=${astronaut.id}`}
-          className="tactile-press inline-flex items-center gap-1.5 font-semibold text-blueberry hover:text-berry"
-        >
-          <HeartPulse className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
-          <span>Log Biometrics</span>
-        </Link>
+        {canLogReading ? (
+          <Link
+            href={`/readings/new?astronautId=${astronaut.id}`}
+            className="tactile-press inline-flex items-center gap-1.5 font-semibold text-blueberry hover:text-berry"
+          >
+            <HeartPulse className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+            <span>Log Biometrics</span>
+          </Link>
+        ) : (
+          <span />
+        )}
 
         {isAdmin && (
           <div className="flex items-center gap-3">
