@@ -11,6 +11,7 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorizeRoles } from "../middlewares/authorizeRoles.js";
 import { imageUpload } from "../middlewares/imageUpload.js";
 import { astronautSummaryRouter } from "./healthReadingRouter.js";
+import { DigitalTwinController } from "../controllers/DigitalTwinController.js";
 
 const astronautRepo = new PrismaAstronautRepository();
 const listAstronautsUseCase = new ListAstronautsUseCase(astronautRepo);
@@ -18,6 +19,7 @@ const getAstronautByIdUseCase = new GetAstronautByIdUseCase(astronautRepo);
 const createAstronautUseCase = new CreateAstronautUseCase(astronautRepo);
 const updateAstronautUseCase = new UpdateAstronautUseCase(astronautRepo);
 const deleteAstronautUseCase = new DeleteAstronautUseCase(astronautRepo);
+const digitalTwinController = new DigitalTwinController();
 
 const controller = new AstronautController(
   listAstronautsUseCase,
@@ -30,7 +32,10 @@ const controller = new AstronautController(
 export const astronautRouter = Router();
 
 astronautRouter.get("/", controller.list);
+astronautRouter.post("/digital-twin/evaluate", authenticate, digitalTwinController.evaluateStateless);
 astronautRouter.use("/", astronautSummaryRouter); // GET /:id/summary
+astronautRouter.get("/:id/digital-twin", authenticate, digitalTwinController.getDigitalTwin);
+astronautRouter.post("/:id/simulate", authenticate, digitalTwinController.simulate);
 astronautRouter.get("/:id", controller.getById);
 // Imagen opcional: multipart con el campo "photo" o JSON con "photoUrl" ya resuelta.
 const photoUpload = imageUpload("photo", "astronauts", "photoUrl");
