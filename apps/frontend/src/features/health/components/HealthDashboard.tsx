@@ -1,21 +1,29 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertTriangle, ArrowLeft, RefreshCw, Rotate3d } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { EmptyState } from '@/features/common/components/EmptyState';
 import { Skeleton } from '@/features/common/components/Skeleton';
 import { INDICATOR_IDS, INDICATORS } from '../domain/indicators';
-import { API_STATUS } from '../domain/api-adapter';
+import { API_STATUS, toIndicatorReadings } from '../domain/api-adapter';
+import { summarizeZones } from '../domain/summary';
 import { worstStatus } from '../domain/evaluate';
 import { BODY_ZONES } from '../domain/education';
 import type { BodyZoneId, IndicatorEvaluation, IndicatorId } from '../domain/types';
 import { useHealthReadings } from '../hooks/useHealthReadings';
+import {
+  evaluateDigitalTwinRemote,
+  type DecisionResult,
+  type DigitalTwinState,
+} from '../services/digitalTwinService';
 import { IndicatorCard } from './IndicatorCard';
 import { StatusBadge } from './StatusBadge';
 import { ZoneDetailPanel } from './ZoneDetailPanel';
 import { SignalNoisePanel } from './SignalNoisePanel';
+import { TriageDecisionCard } from './TriageDecisionCard';
+import { WhatIfPanel, type WhatIfState } from './WhatIfPanel';
 
 const DEMO_ASTRONAUT_ID = 'astro-01';
 
@@ -26,13 +34,69 @@ const Body3D = dynamic(() => import('./Body3D'), {
 
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 
+const INITIAL_WHAT_IF: WhatIfState = {
+  active: false,
+  environment: 'LUNAR_BASE',
+  stormScale: 'S0_NOMINAL',
+  shielding: 'CREW_CABIN_NOMINAL',
+  freeTextMood: '',
+};
+
 export function HealthDashboard() {
   const { user } = useAuth();
   const astronautId = user?.astronautId ?? DEMO_ASTRONAUT_ID;
-  const { zones, latest, isLoading, error, refetch } = useHealthReadings(astronautId);
+  const { rows, zones: baseZones, latest, isLoading, error, refetch } = useHealthReadings(astronautId);
   const [selected, setSelected] = useState<BodyZoneId | null>(null);
   const [hovered, setHovered] = useState<BodyZoneId | null>(null);
+  const [whatIf, setWhatIf] = useState<WhatIfState>(INITIAL_WHAT_IF);
+  const [twin, setTwin] = useState<DigitalTwinState | null>(null);
+  const [decision, setDecision] = useState<DecisionResult | null>(null);
+  const [decisionLoading, setDecisionLoading] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
+
+  const effectiveRows = useMemo(() => {
+    if (!whatIf.active || rows.length === 0) return rows;
+    const updated = [...rows];
+    const lastIdx = updated.length - 1;
+    updated[lastIdx] = {
+      ...updated[lastIdx],
+      heartRateBpm: whatIf.heartRateBpm ?? updated[lastIdx].heartRateBpm,
+      spo2Pct: whatIf.spo2Pct ?? updated[lastIdx].spo2Pct,
+      sleepHours: whatIf.sleepHours ?? updated[lastIdx].sleepHours,
+    };
+    return updated;
+  }, [rows, whatIf]);
+
+  const zones = useMemo(
+    () => (whatIf.active ? summarizeZones(effectiveRows.flatMap(toIndicatorReadings)) : baseZones),
+    [whatIf.active, effectiveRows, baseZones]
+  );
+
+  useEffect(() => {
+    if (effectiveRows.length === 0) return;
+    let alive = true;
+    setDecisionLoading(true);
+    evaluateDigitalTwinRemote({
+      readings: effectiveRows,
+      environment: whatIf.environment,
+      radiation: {
+        stormScale: whatIf.stormScale,
+        shielding: whatIf.shielding,
+      },
+      freeTextMood: whatIf.freeTextMood || undefined,
+    })
+      .then((res) => {
+        if (!alive) return;
+        setTwin(res.twin);
+        setDecision(res.decision);
+      })
+      .finally(() => {
+        if (alive) setDecisionLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [effectiveRows, whatIf.environment, whatIf.stormScale, whatIf.shielding, whatIf.freeTextMood]);
 
   const focusZone = (zone: BodyZoneId) => {
     setSelected(zone);
@@ -168,9 +232,22 @@ export function HealthDashboard() {
         </div>
 
         <div className="surface-card">
-          <ZoneDetailPanel zone={selected} summary={selected ? zones[selected] : null} />
+          <ZoneDetailPanel
+            zone={selected}
+            summary={selected ? zones[selected] : null}
+            twinZone={selected && twin ? twin.zones[selected] : null}
+            modelScore={selected && decision ? decision.modelEstimate.score[selected] : null}
+          />
         </div>
       </section>
+
+      <TriageDecisionCard decision={decision} isLoading={decisionLoading} />
+
+      <WhatIfPanel
+        value={whatIf}
+        onChange={setWhatIf}
+        onReset={() => setWhatIf(INITIAL_WHAT_IF)}
+      />
 
       <section aria-labelledby="indicators-title">
         <h2 id="indicators-title" className="mb-3 text-sm font-semibold text-blueberry">

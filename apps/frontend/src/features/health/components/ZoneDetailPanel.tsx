@@ -1,17 +1,20 @@
-import { MousePointerClick, PhoneCall } from 'lucide-react';
+import { MousePointerClick, PhoneCall, Clock, TrendingDown, TrendingUp, Minus, AlertTriangle } from 'lucide-react';
 import { BODY_ZONES, HAZARD_LABELS, INDICATOR_GUIDES } from '../domain/education';
 import { INDICATORS, INDICATORS_BY_ZONE } from '../domain/indicators';
 import { STATUS_THEME } from '../domain/status-theme';
 import type { ZoneSummary } from '../domain/summary';
-import type { BodyZoneId } from '../domain/types';
+import type { BodyZoneId, SpaceHazard } from '../domain/types';
+import type { ZoneScoreEstimate, ZoneTwinState } from '../services/digitalTwinService';
 import { StatusBadge } from './StatusBadge';
 
 interface ZoneDetailPanelProps {
   zone: BodyZoneId | null;
   summary: ZoneSummary | null;
+  twinZone?: ZoneTwinState | null;
+  modelScore?: ZoneScoreEstimate | null;
 }
 
-export function ZoneDetailPanel({ zone, summary }: ZoneDetailPanelProps) {
+export function ZoneDetailPanel({ zone, summary, twinZone, modelScore }: ZoneDetailPanelProps) {
   if (!zone || !summary) {
     return (
       <div className="flex h-full min-h-[260px] flex-col items-start justify-center gap-3 p-6 sm:p-8 text-stem">
@@ -36,10 +39,68 @@ export function ZoneDetailPanel({ zone, summary }: ZoneDetailPanelProps) {
       <header className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-blueberry">{info.label}</h2>
-          <StatusBadge status={summary.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            {twinZone && (
+              <span className="inline-flex items-center gap-1 rounded-pill bg-surface-tinted px-2.5 py-0.5 text-[11px] font-medium text-blueberry">
+                {twinZone.trend === 'improving' && <TrendingUp className="h-3 w-3 text-telemetry-green" aria-hidden="true" />}
+                {twinZone.trend === 'worsening' && <TrendingDown className="h-3 w-3 text-telemetry-red" aria-hidden="true" />}
+                {twinZone.trend === 'stable' && <Minus className="h-3 w-3 text-stem" aria-hidden="true" />}
+                <span className="capitalize">{twinZone.trend}</span>
+              </span>
+            )}
+            {twinZone?.isOverdue && (
+              <span className="inline-flex items-center gap-1 rounded-pill bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                Overdue
+              </span>
+            )}
+            <StatusBadge status={summary.status} />
+          </div>
         </div>
         <p className="text-sm leading-relaxed text-stem">{info.function}</p>
       </header>
+
+      {twinZone && (
+        <div className="rounded-lg bg-surface-tinted p-3.5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-semibold text-blueberry">
+              HRP Hazard Load: {Math.round(twinZone.hazardLoad.total * 100)}%
+            </span>
+            <span className="text-stem">
+              Rule risk: <strong className="uppercase text-blueberry">{twinZone.riskLevel}</strong>
+              {modelScore && (
+                <>
+                  {' · '}Model: <strong className="uppercase text-blueberry">{modelScore.riskLevel}</strong> ({Math.round(modelScore.confidence * 100)}%)
+                </>
+              )}
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {(Object.keys(twinZone.hazardLoad.breakdown) as SpaceHazard[]).map((h) => {
+              const pct = Math.round(twinZone.hazardLoad.breakdown[h] * 100);
+              return (
+                <div key={h} className="text-[10px]">
+                  <div className="truncate text-stem" title={HAZARD_LABELS[h]}>
+                    {HAZARD_LABELS[h].split(' ')[0]}
+                  </div>
+                  <div className="mt-0.5 h-1.5 w-full rounded-full bg-black/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-berry"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {modelScore && modelScore.riskLevel !== twinZone.riskLevel && (
+            <p className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Discrepancy with rule ({twinZone.riskLevel} vs {modelScore.riskLevel}) — estimación del modelo, no diagnóstico.
+            </p>
+          )}
+        </div>
+      )}
 
       <ul className="space-y-6">
         {summary.evaluations.map((e) => {
