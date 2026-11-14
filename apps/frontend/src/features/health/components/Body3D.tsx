@@ -67,6 +67,7 @@ interface Body3DProps {
   onSelect: (zone: BodyZoneId) => void;
   onHover?: (zone: BodyZoneId | null) => void;
   heartRate?: number;
+  className?: string;
 }
 
 export default function Body3D(props: Body3DProps) {
@@ -77,33 +78,31 @@ export default function Body3D(props: Body3DProps) {
       <button
         type="button"
         onClick={() => setResetNonce((n) => n + 1)}
-        className="tactile-press chrome-translucent absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 font-mono text-[11px] font-medium text-blueberry hover:border-berry"
+        className="twin-btn twin-btn-ghost absolute bottom-3 right-3 z-10 h-8 bg-canvas/60 px-2.5 text-xs backdrop-blur-md"
       >
-        <RotateCcw className="h-3 w-3 text-berry" aria-hidden="true" />
+        <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
         Reset view
       </button>
 
-      <div className="chrome-translucent pointer-events-none absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-3 rounded-md border border-line px-2.5 py-1.5 font-mono text-[10px] text-stem">
-        <span className="inline-flex items-center gap-1 text-status-nominal">
-          <span className="h-2 w-2 rounded-sm bg-status-nominal" /> Nominal
+      <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-3 rounded-lg bg-canvas/60 px-2.5 py-1.5 text-[11px] text-stem backdrop-blur-md">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-status-nominal" /> Nominal
         </span>
-        <span className="inline-flex items-center gap-1 text-status-caution">
-          <span className="h-2 w-2 rounded-sm bg-status-caution" /> Caution
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-status-caution" /> Watch
         </span>
-        <span className="inline-flex items-center gap-1 text-status-critical">
-          <span className="h-2 w-2 rounded-sm bg-status-critical" /> Critical (pulsing)
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-status-critical" /> Critical
         </span>
-        <span className="hidden sm:inline text-stem">· Click organ to inspect</span>
       </div>
 
       <Canvas
         camera={{ position: [0, 1.0, 2.6], fov: 35, near: 0.01, far: 20 }}
         dpr={[1, 2]}
-        className="!h-[500px] w-full touch-none sm:!h-[580px]"
+        gl={{ alpha: true, antialias: true }}
+        className={`${props.className ?? '!h-[520px] sm:!h-[600px]'} w-full touch-none`}
         aria-label="3D astronaut anatomical body model"
       >
-        {/* Dark Blueberry Skin studio background: hsl(223, 29%, 8%) */}
-        <color attach="background" args={['#0e121b']} />
         <hemisphereLight args={['#e5ebf7', '#1a2130', 1.15]} />
         <directionalLight position={[2, 3, 2]} intensity={1.45} />
         <directionalLight position={[-2, 1, -2]} intensity={0.85} color="#8da2cf" />
