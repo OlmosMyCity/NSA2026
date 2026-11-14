@@ -214,11 +214,11 @@ export const biodosimetryTriageSchema = z.object({
 });
 
 export const openIncidentSchema = z.object({
-  category: z.nativeEnum(IncidentCategory).default(IncidentCategory.MISSION),
+  category: z.nativeEnum(IncidentCategory).optional(),
   type: requiredNonEmptyString("type", 100),
-  severity: z.nativeEnum(IncidentSeverity).default(IncidentSeverity.CRITICAL),
-  title: requiredNonEmptyString("title", 200),
-  description: requiredNonEmptyString("description", 2000),
+  severity: z.nativeEnum(IncidentSeverity).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().min(1).max(2000).optional(),
   astronautId: z.string().trim().min(1).max(128).nullable().optional(),
   missionId: z.string().trim().min(1).max(128).nullable().optional(),
   source: z.string().trim().min(1).max(100).default("MANUAL"),

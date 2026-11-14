@@ -11,6 +11,7 @@ import {
   PaginatedIncidents,
 } from "../../src/domain/models/Incident.js";
 import { OpenIncidentUseCase } from "../../src/application/use-cases/incident/OpenIncidentUseCase.js";
+import { listMissionContingencies } from "../../src/application/incident/missionCatalog.js";
 import { AcknowledgeIncidentUseCase } from "../../src/application/use-cases/incident/AcknowledgeIncidentUseCase.js";
 import { CloseIncidentUseCase } from "../../src/application/use-cases/incident/CloseIncidentUseCase.js";
 import { openRadiationIncidentFromState } from "../../src/application/use-cases/incident/syncSystemIncidents.js";
@@ -261,5 +262,35 @@ describe("Fase 1 - Incidentes (open/acknowledge/close y deduplicación)", () => 
     expect(inc1!.severity).toBe(IncidentSeverity.CRITICAL);
     expect(inc2!.id).toBe(inc1!.id);
     expect(repo.items).toHaveLength(1);
+  });
+
+  it("catálogo de misión cubre 5 contingencias y autocompleta título/descripción/protocolo en SIMULATION", async () => {
+    const catalog = listMissionContingencies();
+    expect(catalog.map((c) => c.type).sort()).toEqual([
+      "COMMS_LOSS",
+      "DEPRESSURIZATION",
+      "ECLSS_FAILURE",
+      "FIRE_TOXIC_ATMOSPHERE",
+      "MISSION_ABORT",
+    ]);
+
+    const res = await openUseCase.execute({
+      type: "FIRE_TOXIC_ATMOSPHERE",
+      source: "SIMULATION",
+      missionId: "mission-artemis-iv",
+    });
+
+    expect(res.created).toBe(true);
+    expect(res.incident.category).toBe(IncidentCategory.MISSION);
+    expect(res.incident.severity).toBe(IncidentSeverity.CRITICAL);
+    expect(res.incident.protocolId).toBe("PROTO_FIRE_TOXIC_ATMOSPHERE");
+    expect(res.incident.title).toContain("Incendio");
+
+    await expect(
+      openUseCase.execute({
+        type: "CUSTOM_UNKNOWN_EVENT",
+        source: "MANUAL",
+      })
+    ).rejects.toThrow(ValidationError);
   });
 });

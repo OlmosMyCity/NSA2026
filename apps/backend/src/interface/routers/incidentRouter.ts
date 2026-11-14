@@ -27,6 +27,7 @@ export const incidentRouter = Router();
 
 incidentRouter.get("/", authenticate, controller.list);
 incidentRouter.get("/protocols", authenticate, controller.listProtocols);
+incidentRouter.get("/mission-catalog", authenticate, controller.listMissionCatalog);
 incidentRouter.get("/:id", authenticate, controller.getById);
 incidentRouter.post("/", authenticate, authorizeRoles(Role.ADMIN), controller.open);
 incidentRouter.patch("/:id/acknowledge", authenticate, controller.acknowledge);

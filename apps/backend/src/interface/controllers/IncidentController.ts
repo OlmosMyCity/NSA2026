@@ -8,6 +8,7 @@ import { CloseIncidentUseCase } from "../../application/use-cases/incident/Close
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
 import { listMedicalProtocols } from "../../application/health/medicalProtocols.js";
+import { listMissionContingencies } from "../../application/incident/missionCatalog.js";
 import { closeIncidentSchema, openIncidentSchema, parseWithValidation } from "../validation/schemas.js";
 
 export class IncidentController {
@@ -28,6 +29,10 @@ export class IncidentController {
 
   listProtocols = (_req: Request, res: Response): void => {
     res.status(200).json({ data: listMedicalProtocols() });
+  };
+
+  listMissionCatalog = (_req: Request, res: Response): void => {
+    res.status(200).json({ data: listMissionContingencies() });
   };
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
