@@ -31,7 +31,14 @@ class HttpClient {
     params?: Record<string, string | number | boolean | undefined | null>
   ): string {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const url = new URL(`${this.baseUrl}${cleanPath}`);
+    const rawUrl = `${this.baseUrl}${cleanPath}`;
+    const url =
+      rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+        ? new URL(rawUrl)
+        : new URL(
+            rawUrl,
+            typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+          );
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
