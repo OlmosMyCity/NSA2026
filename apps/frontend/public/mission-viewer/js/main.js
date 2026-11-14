@@ -37,8 +37,14 @@ const norm = (v) => {
 };
 
 async function main() {
-  const res = await fetch("data/mission.json");
-  if (!res.ok) throw new Error(`No se pudo cargar data/mission.json (${res.status})`);
+  const params = new URLSearchParams(location.search);
+  const rawData = params.get("data");
+  const dataUrl =
+    rawData && (/^data\/[a-zA-Z0-9_.-]+\.json$/.test(rawData) || rawData.startsWith("blob:"))
+      ? rawData
+      : "data/mission.json";
+  const res = await fetch(dataUrl);
+  if (!res.ok) throw new Error(`No se pudo cargar ${dataUrl} (${res.status})`);
   const mission = await res.json();
   if (mission.schema_version !== 1) throw new Error(`Versión de formato no soportada: ${mission.schema_version}`);
 

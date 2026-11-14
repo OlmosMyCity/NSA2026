@@ -130,6 +130,19 @@ const INITIAL_MISSIONS: MockMission[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: 'mission-04',
+    name: 'Ares I — Mars Transit & Deep Space Cruise',
+    description:
+      'Long-duration interplanetary spacecraft trajectory beyond cislunar space for deep-space radiation countermeasures, circadian alignment, and autonomous crew health monitoring.',
+    environment: 'SPACECRAFT',
+    status: 'PLANNING',
+    startDate: new Date(Date.now() + 90 * 86400000).toISOString(),
+    patchUrl: null,
+    createdById: 'user-admin-01',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const INITIAL_ASTRONAUTS: MockAstronaut[] = [
