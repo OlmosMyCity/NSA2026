@@ -4,7 +4,7 @@ import { BiodosimetryTriageUseCase } from "../../src/application/use-cases/healt
 
 describe("BiodosimetryTriageUseCase", () => {
   const readingRepo = {
-    findAll: vi.fn(),
+    findMany: vi.fn(),
   } as any;
   const astronautRepo = {
     findByUserId: vi.fn(),
@@ -20,7 +20,7 @@ describe("BiodosimetryTriageUseCase", () => {
 
   it("fuses latest HealthReading + radiation-engine status + Signal vs. Noise FastAPI", async () => {
     astronautRepo.findByUserId.mockResolvedValue({ id: "astro-1" });
-    readingRepo.findAll.mockResolvedValue({
+    readingRepo.findMany.mockResolvedValue({
       data: [
         {
           astronautId: "astro-1",

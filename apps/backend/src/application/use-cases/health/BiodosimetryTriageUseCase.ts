@@ -82,7 +82,7 @@ export class BiodosimetryTriageUseCase {
     let healthReadingTimestamp: string | null = null;
 
     if (!readingPayload) {
-      const latest = await this.readingRepo.findAll({
+      const latest = await this.readingRepo.findMany({
         page: 1,
         limit: 1,
         astronautId: targetAstronautId ?? undefined,
