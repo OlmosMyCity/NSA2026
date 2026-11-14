@@ -1,4 +1,4 @@
-import { ENV } from '@/features/common/config/env';
+import { ENV, isReachableServiceUrl } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import type { ApiHealthReading } from '../domain/api-adapter';
 
@@ -283,19 +283,21 @@ class BiodosimetryService {
       }
     }
 
-    try {
-      const res = await fetch(`${ENV.SIGNAL_NOISE_URL}/api/biodosimetry/attribution`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params.payload),
-        signal: AbortSignal.timeout(2500),
-      });
-      if (res.ok) {
-        const triage = (await res.json()) as BiodosimetryResponse;
-        return { source: 'signal-noise-fastapi', triage };
+    if (isReachableServiceUrl(ENV.SIGNAL_NOISE_URL)) {
+      try {
+        const res = await fetch(`${ENV.SIGNAL_NOISE_URL}/api/biodosimetry/attribution`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params.payload),
+          signal: AbortSignal.timeout(2500),
+        });
+        if (res.ok) {
+          const triage = (await res.json()) as BiodosimetryResponse;
+          return { source: 'signal-noise-fastapi', triage };
+        }
+      } catch {
+        // Microservicio FastAPI no disponible en este entorno: usar simulación determinística local
       }
-    } catch {
-      // Microservicio FastAPI no disponible en este entorno: usar simulación determinística local
     }
 
     return {

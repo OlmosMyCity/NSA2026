@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertTriangle, ArrowLeft, RefreshCw, Rotate3d } from 'lucide-react';
-import { useAuth } from '@/features/auth/context/AuthContext';
 import { EmptyState } from '@/features/common/components/EmptyState';
 import { Skeleton } from '@/features/common/components/Skeleton';
 import { INDICATOR_IDS, INDICATORS } from '../domain/indicators';
@@ -12,6 +11,7 @@ import { summarizeZones } from '../domain/summary';
 import { worstStatus } from '../domain/evaluate';
 import { BODY_ZONES } from '../domain/education';
 import type { BodyZoneId, IndicatorEvaluation, IndicatorId } from '../domain/types';
+import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
 import {
   evaluateDigitalTwinRemote,
@@ -24,8 +24,6 @@ import { ZoneDetailPanel } from './ZoneDetailPanel';
 import { SignalNoisePanel } from './SignalNoisePanel';
 import { TriageDecisionCard } from './TriageDecisionCard';
 import { WhatIfPanel, type WhatIfState } from './WhatIfPanel';
-
-const DEMO_ASTRONAUT_ID = 'astro-01';
 
 const Body3D = dynamic(() => import('./Body3D'), {
   ssr: false,
@@ -43,8 +41,7 @@ const INITIAL_WHAT_IF: WhatIfState = {
 };
 
 export function HealthDashboard() {
-  const { user } = useAuth();
-  const astronautId = user?.astronautId ?? DEMO_ASTRONAUT_ID;
+  const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
   const { rows, zones: baseZones, latest, isLoading, error, refetch } = useHealthReadings(astronautId);
   const [selected, setSelected] = useState<BodyZoneId | null>(null);
   const [hovered, setHovered] = useState<BodyZoneId | null>(null);
@@ -118,7 +115,7 @@ export function HealthDashboard() {
     ? API_STATUS[latest.status]
     : worstStatus(Object.values(zones).map((z) => z.status));
 
-  if (isLoading) {
+  if (isResolving || isLoading) {
     return (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" aria-busy="true">
         <Skeleton className="h-[480px] w-full rounded-lg" />
@@ -147,14 +144,36 @@ export function HealthDashboard() {
     );
   }
 
+  const crewSelector =
+    crew.length > 1 ? (
+      <label className="inline-flex items-center gap-2 text-xs font-medium text-stem">
+        <span>Crew Member:</span>
+        <select
+          aria-label="Crew Member"
+          value={astronautId || ''}
+          onChange={(e) => setAstronautId(e.target.value)}
+          className="rounded-pill border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry"
+        >
+          {crew.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null;
+
   if (!latest) {
     return (
-      <EmptyState
-        title="No readings recorded yet"
-        description="Log your first vital signs reading and the anatomical model will display your physiological status."
-        actionHref="/readings/new"
-        actionLabel="Log Reading"
-      />
+      <div className="space-y-4">
+        {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
+        <EmptyState
+          title="No readings recorded yet"
+          description="Log your first vital signs reading and the anatomical model will display your physiological status."
+          actionHref="/readings/new"
+          actionLabel="Log Reading"
+        />
+      </div>
     );
   }
 
@@ -169,7 +188,10 @@ export function HealthDashboard() {
             Last reading · {dateFmt.format(new Date(latest.takenAt))}
           </p>
         </div>
-        <StatusBadge status={overall} />
+        <div className="flex flex-wrap items-center gap-3">
+          {crewSelector}
+          <StatusBadge status={overall} />
+        </div>
       </header>
 
       {latest.recommendation && overall !== 'green' && (
