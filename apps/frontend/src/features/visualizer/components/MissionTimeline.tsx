@@ -75,6 +75,8 @@ export function MissionTimeline({
   const pad = 12;
   const iw = Math.max(0, width - pad * 2);
   const x = (met: number) => pad + scale.toFraction(met) * iw;
+  const edgeAnchor = (cx: number) =>
+    cx > width - 56 ? 'end' : cx < 56 ? 'start' : 'middle';
   const bandTop = 20;
   const bandH = 44;
   const dotY = bandTop + bandH / 2;
@@ -200,7 +202,7 @@ export function MissionTimeline({
           <text
             x={x(nowMet)}
             y={H - 26}
-            textAnchor="middle"
+            textAnchor={edgeAnchor(x(nowMet))}
             className="fill-blueberry text-[11px] font-semibold"
           >
             Now
@@ -245,7 +247,7 @@ export function MissionTimeline({
           <text
             x={x(cursorMet)}
             y={H - 8}
-            textAnchor="middle"
+            textAnchor={edgeAnchor(x(cursorMet))}
             className="fill-berry font-mono text-[11px] tabular-nums"
           >
             {formatMET(cursorMet)}

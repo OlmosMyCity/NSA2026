@@ -104,6 +104,7 @@ export function createShip(scene) {
   const ship = sprite(textures.sls, 0.05);
   scene.add(ship);
   const gateway = sprite(textures.gateway, 0.045);
+  gateway.visible = false;
   scene.add(gateway);
 
   /** Lejos la silueta no se distingue: por debajo de este tamaño se dibuja un punto. */

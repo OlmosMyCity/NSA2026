@@ -51,7 +51,7 @@ export function trajectoryUrl(missionOrId: TrajectoryMissionInput): string {
   if (
     missionOrId.environment === 'ROVER' ||
     missionOrId.environment === 'LUNAR_BASE' ||
-    /\b(shackleton|rover|lunar base|south pole|crater|polo sur)\b/.test(text)
+    /\b(shackleton|rover|lunar base)\b/.test(text)
   ) {
     return DATA_FILES.lunarBase;
   }
