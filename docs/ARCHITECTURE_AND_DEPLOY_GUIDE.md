@@ -6,15 +6,15 @@
 
 ## 1. Estado Actual del Codebase (Inventario Real)
 
-Hoy el repositorio contiene cuatro módulos principales y documentación:
+El repositorio está organizado en estructura monorepo agrupada por responsabilidad, con un `vercel.json` raíz usando **Vercel Services** para desplegar Frontend y Backend juntos bajo el mismo dominio gratuito:
 
 | Carpeta actual | Stack / Runtime | Puerto local | Propósito | Estado de despliegue |
 | :--- | :--- | :--- | :--- | :--- |
-| `frontend/` | Next.js 14, React 18, Tailwind, Three.js (`@react-three/fiber`), Supabase JS | `3000` | Interfaz web ("lunar editorial"), visor 3D (`body.glb`, `mission-viewer`, `visualizer`), dashboard, rutinas y lecturas | Listo para **Vercel Free** (requiere variables `NEXT_PUBLIC_API_HOST`, `NEXT_PUBLIC_SUPABASE_*` y `NEXT_PUBLIC_USE_MOCKS`) |
-| `backend/` | Node 22, Express, TypeScript, Prisma, Supabase | `4000` | API REST principal, auth JWT, misiones, astronautas, lecturas de salud y subida de imágenes | Blueprint `backend/render.yaml` para **Render Free** + **Supabase Free** |
-| `radiation-engine/` | Node 22, Express, TypeScript | `4000` *(colisión con `backend`)* | Predicción y alerta temprana de radiación espacial (NOAA SWPC + NASA DONKI) | Compilado en `dist/` (puede usarse como librería o microservicio) |
-| `Vision/` | Python 3.11, FastAPI, WebSockets, MediaPipe, ONNX Runtime, OpenCV, SciPy | `8000` | Monitoreo biométrico sin contacto: ánimo/estrés, sueño/PERCLOS y BPM/HRV por rPPG (RGB/NIR) | Local (listo para contenedor/Render/HF Spaces) |
-| `docs/` | Markdown | — | Planes, reto NASA Space Apps, guía de radiación y guía de arquitectura/despliegue | Documentación |
+| `apps/frontend/` | Next.js 14, React 18, Tailwind, Three.js (`@react-three/fiber`), Supabase JS | `3000` | Interfaz web ("lunar editorial"), visor 3D (`body.glb`, `mission-viewer`, `visualizer`), dashboard, rutinas y lecturas | Servicio `frontend` en `vercel.json` (**Vercel Free**, `/(.*)`) |
+| `apps/backend/` | Node 22, Express, TypeScript, Prisma, Supabase | `4000` | API REST principal, auth JWT, misiones, astronautas, lecturas de salud, subida de imágenes y `/api/radiation/*` | Servicio `backend` en `vercel.json` (**Vercel Functions Free**, `/api/(.*)` y `/health`) + **Supabase Free** |
+| `packages/radiation-engine/` | TypeScript (`@nsa2026/radiation-engine`) | — *(integrado en `apps/backend`)* | Predicción y alerta temprana de radiación espacial (NOAA SWPC + NASA DONKI) | Consumido como librería local por `apps/backend` |
+| `ai/vision/` | Python 3.11, FastAPI, WebSockets, MediaPipe, ONNX Runtime, OpenCV, SciPy | `8000` | Monitoreo biométrico sin contacto: ánimo/estrés, sueño/PERCLOS y BPM/HRV por rPPG (RGB/NIR) | Local (listo para contenedor en **HF Spaces Free** o **Render Free**) |
+| `docs/` | Markdown | — | Planes, reto NASA Space Apps, guía de radiación y esta guía viva | Documentación |
 
 ### Hallazgos clave detectados en el código actual
 1. **Colisión de puerto local (`4000`)**: Tanto `backend/src/index.ts` como `radiation-engine/src/server.ts` usan `PORT || 4000`.
@@ -149,5 +149,5 @@ Cuando alguien del equipo quiera añadir un **nuevo modelo** (ej. detección de 
 | 2026-11-14 | Creación del Backend Core + Prisma + Supabase | `backend/` | Servicio Web Render Free (`render.yaml`) | Equipo |
 | 2026-11-14 | Creación del Motor de Radiación Espacial | `radiation-engine/` | Microservicio Node o librería integrada en `backend` | Equipo |
 | 2026-11-14 | Creación del Módulo Biométrico por Visión (Ánimo, Sueño, rPPG BPM) | `Vision/` | FastAPI Python CPU (ONNX + MediaPipe); apto para HF Spaces / Render | Equipo |
-| 2026-11-14 | Incorporación del Frontend Web (Next.js 14 + Three.js + Visor 3D) | `frontend/` *(futuro `apps/frontend/`)* | Despliegue en Vercel Free (Root Directory: `frontend`); configurar `NEXT_PUBLIC_*` y `CORS_ORIGINS` | Equipo |
-| *Pendiente* | Consolidación a estructura `apps/`, `ai/`, `packages/` | Raíz | Actualizar Root Directory en Render/Vercel y `render.yaml` | Equipo |
+| 2026-11-14 | Incorporación del Frontend Web (Next.js 14 + Three.js + Visor 3D) | `apps/frontend/` | Servicio `frontend` en Vercel Free | Equipo |
+| 2026-11-14 | Refactor a monorepo (`apps/`, `ai/`, `packages/`), integración de `radiation-engine` en `apps/backend` y `vercel.json` raíz | Raíz, `apps/*`, `ai/vision/`, `packages/radiation-engine/` | Despliegue unificado de Frontend + Backend en Vercel Services (`OlmosCity`) | Equipo |

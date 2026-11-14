@@ -5,6 +5,7 @@ import { missionRouter } from "./interface/routers/missionRouter.js";
 import { astronautRouter } from "./interface/routers/astronautRouter.js";
 import { readingRouter } from "./interface/routers/healthReadingRouter.js";
 import { adminRouter } from "./interface/routers/adminRouter.js";
+import { radiationRouter } from "./interface/routers/radiationRouter.js";
 import { errorHandler } from "./interface/middlewares/errorHandler.js";
 
 /**
@@ -21,14 +22,15 @@ export function createApp(): Express {
   // Autenticación (register / login)
   app.use("/api/auth", authRouter);
 
-  // Rutas de dominio: Misiones, Astronautas, Lecturas de Salud y Consola de Administración
+  // Rutas de dominio: Misiones, Astronautas, Lecturas de Salud, Consola de Administración y Radiación
   app.use("/api/missions", missionRouter);
   app.use("/api/astronauts", astronautRouter);
   app.use("/api/readings", readingRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/radiation", radiationRouter);
 
   // Health check rápido del microservicio
-  app.get("/health", (_req, res) => {
+  app.get(["/health", "/api/health"], (_req, res) => {
     res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
   });
 
