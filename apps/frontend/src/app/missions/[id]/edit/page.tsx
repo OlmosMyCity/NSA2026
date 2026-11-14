@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { RouteGuard } from '@/features/auth/components/RouteGuard';
 import { MissionForm } from '@/features/missions/components/MissionForm';
 import { missionService } from '@/features/missions/services/missionService';
-import { Mission } from '@/features/missions/domain/types';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
+import { useAsync } from '@/features/common/hooks/useAsync';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
@@ -15,26 +14,7 @@ export default function EditMissionPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [mission, setMission] = useState<Mission | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const fetchMission = async () => {
-      try {
-        setIsLoading(true);
-        const data = await missionService.getById(id);
-        setMission(data);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to load requested mission.';
-        setError(msg);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMission();
-  }, [id]);
+  const { data: mission, isLoading, error } = useAsync(() => missionService.getById(id), [id], 'Failed to load requested mission.');
 
   return (
     <AppLayout>
@@ -57,7 +37,7 @@ export default function EditMissionPage() {
               </Link>
             </div>
           ) : (
-            <MissionForm initialData={mission} isEditing={true} />
+            <MissionForm initialData={mission} />
           )}
         </div>
       </RouteGuard>

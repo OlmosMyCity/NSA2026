@@ -2,9 +2,8 @@ import { httpClient } from '@/features/common/services/httpClient';
 import type { EvaluationResult, HealthReading, HealthReadingInput, Vitals } from '../domain/types';
 import type { ApiHealthReading } from '../domain/api-adapter';
 import { evaluateVitals } from '../domain/evaluate';
-import type { PaginatedMissions } from '@/features/missions/domain/types';
+import type { Paginated } from '@/features/common/domain/pagination';
 
-type Paginated<T> = Omit<PaginatedMissions, 'data'> & { data: T[] };
 
 export const healthService = {
   /** Vista previa local con la misma tabla clínica que aplica el backend al guardar. */

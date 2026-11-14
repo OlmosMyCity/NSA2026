@@ -1,4 +1,4 @@
-import { PaginationMeta } from '@/features/missions/domain/types';
+import type { Paginated, PaginationMeta } from '@/features/common/domain/pagination';
 
 export type { PaginationMeta };
 
@@ -19,10 +19,7 @@ export interface Astronaut {
   };
 }
 
-export interface PaginatedAstronauts {
-  data: Astronaut[];
-  pagination: PaginationMeta;
-}
+export type PaginatedAstronauts = Paginated<Astronaut>;
 
 export interface AstronautFilters {
   page?: number;

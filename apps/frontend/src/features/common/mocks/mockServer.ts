@@ -10,7 +10,8 @@
  * httpClient lo carga con import dinámico solo en modo mock: no llega al bundle de producción.
  */
 import type { Vitals } from '@/features/health/domain/types';
-import type { Mission, PaginatedMissions } from '@/features/missions/domain/types';
+import type { Mission } from '@/features/missions/domain/types';
+import type { Paginated } from '../domain/pagination';
 import {
   buildReading,
   seedState,
@@ -21,7 +22,6 @@ import {
   type MockUser,
 } from './mockData';
 
-type Paginated<T> = Omit<PaginatedMissions, 'data'> & { data: T[] };
 
 const STORAGE_KEY = 'orbvital_mock_db_v3';
 

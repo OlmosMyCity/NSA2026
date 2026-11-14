@@ -7,7 +7,7 @@ export default function NewAstronautPage() {
     <AppLayout>
       <RouteGuard requiredRole="ADMIN">
         <div className="py-6 sm:py-10">
-          <AstronautForm isEditing={false} />
+          <AstronautForm />
         </div>
       </RouteGuard>
     </AppLayout>
