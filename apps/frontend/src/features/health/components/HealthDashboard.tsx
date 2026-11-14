@@ -52,7 +52,29 @@ export function HealthDashboard() {
   const viewerRef = useRef<HTMLDivElement>(null);
 
   const effectiveRows = useMemo(() => {
-    if (!whatIf.active || rows.length === 0) return rows;
+    if (!whatIf.active) return rows;
+    if (rows.length === 0) {
+      const nowIso = new Date().toISOString();
+      return [
+        {
+          id: 'whatif-baseline',
+          astronautId: astronautId ?? 'astro-01',
+          heartRateBpm: whatIf.heartRateBpm ?? 72,
+          systolicMmHg: 118,
+          diastolicMmHg: 76,
+          glucoseMgDl: 95,
+          temperatureC: 36.6,
+          spo2Pct: whatIf.spo2Pct ?? 98,
+          sleepHours: whatIf.sleepHours ?? 7.5,
+          mood: 4,
+          status: 'OK' as const,
+          alerts: [],
+          takenAt: nowIso,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        },
+      ];
+    }
     const updated = [...rows];
     const lastIdx = updated.length - 1;
     updated[lastIdx] = {
@@ -62,7 +84,7 @@ export function HealthDashboard() {
       sleepHours: whatIf.sleepHours ?? updated[lastIdx].sleepHours,
     };
     return updated;
-  }, [rows, whatIf]);
+  }, [rows, whatIf, astronautId]);
 
   const zones = useMemo(
     () => (whatIf.active ? summarizeZones(effectiveRows.flatMap(toIndicatorReadings)) : baseZones),
@@ -163,10 +185,15 @@ export function HealthDashboard() {
       </label>
     ) : null;
 
-  if (!latest) {
+  if (!latest && !whatIf.active) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
+        <WhatIfPanel
+          value={whatIf}
+          onChange={setWhatIf}
+          onReset={() => setWhatIf(INITIAL_WHAT_IF)}
+        />
         <EmptyState
           title="No readings recorded yet"
           description="Log your first vital signs reading and the anatomical model will display your physiological status."
@@ -185,7 +212,7 @@ export function HealthDashboard() {
             Your Health Status
           </h1>
           <p className="mt-1 text-sm text-stem tabular-nums">
-            Last reading · {dateFmt.format(new Date(latest.takenAt))}
+            {latest ? `Last reading · ${dateFmt.format(new Date(latest.takenAt))}` : 'Simulated baseline'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -194,7 +221,7 @@ export function HealthDashboard() {
         </div>
       </header>
 
-      {latest.recommendation && overall !== 'green' && (
+      {latest?.recommendation && overall !== 'green' && (
         <div
           role="status"
           className="ui-callout-caution text-sm leading-relaxed text-blueberry"
@@ -202,6 +229,14 @@ export function HealthDashboard() {
           {latest.recommendation}
         </div>
       )}
+
+      <WhatIfPanel
+        value={whatIf}
+        onChange={setWhatIf}
+        onReset={() => setWhatIf(INITIAL_WHAT_IF)}
+      />
+
+      <TriageDecisionCard decision={decision} isLoading={decisionLoading} />
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         <div
@@ -263,14 +298,6 @@ export function HealthDashboard() {
         </div>
       </section>
 
-      <TriageDecisionCard decision={decision} isLoading={decisionLoading} />
-
-      <WhatIfPanel
-        value={whatIf}
-        onChange={setWhatIf}
-        onReset={() => setWhatIf(INITIAL_WHAT_IF)}
-      />
-
       <section aria-labelledby="indicators-title">
         <h2 id="indicators-title" className="mb-3 text-sm font-semibold text-blueberry">
           All Indicators
@@ -288,7 +315,7 @@ export function HealthDashboard() {
         </div>
       </section>
 
-      <SignalNoisePanel astronautId={latest.astronautId} latestReading={latest} />
+      {latest && <SignalNoisePanel astronautId={latest.astronautId} latestReading={latest} />}
     </div>
   );
 }
