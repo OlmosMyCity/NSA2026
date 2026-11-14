@@ -94,4 +94,86 @@ describe("Fase 2 - AdminTriageController (Directivas sin tocar HealthReading)", 
     expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
     expect(directiveRepo.create).not.toHaveBeenCalled();
   });
+
+  it("Fase 6: muestra incidente de radiación >= S3, sube prioridad de lectura CRITICAL y adapta protocolo a refugio", async () => {
+    const stormController = new AdminTriageController(directiveRepo, async () => ({
+      currentTelemetry: { stormScale: "S4_SEVERE" },
+    }) as never);
+
+    vi.spyOn(prisma.astronaut, "findMany").mockResolvedValue([
+      {
+        id: "astro-ok",
+        name: "Nominal Astro",
+        missionId: "m-1",
+        mission: { id: "m-1", name: "Artemis IV", environment: "LUNAR_BASE" },
+        role: "Pilot",
+        createdAt: new Date(),
+        photoUrl: null,
+        readings: [],
+        directives: [],
+      },
+      {
+        id: "astro-crit",
+        name: "Critical Astro",
+        missionId: "m-1",
+        mission: { id: "m-1", name: "Artemis IV", environment: "LUNAR_BASE" },
+        role: "Specialist",
+        createdAt: new Date(),
+        photoUrl: null,
+        readings: [
+          {
+            status: "CRITICAL",
+            heartRateBpm: 120,
+            systolicMmHg: 145,
+            diastolicMmHg: 95,
+            spo2Pct: 89,
+            glucoseMgDl: 95,
+            temperatureC: 36.7,
+            sleepHours: 6,
+            mood: 3,
+            alerts: [],
+            recommendation: "Protocolo hipoxia",
+            takenAt: new Date(),
+          },
+        ],
+        directives: [],
+      },
+    ] as never);
+
+    vi.spyOn(prisma.incident, "findFirst").mockResolvedValue({
+      id: "inc-rad-1",
+      title: "Tormenta solar S4_SEVERE",
+      description: "Flujo elevado de protones",
+      severity: "CRITICAL",
+      status: "OPEN",
+      openedAt: new Date(),
+      metadata: { stormScale: "S4_SEVERE" },
+    } as never);
+
+    const req = {} as unknown as Request;
+    const res = makeRes();
+    const next = vi.fn();
+
+    await stormController.getTriageOverview(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    const payload = vi.mocked(res.json).mock.calls[0][0] as {
+      crew: Array<{
+        astronautId: string;
+        priorityBoosted: boolean;
+        triagePriorityScore: number;
+        adaptedProtocol: string | null;
+      }>;
+      activeRadiationIncident: { id: string; stormScale: string } | null;
+    };
+
+    expect(payload.activeRadiationIncident).toEqual(
+      expect.objectContaining({ id: "inc-rad-1", stormScale: "S4_SEVERE" })
+    );
+    expect(payload.crew[0].astronautId).toBe("astro-crit");
+    expect(payload.crew[0].priorityBoosted).toBe(true);
+    expect(payload.crew[0].triagePriorityScore).toBe(0);
+    expect(payload.crew[0].adaptedProtocol).toContain("REFUGIO ANTITORMENTA");
+    expect(payload.crew[1].priorityBoosted).toBe(false);
+  });
 });

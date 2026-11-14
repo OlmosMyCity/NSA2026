@@ -15,8 +15,21 @@ export interface CrewMemberTriage {
   mood: number;
   alerts: string[];
   recommendation?: string | null;
+  priorityBoosted?: boolean;
+  triagePriorityLabel?: string;
+  adaptedProtocol?: string | null;
   lastReadingAt: string;
   photoUrl?: string | null;
+}
+
+export interface ActiveRadiationIncidentSummary {
+  id: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  stormScale: string;
+  openedAt: string;
 }
 
 export interface FlightSurgeonMetrics {

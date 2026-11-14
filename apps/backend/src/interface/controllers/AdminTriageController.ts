@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { HealthStatus } from "@prisma/client";
+import { HealthStatus, IncidentCategory, IncidentStatus } from "@prisma/client";
+import { RadiationEngineState } from "@nsa2026/radiation-engine";
 import { prisma } from "../../infrastructure/database/prismaClient.js";
 import { IDirectiveRepository } from "../../domain/repository/IDirectiveRepository.js";
 import { PrismaDirectiveRepository } from "../../infrastructure/repository/PrismaDirectiveRepository.js";
+import { radiationEngine } from "../../infrastructure/services/radiationEngine.js";
+import {
+  correlateTriageWithRadiation,
+  isS3OrHigherStorm,
+} from "../../application/health/correlation.js";
 import { NotFoundError } from "../../domain/errors/AppError.js";
 import { directivesSchema, parseWithValidation } from "../validation/schemas.js";
 
@@ -19,38 +25,65 @@ function normalizeAlertMessages(alerts: unknown): string[] {
 
 export class AdminTriageController {
   constructor(
-    private readonly directiveRepo: IDirectiveRepository = new PrismaDirectiveRepository()
+    private readonly directiveRepo: IDirectiveRepository = new PrismaDirectiveRepository(),
+    private readonly getRadiationState: () => Promise<RadiationEngineState | null> = () =>
+      radiationEngine.getCurrentState().catch(() => null)
   ) {}
 
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const astronauts = await prisma.astronaut.findMany({
-        where: { deletedAt: null },
-        include: {
-          mission: {
-            select: {
-              id: true,
-              name: true,
-              environment: true,
+      const [astronauts, radiationState, radiationIncident] = await Promise.all([
+        prisma.astronaut.findMany({
+          where: { deletedAt: null },
+          include: {
+            mission: {
+              select: {
+                id: true,
+                name: true,
+                environment: true,
+              },
+            },
+            readings: {
+              where: { deletedAt: null },
+              orderBy: { takenAt: "desc" },
+              take: 1,
+            },
+            directives: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
             },
           },
-          readings: {
-            where: { deletedAt: null },
-            orderBy: { takenAt: "desc" },
-            take: 1,
+          orderBy: { createdAt: "asc" },
+        }),
+        this.getRadiationState(),
+        prisma.incident.findFirst({
+          where: {
+            category: IncidentCategory.RADIATION,
+            status: { in: [IncidentStatus.OPEN, IncidentStatus.ACKNOWLEDGED] },
           },
-          directives: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-        },
-        orderBy: { createdAt: "asc" },
-      });
+          orderBy: { openedAt: "desc" },
+        }),
+      ]);
+
+      const incidentStormScale =
+        radiationIncident?.metadata &&
+        typeof radiationIncident.metadata === "object" &&
+        "stormScale" in radiationIncident.metadata
+          ? String((radiationIncident.metadata as { stormScale?: unknown }).stormScale)
+          : null;
+
+      const stormScale = radiationState?.currentTelemetry?.stormScale ?? incidentStormScale ?? "S0_NOMINAL";
+      const s3Active = isS3OrHigherStorm(stormScale);
 
       const crew = astronauts.map((astro) => {
         const latest = astro.readings[0] ?? null;
         const latestDirective = astro.directives[0] ?? null;
         const status: HealthStatus = latest ? latest.status : HealthStatus.OK;
+        const correlation = correlateTriageWithRadiation(
+          status,
+          latest?.recommendation ?? null,
+          stormScale
+        );
 
         return {
           astronautId: astro.id,
@@ -68,7 +101,11 @@ export class AdminTriageController {
           sleepHours: latest ? latest.sleepHours : 7.5,
           mood: latest ? latest.mood : 4,
           alerts: latest ? normalizeAlertMessages(latest.alerts) : [],
-          recommendation: latest?.recommendation ?? null,
+          recommendation: correlation.recommendation,
+          priorityBoosted: correlation.priorityBoosted,
+          triagePriorityScore: correlation.triagePriorityScore,
+          triagePriorityLabel: correlation.triagePriorityLabel,
+          adaptedProtocol: correlation.adaptedProtocol,
           latestDirective: latestDirective
             ? {
                 id: latestDirective.id,
@@ -85,12 +122,7 @@ export class AdminTriageController {
         };
       });
 
-      const priorityOrder: Record<HealthStatus, number> = {
-        CRITICAL: 0,
-        WARNING: 1,
-        OK: 2,
-      };
-      crew.sort((a, b) => priorityOrder[a.status] - priorityOrder[b.status]);
+      crew.sort((a, b) => a.triagePriorityScore - b.triagePriorityScore);
 
       const metrics = {
         totalCrew: crew.length,
@@ -99,7 +131,30 @@ export class AdminTriageController {
         nominalCount: crew.filter((c) => c.status === HealthStatus.OK).length,
       };
 
-      res.status(200).json({ crew, metrics });
+      const activeRadiationIncident =
+        s3Active && radiationIncident
+          ? {
+              id: radiationIncident.id,
+              title: radiationIncident.title,
+              description: radiationIncident.description,
+              severity: radiationIncident.severity,
+              status: radiationIncident.status,
+              stormScale,
+              openedAt: radiationIncident.openedAt.toISOString(),
+            }
+          : s3Active
+            ? {
+                id: "storm-live",
+                title: `Tormenta de radiación solar (${stormScale})`,
+                description: "Tormenta solar >= S3 activa en telemetría.",
+                severity: "CRITICAL",
+                status: "OPEN",
+                stormScale,
+                openedAt: new Date().toISOString(),
+              }
+            : null;
+
+      res.status(200).json({ crew, metrics, stormScale, activeRadiationIncident });
     } catch (error) {
       next(error);
     }

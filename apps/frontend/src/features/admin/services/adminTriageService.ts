@@ -1,12 +1,18 @@
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
-import { CrewMemberTriage, FlightSurgeonMetrics } from '../domain/types';
+import {
+  ActiveRadiationIncidentSummary,
+  CrewMemberTriage,
+  FlightSurgeonMetrics,
+} from '../domain/types';
 
 class AdminTriageService {
   async getTriageOverview(): Promise<{
     crew: CrewMemberTriage[];
     metrics: FlightSurgeonMetrics;
+    stormScale?: string;
+    activeRadiationIncident?: ActiveRadiationIncidentSummary | null;
   }> {
     if (ENV.USE_MOCKS) {
       const astronauts = mockDb.astronauts;
