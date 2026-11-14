@@ -1,4 +1,4 @@
-import { Environment, MissionStatus } from "@prisma/client";
+import { Environment, IncidentCategory, IncidentSeverity, MissionStatus } from "@prisma/client";
 import { z } from "zod";
 import { ValidationError } from "../../domain/errors/AppError.js";
 
@@ -210,6 +210,23 @@ export const biodosimetryTriageSchema = z.object({
       fdxrFoldChange: finiteNumber("fdxrFoldChange", 0.1, 30).optional(),
     })
     .optional(),
+});
+
+export const openIncidentSchema = z.object({
+  category: z.nativeEnum(IncidentCategory).default(IncidentCategory.MISSION),
+  type: requiredNonEmptyString("type", 100),
+  severity: z.nativeEnum(IncidentSeverity).default(IncidentSeverity.CRITICAL),
+  title: requiredNonEmptyString("title", 200),
+  description: requiredNonEmptyString("description", 2000),
+  astronautId: z.string().trim().min(1).max(128).nullable().optional(),
+  missionId: z.string().trim().min(1).max(128).nullable().optional(),
+  source: z.string().trim().min(1).max(100).default("MANUAL"),
+  protocolId: z.string().trim().min(1).max(100).nullable().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const closeIncidentSchema = z.object({
+  resolutionNotes: z.string().trim().max(2000).nullable().optional(),
 });
 
 /**

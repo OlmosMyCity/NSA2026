@@ -1,15 +1,30 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Role } from "@prisma/client";
+import { RadiationEngineState } from "@nsa2026/radiation-engine";
 import { radiationEngine } from "../../infrastructure/services/radiationEngine.js";
+import { PrismaIncidentRepository } from "../../infrastructure/repository/PrismaIncidentRepository.js";
+import { OpenIncidentUseCase } from "../../application/use-cases/incident/OpenIncidentUseCase.js";
+import { openRadiationIncidentFromState } from "../../application/use-cases/incident/syncSystemIncidents.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorizeRoles } from "../middlewares/authorizeRoles.js";
 import { parseWithValidation, radiationSimulateSchema } from "../validation/schemas.js";
+
+const openIncidentUseCase = new OpenIncidentUseCase(new PrismaIncidentRepository());
+
+async function syncRadiationIncidentSafely(state: RadiationEngineState): Promise<void> {
+  try {
+    await openRadiationIncidentFromState(openIncidentUseCase, state);
+  } catch (err) {
+    console.warn("[RADIATION_INCIDENT_SYNC_ERROR]:", err instanceof Error ? err.message : err);
+  }
+}
 
 export const radiationRouter = Router();
 
 radiationRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const state = await radiationEngine.getCurrentState();
+    await syncRadiationIncidentSafely(state);
     res.json(state);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch radiation status";
@@ -31,7 +46,7 @@ radiationRouter.post(
   "/simulate",
   authenticate,
   authorizeRoles(Role.ADMIN),
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { scenario } = parseWithValidation(radiationSimulateSchema, req.body ?? {});
 
@@ -42,6 +57,8 @@ radiationRouter.post(
       }
 
       radiationEngine.setSimulationScenario(scenario);
+      const state = await radiationEngine.getCurrentState();
+      await syncRadiationIncidentSafely(state);
       res.json({ message: `Simulation scenario activated: ${scenario}` });
     } catch (error) {
       next(error);
@@ -49,7 +66,7 @@ radiationRouter.post(
   }
 );
 
-radiationRouter.post("/predict-impact", (req: Request, res: Response) => {
+radiationRouter.post("/predict-impact", async (req: Request, res: Response) => {
   const body = (req.body || {}) as {
     sourceLocation?: string;
     flareClass?: "C" | "M" | "X";
@@ -77,5 +94,8 @@ radiationRouter.post("/predict-impact", (req: Request, res: Response) => {
     moonPhaseAngleDeg: body.moonPhaseAngleDeg,
   });
 
+  if (state) {
+    await syncRadiationIncidentSafely(state);
+  }
   res.json(state);
 });

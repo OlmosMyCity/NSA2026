@@ -8,6 +8,7 @@ import { biodosimetryRouter } from "./interface/routers/biodosimetryRouter.js";
 import { adminRouter } from "./interface/routers/adminRouter.js";
 import { radiationRouter } from "./interface/routers/radiationRouter.js";
 import { uploadRouter } from "./interface/routers/uploadRouter.js";
+import { incidentRouter } from "./interface/routers/incidentRouter.js";
 import { errorHandler } from "./interface/middlewares/errorHandler.js";
 import { securityHeaders } from "./interface/middlewares/securityHeaders.js";
 import { createRateLimiter } from "./interface/middlewares/rateLimiter.js";
@@ -97,6 +98,7 @@ export function createApp(): Express {
   app.use("/api/admin", adminRouter);
   app.use("/api/radiation/simulate", sensitiveMutationLimiter);
   app.use("/api/radiation", radiationRouter);
+  app.use("/api/incidents", incidentRouter);
   app.use("/api/uploads", sensitiveMutationLimiter, uploadRouter);
 
   // Health check rápido del microservicio

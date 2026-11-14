@@ -38,6 +38,23 @@ enum HealthStatus {
   CRITICAL
 }
 
+enum IncidentCategory {
+  MEDICAL
+  RADIATION
+  MISSION
+}
+
+enum IncidentSeverity {
+  WARNING
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  CLOSED
+}
+
 model User {
   id           String      @id @default(uuid())
   email        String      @unique
@@ -51,6 +68,8 @@ model User {
 
   missions     Mission[]   @relation("MissionCreator")
   astronaut    Astronaut?
+  acknowledgedIncidents Incident[] @relation("IncidentAcknowledger")
+  closedIncidents       Incident[] @relation("IncidentCloser")
 
   @@map("users")
 }
@@ -71,6 +90,7 @@ model Mission {
   deletedAt   DateTime?
 
   astronauts  Astronaut[]
+  incidents   Incident[]
 
   @@map("missions")
 }
@@ -90,6 +110,7 @@ model Astronaut {
   deletedAt   DateTime?
 
   readings    HealthReading[]
+  incidents   Incident[]
 
   @@map("astronauts")
 }
@@ -122,5 +143,37 @@ model HealthReading {
 
   @@index([astronautId, takenAt])
   @@map("health_readings")
+}
+
+model Incident {
+  id               String           @id @default(uuid())
+  category         IncidentCategory
+  type             String
+  severity         IncidentSeverity
+  status           IncidentStatus   @default(OPEN)
+  title            String
+  description      String
+  astronautId      String?
+  astronaut        Astronaut?       @relation(fields: [astronautId], references: [id], onDelete: SetNull)
+  missionId        String?
+  mission          Mission?         @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  source           String
+  readingId        String?
+  protocolId       String?
+  metadata         Json             @default("{}")
+  openedAt         DateTime         @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+  acknowledgedBy   User?            @relation("IncidentAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  closedAt         DateTime?
+  closedById       String?
+  closedBy         User?            @relation("IncidentCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  resolutionNotes  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([status, type, astronautId])
+  @@index([astronautId, openedAt])
+  @@map("incidents")
 }
 

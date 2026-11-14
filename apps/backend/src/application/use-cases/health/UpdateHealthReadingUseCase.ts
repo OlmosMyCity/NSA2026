@@ -4,9 +4,14 @@ import { UpdateHealthReadingDTO } from "../../../domain/models/HealthReading.js"
 import { evaluateReading } from "../../health/evaluateReading.js";
 import { NotFoundError } from "../../../domain/errors/AppError.js";
 import { assertValidVitals } from "./CreateHealthReadingUseCase.js";
+import { OpenIncidentUseCase } from "../incident/OpenIncidentUseCase.js";
+import { openMedicalIncidentsFromReading } from "../incident/syncSystemIncidents.js";
 
 export class UpdateHealthReadingUseCase {
-  constructor(private readonly readingRepo: IHealthReadingRepository) {}
+  constructor(
+    private readonly readingRepo: IHealthReadingRepository,
+    private readonly openIncidentUseCase?: OpenIncidentUseCase
+  ) {}
 
   async execute(id: string, data: UpdateHealthReadingDTO): Promise<HealthReading> {
     const existing = await this.readingRepo.findById(id);
@@ -41,6 +46,15 @@ export class UpdateHealthReadingUseCase {
 
     if (!updated) {
       throw new NotFoundError("Lectura de salud", id);
+    }
+
+    if (this.openIncidentUseCase && evaluation.alerts.length > 0) {
+      await openMedicalIncidentsFromReading(
+        this.openIncidentUseCase,
+        updated.astronautId,
+        updated.id,
+        evaluation
+      );
     }
 
     return updated;

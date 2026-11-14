@@ -3,6 +3,8 @@ import { IHealthReadingRepository } from "../../../domain/repository/IHealthRead
 import { CreateHealthReadingDTO } from "../../../domain/models/HealthReading.js";
 import { evaluateReading } from "../../health/evaluateReading.js";
 import { ValidationError } from "../../../domain/errors/AppError.js";
+import { OpenIncidentUseCase } from "../incident/OpenIncidentUseCase.js";
+import { openMedicalIncidentsFromReading } from "../incident/syncSystemIncidents.js";
 
 export function assertValidVitals(metrics: {
   heartRateBpm: number;
@@ -39,7 +41,10 @@ export function assertValidVitals(metrics: {
 }
 
 export class CreateHealthReadingUseCase {
-  constructor(private readonly readingRepo: IHealthReadingRepository) {}
+  constructor(
+    private readonly readingRepo: IHealthReadingRepository,
+    private readonly openIncidentUseCase?: OpenIncidentUseCase
+  ) {}
 
   async execute(dto: CreateHealthReadingDTO): Promise<HealthReading> {
     if (!dto.astronautId) {
@@ -61,7 +66,7 @@ export class CreateHealthReadingUseCase {
     });
 
     // 2. Persistir lectura con diagnóstico y alertas
-    return this.readingRepo.create({
+    const created = await this.readingRepo.create({
       astronautId: dto.astronautId,
       heartRateBpm: dto.heartRateBpm,
       systolicMmHg: dto.systolicMmHg,
@@ -77,6 +82,18 @@ export class CreateHealthReadingUseCase {
       notes: dto.notes,
       takenAt: dto.takenAt,
     });
+
+    // 3. Abrir incidentes médicos por alertas sin duplicar los activos
+    if (this.openIncidentUseCase && evaluation.alerts.length > 0) {
+      await openMedicalIncidentsFromReading(
+        this.openIncidentUseCase,
+        created.astronautId,
+        created.id,
+        evaluation
+      );
+    }
+
+    return created;
   }
 }
 
