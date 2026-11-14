@@ -27,7 +27,7 @@
   "author": "Artemis IV Team",
   "license": "MIT",
   "dependencies": {
-    "@nsa2026/radiation-engine": "file:../../packages/radiation-engine",
+    "@nsa2026/radiation-engine": "*",
     "@prisma/client": "^6.4.1",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
