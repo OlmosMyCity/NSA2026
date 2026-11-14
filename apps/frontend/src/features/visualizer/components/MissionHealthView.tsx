@@ -57,7 +57,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   const { rows, isLoading: readingsLoading } = useHealthReadings(canView ? astronautId : undefined);
 
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const viewerSrc = trajectoryUrl(missionId);
+  const viewerSrc = mission ? trajectoryUrl(mission) : null;
   const { ready, time, seek, play, pause } = useViewerBridge(frameRef);
 
   const now = Date.now();
@@ -77,6 +77,12 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   }, [time]);
 
   const startedRef = useRef(false);
+  useEffect(() => {
+    startedRef.current = false;
+    setPinnedMet(null);
+    setAstronautId(undefined);
+  }, [missionId]);
+
   useEffect(() => {
     if (ready && mission && !startedRef.current) {
       startedRef.current = true;
@@ -158,6 +164,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
                 </div>
               )}
               <iframe
+                key={viewerSrc}
                 ref={frameRef}
                 src={viewerSrc}
                 title={`3D Trajectory of ${mission.name}`}

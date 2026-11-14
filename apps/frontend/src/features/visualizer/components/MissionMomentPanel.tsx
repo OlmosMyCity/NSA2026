@@ -9,6 +9,15 @@ import { formatMET, type MissionPhase, type TimelineReading } from '../domain/mi
 import { PHASE_WATCH } from '../domain/phaseHazards';
 
 const ZONE_ORDER: BodyZoneId[] = ['heart', 'blood', 'brain', 'sleep', 'bones'];
+
+const PHASE_NAME_EN: Record<string, string> = {
+  Ascenso: 'Ascent',
+  'Órbita de aparcamiento': 'Parking Orbit',
+  'Tránsito translunar': 'Trans-Lunar Transit',
+  'NRHO de Gateway': 'Gateway NRHO',
+  'Órbita de descenso (HLS)': 'HLS Descent Orbit',
+  'Descenso propulsado (HLS)': 'Powered Descent (HLS)',
+};
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 
 interface MissionMomentPanelProps {
@@ -35,7 +44,7 @@ export function MissionMomentPanel({ met, nowMet, phase, reading }: MissionMomen
           {formatMET(met)}
         </p>
         <p className="mt-0.5 text-sm font-medium text-berry">
-          {phase?.name ?? 'Pre-launch'}
+          {phase ? (PHASE_NAME_EN[phase.name] ?? phase.name) : 'Pre-launch'}
         </p>
       </header>
 

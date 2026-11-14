@@ -12,14 +12,18 @@ import {
 
 const SURFACE = 'hsl(80, 14%, 99%)';
 const BAND = ['hsl(27, 16%, 93%)', 'hsl(27, 16%, 89%)'];
-const SHORT: Record<string, string> = {
-  ascent: 'Ascent',
-  parking: 'Parking',
-  transit: 'Transit',
-  nrho: 'Gateway NRHO',
-  descent: 'HLS Orbit',
-  landing: 'Descent',
+const PHASE_NAME_EN: Record<string, string> = {
+  Ascenso: 'Ascent',
+  'Órbita de aparcamiento': 'Parking',
+  'Tránsito translunar': 'Transit',
+  'NRHO de Gateway': 'Gateway NRHO',
+  'Órbita de descenso (HLS)': 'HLS Orbit',
+  'Descenso propulsado (HLS)': 'Descent',
 };
+
+function phaseLabel(p: MissionPhase): string {
+  return PHASE_NAME_EN[p.name] ?? p.name;
+}
 
 const dateFmt = new Intl.DateTimeFormat('en', {
   day: 'numeric',
@@ -137,7 +141,7 @@ export function MissionTimeline({
           {phases.map((p, i) => {
             const x0 = x(p.t_start);
             const w = x(p.t_end) - x0;
-            const label = SHORT[p.id] ?? p.name;
+            const label = phaseLabel(p);
             return (
               <g key={p.id}>
                 <rect
