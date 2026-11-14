@@ -6,8 +6,8 @@
   --muted: #9fb0c8;
   --accent: #e8702a;
   --phase: #e8702a;
-  --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
 }
 

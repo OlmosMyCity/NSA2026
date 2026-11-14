@@ -212,16 +212,17 @@ export function OrbitTrajectoryViewer() {
 
       {/* 3D orbital viewer container */}
       <div
-        className={`relative overflow-hidden border border-line bg-[#060911] transition-all duration-panel ease-out-expo ${
+        className={`flex flex-col overflow-hidden border border-line bg-[#060911] transition-all duration-panel ease-out-expo ${
           isFullscreen
             ? 'fixed inset-0 z-50 rounded-none border-none h-screen w-screen'
-            : 'rounded-lg h-[600px] w-full shadow-lg'
+            : 'rounded-lg h-[640px] w-full shadow-lg'
         }`}
       >
-        <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
-          <div className="chrome-translucent flex items-center gap-2 rounded-pill border border-line px-3.5 py-1.5 shadow-sm">
-            <Orbit className="h-4 w-4 text-blueberry" aria-hidden="true" />
-            <span className="font-mono text-xs font-semibold text-blueberry tracking-wide">
+        {/* Clean header bar outside the 3D viewport (never overlaps HUD/controls) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#080f1e] px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Orbit className="h-4 w-4 text-sky-400" aria-hidden="true" />
+            <span className="font-mono text-xs font-semibold text-slate-100 tracking-wide">
               {customName ? `Custom Trajectory · ${customName}` : `${activePreset.label} · ${activePreset.subtitle}`}
             </span>
           </div>
@@ -231,25 +232,25 @@ export function OrbitTrajectoryViewer() {
               href={iframeSrc}
               target="_blank"
               rel="noopener noreferrer"
-              className="tactile-press chrome-translucent flex items-center gap-1.5 rounded-pill border border-line px-3.5 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry shadow-sm"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-white/30 hover:text-white"
             >
-              <ExternalLink className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+              <ExternalLink className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
               <span className="hidden sm:inline">Open in new tab</span>
             </a>
 
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="tactile-press chrome-translucent flex items-center gap-1.5 rounded-pill border border-line px-3.5 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry shadow-sm"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-white/30 hover:text-white"
             >
               {isFullscreen ? (
                 <>
-                  <Minimize2 className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+                  <Minimize2 className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
                   <span>Exit fullscreen</span>
                 </>
               ) : (
                 <>
-                  <Maximize2 className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+                  <Maximize2 className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
                   <span>Fullscreen</span>
                 </>
               )}
@@ -261,7 +262,7 @@ export function OrbitTrajectoryViewer() {
           key={iframeSrc}
           src={iframeSrc}
           title="Orbvital 3D Mission Trajectory Viewer"
-          className="h-full w-full border-0"
+          className="flex-1 w-full border-0"
           loading="lazy"
         />
       </div>
