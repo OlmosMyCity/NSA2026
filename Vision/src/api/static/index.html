@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OrbVital // Telemetría Biométrica de Astronautas (NSA2026)</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="badge-orb">ORBVITAL // NSA2026</span>
+      <h1>Monitoreo Biométrico y Psicológico de Astronautas</h1>
+    </div>
+    <div class="status-cluster">
+      <div class="pill" id="conn-pill">WS: CONECTANDO...</div>
+      <div class="pill" id="fps-pill">FPS: --</div>
+      <div class="pill health-pill" id="health-pill">SALUD GLOBAL: --%</div>
+    </div>
+  </header>
+
+  <section class="alerts-banner" id="alerts-banner" hidden></section>
+
+  <main class="dashboard-grid">
+    <!-- Left Column: Video HUD & Controls -->
+    <section class="panel video-panel">
+      <div class="panel-header">
+        <h2>1. Sensor Óptico &amp; HUD Biométrico</h2>
+        <span class="subtag" id="backend-tag">CPU Open-Source</span>
+      </div>
+
+      <div class="video-container">
+        <img id="hud-image" alt="Stream Biométrico de Astronauta" />
+        <video id="local-webcam" autoplay playsinline muted hidden></video>
+        <canvas id="capture-canvas" width="640" height="480" hidden></canvas>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control-group">
+          <label for="source-select">Fuente de Entrada</label>
+          <select id="source-select">
+            <option value="simulator" selected>Simulador Sintético de Astronauta (Demo / Validación)</option>
+            <option value="webcam">Cámara Web en Vivo (RGB / IR Local)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="camera-mode-select">Algoritmo / Tipo de Cámara (BPM rPPG)</label>
+          <select id="camera-mode-select">
+            <option value="rgb_pos" selected>Cámara RGB — Algoritmo POS (Plane-Orthogonal-to-Skin)</option>
+            <option value="rgb_chrom">Cámara RGB — Algoritmo CHROM (Crominancia)</option>
+            <option value="nir_ir">Cámara Infrarroja / NIR / Nocturna (Monocromática)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="context-select">Contexto de Misión</label>
+          <select id="context-select">
+            <option value="cabin_active" selected>Cabina Activa (Alerta, Estrés y Somnolencia)</option>
+            <option value="sleep_pod">Módulo de Sueño (Actigrafía y Calidad de Descanso)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Simulator Controls -->
+      <div class="sim-controls" id="sim-controls-box">
+        <div class="sim-header">
+          <span>Parámetros del Simulador Fisiológico</span>
+          <button type="button" class="btn-secondary" id="reset-btn">Reiniciar Buffers</button>
+        </div>
+        <div class="sim-row">
+          <label for="sim-bpm-slider">Pulso Real Inyectado: <strong id="sim-bpm-label">72 BPM</strong></label>
+          <input type="range" id="sim-bpm-slider" min="48" max="155" value="72" step="1" />
+        </div>
+        <div class="sim-states">
+          <button type="button" class="state-btn active" data-state="nominal">Nominal / Enfoque</button>
+          <button type="button" class="state-btn" data-state="happy">Ánimo Positivo</button>
+          <button type="button" class="state-btn" data-state="stressed">Alto Estrés</button>
+          <button type="button" class="state-btn" data-state="drowsy">Somnolencia / Bostezos</button>
+          <button type="button" class="state-btn" data-state="sleeping_calm">Sueño Reparador</button>
+          <button type="button" class="state-btn" data-state="sleeping_restless">Sueño Agitado</button>
+        </div>
+      </div>
+
+      <!-- Video Upload Analyzer -->
+      <div class="upload-box">
+        <form id="video-upload-form">
+          <label for="video-file-input">Analizar Video Pregrabado (.mp4/.webm/.avi):</label>
+          <div class="upload-row">
+            <input type="file" id="video-file-input" accept="video/*" />
+            <button type="submit" class="btn-primary">Procesar Video</button>
+          </div>
+        </form>
+        <div id="video-report-output" class="video-report" hidden></div>
+      </div>
+    </section>
+
+    <!-- Right Column: 3 Biometric Indicators -->
+    <section class="metrics-column">
+      <!-- Indicator 1: Heart Rate & HRV (Multi-camera rPPG) -->
+      <div class="panel metric-card">
+        <div class="panel-header">
+          <h2>2. Pulsaciones por Minuto (rPPG Multicámara)</h2>
+          <span class="status-tag" id="hr-status-tag">CALIBRANDO</span>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-main">
+            <span class="kpi-value" id="bpm-value">--</span>
+            <span class="kpi-unit">BPM</span>
+          </div>
+          <div class="kpi-subgrid">
+            <div><small>HRV (RMSSD)</small><strong id="hrv-rmssd">-- ms</strong></div>
+            <div><small>HRV (SDNN)</small><strong id="hrv-sdnn">-- ms</strong></div>
+            <div><small>Respiración</small><strong id="resp-rpm">-- RPM</strong></div>
+            <div><small>Calidad Señal (SQI)</small><strong id="sqi-value">--%</strong></div>
+          </div>
+        </div>
+
+        <div class="progress-line">
+          <span>Ventana Temporal rPPG</span>
+          <div class="progress-track"><div class="progress-fill" id="buffer-bar" style="width: 0%"></div></div>
+          <span id="buffer-pct">0%</span>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-box">
+            <span class="chart-title">Onda Fotopletismográfica Filtrada (BVP 0.75–3.0 Hz)</span>
+            <canvas id="bvp-canvas" width="380" height="105"></canvas>
+          </div>
+          <div class="chart-box">
+            <span class="chart-title">Espectro de Potencia (Welch PSD)</span>
+            <canvas id="psd-canvas" width="240" height="105"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indicator 2: Astronaut Mood & Stress -->
+      <div class="panel metric-card">
+        <div class="panel-header">
+          <h2>3. Estado de Ánimo y Estrés Psicológico</h2>
+          <span class="subtag" id="mood-backend-tag">ONNX + Action Units</span>
+        </div>
+
+        <div class="mood-summary-row">
+          <div class="mood-primary-box">
+            <small>Estado Operativo Dominante</small>
+            <div class="mood-title" id="dominant-mood">--</div>
+            <small>Emoción Base: <span id="raw-emotion">--</span> | Valencia: <span id="mood-valence">0.00</span></small>
+          </div>
+          <div class="mood-gauges">
+            <div class="bar-metric">
+              <div class="bar-label"><span>Índice de Estrés</span><strong id="stress-val">0%</strong></div>
+              <div class="progress-track"><div class="progress-fill danger-fill" id="stress-bar"></div></div>
+            </div>
+            <div class="bar-metric">
+              <div class="bar-label"><span>Nivel de Alerta Cognitiva</span><strong id="alertness-val">0%</strong></div>
+              <div class="progress-track"><div class="progress-fill ok-fill" id="alertness-bar"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="emotion-probs" id="emotion-probs"></div>
+      </div>
+
+      <!-- Indicator 3: Sleep Quality & Fatigue -->
+      <div class="panel metric-card">
+        <div class="panel-header">
+          <h2>4. Calidad de Sueño, Somnolencia y Actigrafía</h2>
+          <span class="status-tag" id="fatigue-tag">NOMINAL</span>
+        </div>
+
+        <div class="sleep-grid">
+          <div class="sleep-score-box">
+            <span class="score-num" id="sleep-score">--</span>
+            <span class="score-label">Calidad Sueño / Descanso (0-100)</span>
+            <span class="stage-pill" id="sleep-stage">Fase: Awake</span>
+          </div>
+
+          <div class="sleep-details">
+            <div class="detail-item"><small>PERCLOS (Cierre Ocular)</small><strong id="perclos-val">0.0%</strong></div>
+            <div class="detail-item"><small>EAR Promedio (Ojos)</small><strong id="ear-val">0.300</strong></div>
+            <div class="detail-item"><small>MAR (Apertura Bucal)</small><strong id="mar-val">0.150</strong></div>
+            <div class="detail-item"><small>Parpadeos / min</small><strong id="blink-val">0.0</strong></div>
+            <div class="detail-item"><small>Bostezos Detectados</small><strong id="yawn-val">0</strong></div>
+            <div class="detail-item"><small>Actigrafía (Movimiento)</small><strong id="motion-val">0.0%</strong></div>
+            <div class="detail-item"><small>Pose Cabeza (Pitch/Yaw)</small><strong id="pose-val">0° / 0°</strong></div>
+            <div class="detail-item"><small>Eventos Agitación</small><strong id="restless-val">0</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
