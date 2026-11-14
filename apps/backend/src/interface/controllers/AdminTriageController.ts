@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { HealthStatus } from "@prisma/client";
 import { prisma } from "../../infrastructure/database/prismaClient.js";
+import { IDirectiveRepository } from "../../domain/repository/IDirectiveRepository.js";
+import { PrismaDirectiveRepository } from "../../infrastructure/repository/PrismaDirectiveRepository.js";
 import { NotFoundError } from "../../domain/errors/AppError.js";
 import { directivesSchema, parseWithValidation } from "../validation/schemas.js";
 
@@ -16,6 +18,10 @@ function normalizeAlertMessages(alerts: unknown): string[] {
 }
 
 export class AdminTriageController {
+  constructor(
+    private readonly directiveRepo: IDirectiveRepository = new PrismaDirectiveRepository()
+  ) {}
+
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const astronauts = await prisma.astronaut.findMany({
@@ -33,12 +39,17 @@ export class AdminTriageController {
             orderBy: { takenAt: "desc" },
             take: 1,
           },
+          directives: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
         orderBy: { createdAt: "asc" },
       });
 
       const crew = astronauts.map((astro) => {
         const latest = astro.readings[0] ?? null;
+        const latestDirective = astro.directives[0] ?? null;
         const status: HealthStatus = latest ? latest.status : HealthStatus.OK;
 
         return {
@@ -58,6 +69,15 @@ export class AdminTriageController {
           mood: latest ? latest.mood : 4,
           alerts: latest ? normalizeAlertMessages(latest.alerts) : [],
           recommendation: latest?.recommendation ?? null,
+          latestDirective: latestDirective
+            ? {
+                id: latestDirective.id,
+                content: latestDirective.content,
+                incidentId: latestDirective.incidentId,
+                acknowledgedAt: latestDirective.acknowledgedAt?.toISOString() ?? null,
+                createdAt: latestDirective.createdAt.toISOString(),
+              }
+            : null,
           lastReadingAt: latest
             ? latest.takenAt.toISOString()
             : astro.createdAt.toISOString(),
@@ -85,10 +105,32 @@ export class AdminTriageController {
     }
   };
 
+  listAstronautDirectives = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const astronaut = await prisma.astronaut.findFirst({
+        where: { id, deletedAt: null },
+      });
+
+      if (!astronaut) {
+        throw new NotFoundError("Astronauta", id);
+      }
+
+      const directives = await this.directiveRepo.findByAstronautId(id);
+      res.status(200).json({ data: directives });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   sendClinicalDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { directives } = parseWithValidation(directivesSchema, req.body ?? {});
+      const { directives, incidentId } = parseWithValidation(directivesSchema, req.body ?? {});
 
       const astronaut = await prisma.astronaut.findFirst({
         where: { id, deletedAt: null },
@@ -98,40 +140,16 @@ export class AdminTriageController {
         throw new NotFoundError("Astronauta", id);
       }
 
-      const latestReading = await prisma.healthReading.findFirst({
-        where: { astronautId: id, deletedAt: null },
-        orderBy: { takenAt: "desc" },
+      const directive = await this.directiveRepo.create({
+        astronautId: id,
+        issuedById: req.user?.id ?? null,
+        incidentId: incidentId ?? null,
+        content: directives,
       });
 
-      const directiveText = `[DIRECTIVA MÉDICA EN VIGOR]: ${directives}`;
-
-      if (latestReading) {
-        await prisma.healthReading.update({
-          where: { id: latestReading.id },
-          data: { recommendation: directiveText },
-        });
-      } else {
-        await prisma.healthReading.create({
-          data: {
-            astronautId: id,
-            heartRateBpm: 72,
-            systolicMmHg: 118,
-            diastolicMmHg: 76,
-            glucoseMgDl: 95,
-            temperatureC: 36.6,
-            spo2Pct: 98,
-            sleepHours: 7.5,
-            mood: 4,
-            status: HealthStatus.OK,
-            alerts: [],
-            recommendation: directiveText,
-            notes: "Lectura base generada al recibir directiva del Cirujano de Vuelo.",
-          },
-        });
-      }
-
-      res.status(200).json({
+      res.status(201).json({
         success: true,
+        directive,
         message: `Directiva clínica transmitida exitosamente a la consola de ${astronaut.name}.`,
       });
     } catch (error) {

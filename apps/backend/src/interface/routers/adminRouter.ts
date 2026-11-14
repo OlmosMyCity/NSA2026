@@ -11,5 +11,6 @@ export const adminRouter = Router();
 adminRouter.use(authenticate, authorizeRoles(Role.ADMIN));
 
 adminRouter.get("/triage", controller.getTriageOverview);
+adminRouter.get("/astronauts/:id/directives", controller.listAstronautDirectives);
 adminRouter.post("/astronauts/:id/directives", controller.sendClinicalDirectives);
 

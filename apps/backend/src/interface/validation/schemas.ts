@@ -190,6 +190,7 @@ export const updateAstronautSchema = z.object({
 
 export const directivesSchema = z.object({
   directives: requiredNonEmptyString("directives", 2000),
+  incidentId: z.string().trim().min(1).max(128).nullable().optional(),
 });
 
 export const radiationSimulateSchema = z.object({

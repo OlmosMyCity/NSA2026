@@ -70,6 +70,7 @@ model User {
   astronaut    Astronaut?
   acknowledgedIncidents Incident[] @relation("IncidentAcknowledger")
   closedIncidents       Incident[] @relation("IncidentCloser")
+  issuedDirectives      Directive[] @relation("DirectiveIssuer")
 
   @@map("users")
 }
@@ -111,6 +112,7 @@ model Astronaut {
 
   readings    HealthReading[]
   incidents   Incident[]
+  directives  Directive[]
 
   @@map("astronauts")
 }
@@ -172,8 +174,27 @@ model Incident {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
+  directives       Directive[]
+
   @@index([status, type, astronautId])
   @@index([astronautId, openedAt])
   @@map("incidents")
+}
+
+model Directive {
+  id             String    @id @default(uuid())
+  astronautId    String
+  astronaut      Astronaut @relation(fields: [astronautId], references: [id], onDelete: Cascade)
+  issuedById     String?
+  issuedBy       User?     @relation("DirectiveIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  incidentId     String?
+  incident       Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  content        String
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([astronautId, createdAt])
+  @@map("directives")
 }
 
