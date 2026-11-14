@@ -6,14 +6,15 @@
 
 ## 1. Estado Actual del Codebase (Inventario Real)
 
-Hoy el repositorio contiene tres módulos principales y documentación:
+Hoy el repositorio contiene cuatro módulos principales y documentación:
 
 | Carpeta actual | Stack / Runtime | Puerto local | Propósito | Estado de despliegue |
 | :--- | :--- | :--- | :--- | :--- |
+| `frontend/` | Next.js 14, React 18, Tailwind, Three.js (`@react-three/fiber`), Supabase JS | `3000` | Interfaz web ("lunar editorial"), visor 3D (`body.glb`, `mission-viewer`, `visualizer`), dashboard, rutinas y lecturas | Listo para **Vercel Free** (requiere variables `NEXT_PUBLIC_API_HOST`, `NEXT_PUBLIC_SUPABASE_*` y `NEXT_PUBLIC_USE_MOCKS`) |
 | `backend/` | Node 22, Express, TypeScript, Prisma, Supabase | `4000` | API REST principal, auth JWT, misiones, astronautas, lecturas de salud y subida de imágenes | Blueprint `backend/render.yaml` para **Render Free** + **Supabase Free** |
 | `radiation-engine/` | Node 22, Express, TypeScript | `4000` *(colisión con `backend`)* | Predicción y alerta temprana de radiación espacial (NOAA SWPC + NASA DONKI) | Compilado en `dist/` (puede usarse como librería o microservicio) |
 | `Vision/` | Python 3.11, FastAPI, WebSockets, MediaPipe, ONNX Runtime, OpenCV, SciPy | `8000` | Monitoreo biométrico sin contacto: ánimo/estrés, sueño/PERCLOS y BPM/HRV por rPPG (RGB/NIR) | Local (listo para contenedor/Render/HF Spaces) |
-| `docs/` | Markdown | — | Planes, reto NASA Space Apps y guía de integración de radiación | Documentación |
+| `docs/` | Markdown | — | Planes, reto NASA Space Apps, guía de radiación y guía de arquitectura/despliegue | Documentación |
 
 ### Hallazgos clave detectados en el código actual
 1. **Colisión de puerto local (`4000`)**: Tanto `backend/src/index.ts` como `radiation-engine/src/server.ts` usan `PORT || 4000`.
@@ -33,8 +34,8 @@ Para evitar que la raíz del repositorio se llene de carpetas sueltas cuando lle
 ```text
 OrbVital/
 ├── apps/                        # Aplicaciones orientadas al usuario o APIs principales
-│   ├── frontend/                # (En proceso) Web App (React/Next/Vite) -> Vercel Free
-│   └── backend/                 # API Core (Express + Prisma + Auth) -> Render Free
+│   ├── frontend/                # Actual frontend/ (Next.js 14 + Three.js) -> Vercel Free
+│   └── backend/                 # Actual backend/ (Express + Prisma + Auth) -> Render Free
 │
 ├── ai/                          # Todos los modelos y servicios de IA / Visión (Python)
 │   ├── vision/                  # Actual carpeta Vision/ (rPPG, Sueño, Ánimo)
@@ -148,5 +149,5 @@ Cuando alguien del equipo quiera añadir un **nuevo modelo** (ej. detección de 
 | 2026-11-14 | Creación del Backend Core + Prisma + Supabase | `backend/` | Servicio Web Render Free (`render.yaml`) | Equipo |
 | 2026-11-14 | Creación del Motor de Radiación Espacial | `radiation-engine/` | Microservicio Node o librería integrada en `backend` | Equipo |
 | 2026-11-14 | Creación del Módulo Biométrico por Visión (Ánimo, Sueño, rPPG BPM) | `Vision/` | FastAPI Python CPU (ONNX + MediaPipe); apto para HF Spaces / Render | Equipo |
-| *Pendiente* | Incorporación del Frontend Web | `frontend/` *(futuro `apps/frontend/`)* | Despliegue en Vercel Free; configurar `CORS_ORIGINS` | Equipo |
+| 2026-11-14 | Incorporación del Frontend Web (Next.js 14 + Three.js + Visor 3D) | `frontend/` *(futuro `apps/frontend/`)* | Despliegue en Vercel Free (Root Directory: `frontend`); configurar `NEXT_PUBLIC_*` y `CORS_ORIGINS` | Equipo |
 | *Pendiente* | Consolidación a estructura `apps/`, `ai/`, `packages/` | Raíz | Actualizar Root Directory en Render/Vercel y `render.yaml` | Equipo |
