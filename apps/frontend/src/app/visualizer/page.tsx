@@ -3,6 +3,7 @@
 import React from 'react';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { OrbitTrajectoryViewer } from '@/features/visualizer/components/OrbitTrajectoryViewer';
+import { MolecularTwinSection } from '@/features/visualizer/components/MolecularTwinSection';
 
 export default function VisualizerPage() {
   return (
@@ -19,6 +20,7 @@ export default function VisualizerPage() {
         </div>
 
         <OrbitTrajectoryViewer />
+        <MolecularTwinSection />
       </div>
     </AppLayout>
   );
