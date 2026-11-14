@@ -212,7 +212,7 @@ export function OrbitTrajectoryViewer() {
 
       {/* 3D orbital viewer container */}
       <div
-        className={`flex flex-col overflow-hidden border border-line bg-[#060911] transition-all duration-panel ease-out-expo ${
+        className={`flex flex-col overflow-hidden border border-line bg-[#02040a] transition-all duration-panel ease-out-expo ${
           isFullscreen
             ? 'fixed inset-0 z-50 rounded-none border-none h-screen w-screen'
             : 'rounded-lg h-[640px] w-full shadow-lg'
@@ -262,8 +262,8 @@ export function OrbitTrajectoryViewer() {
           key={iframeSrc}
           src={iframeSrc}
           title="Orbvital 3D Mission Trajectory Viewer"
-          className="flex-1 w-full border-0"
-          loading="lazy"
+          className="flex-1 w-full border-0 bg-[#02040a]"
+          style={{ backgroundColor: '#02040a', colorScheme: 'dark' }}
         />
       </div>
 

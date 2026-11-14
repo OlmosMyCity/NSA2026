@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Orbit, Dna, Clock } from 'lucide-react';
 import { AppLayout } from '@/features/common/components/AppLayout';
@@ -10,7 +11,14 @@ import { missionService } from '@/features/missions/services/missionService';
 import type { Mission } from '@/features/missions/domain/types';
 import { MissionHealthView } from '@/features/visualizer/components/MissionHealthView';
 import { OrbitTrajectoryViewer } from '@/features/visualizer/components/OrbitTrajectoryViewer';
-import { MolecularTwinSection } from '@/features/visualizer/components/MolecularTwinSection';
+
+const MolecularTwinSection = dynamic(
+  () =>
+    import('@/features/visualizer/components/MolecularTwinSection').then(
+      (m) => m.MolecularTwinSection
+    ),
+  { ssr: false }
+);
 
 export default function VisualizerPage() {
   const { user, isAuthenticated } = useAuth();

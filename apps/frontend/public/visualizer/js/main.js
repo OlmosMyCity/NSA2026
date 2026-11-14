@@ -34,7 +34,13 @@ const norm = (v) => {
   return v.map((x) => x / d);
 };
 
+let pendingStart = false;
+$("intro-start")?.addEventListener("click", () => {
+  pendingStart = true;
+}, { once: true });
+
 async function main() {
+  let requestRender = () => {};
   const params = new URLSearchParams(location.search);
   const rawData = params.get("data");
   const dataUrl =
@@ -53,7 +59,7 @@ async function main() {
   const tLast = phases[phases.length - 1].t_end;
   const positionAt = (t) => hermiteState(samples, t).r;
 
-  const view = createScene($("viewport"), bodies);
+  const view = createScene($("viewport"), bodies, () => requestRender());
   const { scene, camera, controls, renderer } = view;
 
   // La textura tiene el meridiano 0 en +x; el simulador pone LC-39B donde cae en ECI a t = 0
@@ -305,13 +311,41 @@ async function main() {
   camera.position.set(...OVERVIEW.dir).normalize().multiplyScalar(fit(OVERVIEW.focus, OVERVIEW.distance));
   $("intro").hidden = false;
   document.body.classList.add("intro");
-  $("loading").remove();
+  $("loading")?.remove();
 
   let last = performance.now();
   let vehicleName = "";
   let finished = false;
+  let rafId = 0;
+  let controlsInteracting = false;
+
+  requestRender = () => {
+    if (!rafId) {
+      last = performance.now();
+      rafId = requestAnimationFrame(frameLoop);
+    }
+  };
+
+  controls.addEventListener("change", requestRender);
+  controls.addEventListener("start", () => {
+    controlsInteracting = true;
+    requestRender();
+  });
+  controls.addEventListener("end", () => {
+    controlsInteracting = false;
+    requestRender();
+  });
+  window.addEventListener("resize", requestRender);
+  $("slider")?.addEventListener("input", requestRender);
+  $("play")?.addEventListener("click", requestRender);
+  $("track")?.addEventListener("click", requestRender);
+  $("tags")?.addEventListener("click", requestRender);
+  $("intro-start")?.addEventListener("click", requestRender);
+  $("finale-replay")?.addEventListener("click", requestRender);
+  window.addEventListener("keydown", requestRender);
 
   function frameLoop(now) {
+    rafId = 0;
     const elapsed = (now - last) / 1000;
     const dt = Math.min(elapsed, 0.1);
     last = now;
@@ -375,7 +409,7 @@ async function main() {
     const phase = phases[phaseIndexAt(phases, t)];
     hud.update(t, st, phase, moonEci, FRAMES[frame], vehicle, landed);
 
-    controls.update();
+    const dampingChanged = controls.update();
     camera.updateMatrixWorld();
 
     // La silueta apunta a donde va la nave; el HLS en descenso final se mantiene vertical
@@ -435,15 +469,21 @@ async function main() {
     labels.update(showLabels, occluders);
 
     renderer.render(scene, camera);
-    requestAnimationFrame(frameLoop);
+    if (state.playing || move !== null || controlsInteracting || dampingChanged) {
+      rafId = requestAnimationFrame(frameLoop);
+    }
   }
-  requestAnimationFrame(frameLoop);
+  if (pendingStart) {
+    startMission();
+  }
+  requestRender();
 }
 
 main().catch((err) => {
   console.error(err);
   const box = $("loading");
   if (box) {
+    box.hidden = false;
     box.textContent = `Error: ${err.message}. Sirve la carpeta frontend/ con un servidor local (ver README).`;
     box.classList.add("error");
   }
