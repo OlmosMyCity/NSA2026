@@ -15,6 +15,7 @@ import { useHealthReadings } from '../hooks/useHealthReadings';
 import { IndicatorCard } from './IndicatorCard';
 import { StatusBadge } from './StatusBadge';
 import { ZoneDetailPanel } from './ZoneDetailPanel';
+import { SignalNoisePanel } from './SignalNoisePanel';
 
 const DEMO_ASTRONAUT_ID = 'astro-01';
 
@@ -187,6 +188,8 @@ export function HealthDashboard() {
           ))}
         </div>
       </section>
+
+      <SignalNoisePanel astronautId={latest.astronautId} latestReading={latest} />
     </div>
   );
 }

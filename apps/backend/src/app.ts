@@ -4,6 +4,7 @@ import { authRouter } from "./interface/routers/authRouter.js";
 import { missionRouter } from "./interface/routers/missionRouter.js";
 import { astronautRouter } from "./interface/routers/astronautRouter.js";
 import { readingRouter } from "./interface/routers/healthReadingRouter.js";
+import { biodosimetryRouter } from "./interface/routers/biodosimetryRouter.js";
 import { adminRouter } from "./interface/routers/adminRouter.js";
 import { radiationRouter } from "./interface/routers/radiationRouter.js";
 import { errorHandler } from "./interface/middlewares/errorHandler.js";
@@ -26,6 +27,7 @@ export function createApp(): Express {
   app.use("/api/missions", missionRouter);
   app.use("/api/astronauts", astronautRouter);
   app.use("/api/readings", readingRouter);
+  app.use("/api/health-readings", biodosimetryRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/radiation", radiationRouter);
 

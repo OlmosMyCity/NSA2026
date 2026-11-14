@@ -1,0 +1,14 @@
+{
+  "keap1_nac": {
+    "affinity_kcal_mol": -4.652,
+    "structure_file": "structures/4IQK_keap1_nac_docked.pdb"
+  },
+  "keap1_ascorbate": {
+    "affinity_kcal_mol": -5.955,
+    "structure_file": "structures/4IQK_keap1_ascorbate_docked.pdb"
+  },
+  "keap1_tocopherol": {
+    "affinity_kcal_mol": -7.689,
+    "structure_file": "structures/4IQK_keap1_tocopherol_docked.pdb"
+  }
+}
