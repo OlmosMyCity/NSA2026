@@ -39,8 +39,10 @@ export async function openMedicalIncidentsFromReading(
       astronautId,
       source: "HEALTH_READING",
       readingId,
+      protocolId: alert.protocolId,
       metadata: {
         indicator: alert.indicator,
+        protocolId: alert.protocolId,
         value: alert.value,
         readingStatus: evaluation.status,
       },

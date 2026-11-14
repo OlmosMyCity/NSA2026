@@ -7,6 +7,7 @@ import { AcknowledgeIncidentUseCase } from "../../application/use-cases/incident
 import { CloseIncidentUseCase } from "../../application/use-cases/incident/CloseIncidentUseCase.js";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
+import { listMedicalProtocols } from "../../application/health/medicalProtocols.js";
 import { closeIncidentSchema, openIncidentSchema, parseWithValidation } from "../validation/schemas.js";
 
 export class IncidentController {
@@ -24,6 +25,10 @@ export class IncidentController {
     const astro = await this.astronautRepo.findByUserId(req.user.id);
     return astro?.id ?? null;
   }
+
+  listProtocols = (_req: Request, res: Response): void => {
+    res.status(200).json({ data: listMedicalProtocols() });
+  };
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
