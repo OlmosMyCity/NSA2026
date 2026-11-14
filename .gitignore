@@ -16,3 +16,5 @@ skills/
 .skills/
 .agents/
 skills-lock.json
+.vercel
+.env*
