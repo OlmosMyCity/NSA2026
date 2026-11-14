@@ -13,6 +13,7 @@ import type { IndicatorId } from '../domain/types';
 import { useHealthReadings } from '../hooks/useHealthReadings';
 import { StatusBadge } from './StatusBadge';
 import { TrendChart } from './TrendChart';
+import { SignalNoisePanel } from './SignalNoisePanel';
 
 const DEMO_ASTRONAUT_ID = 'astro-01';
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
@@ -255,6 +256,8 @@ export function TrendsView() {
           })}
         </div>
       </section>
+
+      <SignalNoisePanel astronautId={latest?.astronautId} latestReading={latest} />
     </div>
   );
 }
