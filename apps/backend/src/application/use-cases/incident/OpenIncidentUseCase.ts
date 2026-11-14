@@ -3,6 +3,7 @@ import { OpenIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { ValidationError } from "../../../domain/errors/AppError.js";
 import { getMissionContingencySpec } from "../../incident/missionCatalog.js";
+import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
 export type OpenIncidentInput = Omit<OpenIncidentDTO, "category" | "severity" | "title" | "description"> & {
   category?: IncidentCategory;
@@ -67,7 +68,9 @@ export class OpenIncidentUseCase {
           protocolId: resolvedProtocolId ?? existing.protocolId,
           metadata: resolvedMetadata ?? existing.metadata ?? {},
         });
-        return { incident: escalated ?? existing, created: false };
+        const resultIncident = escalated ?? existing;
+        incidentNotificationBus.publish("incident:escalated", resultIncident, "Severidad escalada a CRITICAL");
+        return { incident: resultIncident, created: false };
       }
 
       return { incident: existing, created: false };
@@ -86,6 +89,7 @@ export class OpenIncidentUseCase {
       astronautId: astronautScope,
     });
 
+    incidentNotificationBus.publish("incident:opened", created);
     return { incident: created, created: true };
   }
 }

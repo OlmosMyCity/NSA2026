@@ -2,6 +2,7 @@ import { Incident, IncidentStatus } from "@prisma/client";
 import { CloseIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
+import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
 export class CloseIncidentUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
@@ -31,6 +32,7 @@ export class CloseIncidentUseCase {
       throw new NotFoundError("Incidente", dto.id);
     }
 
+    incidentNotificationBus.publish("incident:closed", updated);
     return updated;
   }
 }

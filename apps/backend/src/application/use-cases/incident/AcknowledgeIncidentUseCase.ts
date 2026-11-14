@@ -2,6 +2,7 @@ import { Incident, IncidentStatus } from "@prisma/client";
 import { AcknowledgeIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
+import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
 export class AcknowledgeIncidentUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
@@ -34,6 +35,7 @@ export class AcknowledgeIncidentUseCase {
       throw new NotFoundError("Incidente", dto.id);
     }
 
+    incidentNotificationBus.publish("incident:acknowledged", updated);
     return updated;
   }
 }

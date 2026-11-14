@@ -20,12 +20,14 @@ const controller = new IncidentController(
   new OpenIncidentUseCase(incidentRepo),
   new AcknowledgeIncidentUseCase(incidentRepo),
   new CloseIncidentUseCase(incidentRepo),
-  astronautRepo
+  astronautRepo,
+  incidentRepo
 );
 
 export const incidentRouter = Router();
 
 incidentRouter.get("/", authenticate, controller.list);
+incidentRouter.get("/stream", authenticate, controller.stream);
 incidentRouter.get("/protocols", authenticate, controller.listProtocols);
 incidentRouter.get("/mission-catalog", authenticate, controller.listMissionCatalog);
 incidentRouter.get("/:id", authenticate, controller.getById);

@@ -12,6 +12,11 @@ import {
 } from "../../src/domain/models/Incident.js";
 import { OpenIncidentUseCase } from "../../src/application/use-cases/incident/OpenIncidentUseCase.js";
 import { listMissionContingencies } from "../../src/application/incident/missionCatalog.js";
+import {
+  escalateOverdueIncidents,
+  incidentNotificationBus,
+  IncidentNotificationEvent,
+} from "../../src/application/incident/incidentNotificationBus.js";
 import { AcknowledgeIncidentUseCase } from "../../src/application/use-cases/incident/AcknowledgeIncidentUseCase.js";
 import { CloseIncidentUseCase } from "../../src/application/use-cases/incident/CloseIncidentUseCase.js";
 import { openRadiationIncidentFromState } from "../../src/application/use-cases/incident/syncSystemIncidents.js";
@@ -292,5 +297,39 @@ describe("Fase 1 - Incidentes (open/acknowledge/close y deduplicación)", () => 
         source: "MANUAL",
       })
     ).rejects.toThrow(ValidationError);
+  });
+
+  it("Fase 7: emite eventos en el bus push y escala incidentes OPEN sin confirmar tras el tiempo límite", async () => {
+    const events: IncidentNotificationEvent[] = [];
+    const listener = (ev: IncidentNotificationEvent) => events.push(ev);
+    incidentNotificationBus.on("incident-event", listener);
+
+    try {
+      const { incident } = await openUseCase.execute({
+        category: IncidentCategory.MEDICAL,
+        type: "spo2",
+        severity: IncidentSeverity.WARNING,
+        title: "SpO2 limítrofe",
+        description: "93%",
+        astronautId: "astro-7",
+        source: "HEALTH_READING",
+      });
+
+      expect(events.map((e) => e.event)).toEqual(["incident:opened"]);
+
+      // Simular que pasaron 20 minutos sin confirmación (SLA WARNING = 15 min)
+      const future = new Date(incident.openedAt.getTime() + 20 * 60 * 1000);
+      const escalated = await escalateOverdueIncidents(repo, future);
+
+      expect(escalated).toHaveLength(1);
+      expect(escalated[0].severity).toBe(IncidentSeverity.CRITICAL);
+      expect(events.map((e) => e.event)).toEqual(["incident:opened", "incident:escalated"]);
+
+      // No vuelve a escalar el mismo incidente ya escalado
+      const secondPass = await escalateOverdueIncidents(repo, new Date(future.getTime() + 60_000));
+      expect(secondPass).toHaveLength(0);
+    } finally {
+      incidentNotificationBus.off("incident-event", listener);
+    }
   });
 });

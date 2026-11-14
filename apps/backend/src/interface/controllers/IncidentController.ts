@@ -6,9 +6,15 @@ import { OpenIncidentUseCase } from "../../application/use-cases/incident/OpenIn
 import { AcknowledgeIncidentUseCase } from "../../application/use-cases/incident/AcknowledgeIncidentUseCase.js";
 import { CloseIncidentUseCase } from "../../application/use-cases/incident/CloseIncidentUseCase.js";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
+import { IIncidentRepository } from "../../domain/repository/IIncidentRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
 import { listMedicalProtocols } from "../../application/health/medicalProtocols.js";
 import { listMissionContingencies } from "../../application/incident/missionCatalog.js";
+import {
+  escalateOverdueIncidents,
+  incidentNotificationBus,
+  IncidentNotificationEvent,
+} from "../../application/incident/incidentNotificationBus.js";
 import { closeIncidentSchema, openIncidentSchema, parseWithValidation } from "../validation/schemas.js";
 
 export class IncidentController {
@@ -18,7 +24,8 @@ export class IncidentController {
     private readonly openIncidentUseCase: OpenIncidentUseCase,
     private readonly acknowledgeIncidentUseCase: AcknowledgeIncidentUseCase,
     private readonly closeIncidentUseCase: CloseIncidentUseCase,
-    private readonly astronautRepo?: IAstronautRepository
+    private readonly astronautRepo?: IAstronautRepository,
+    private readonly incidentRepo?: IIncidentRepository
   ) {}
 
   private async resolveOwnAstronautId(req: Request): Promise<string | null> {
@@ -35,8 +42,57 @@ export class IncidentController {
     res.status(200).json({ data: listMissionContingencies() });
   };
 
+  stream = async (req: Request, res: Response): Promise<void> => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    const ownAstronautId =
+      req.user && req.user.role !== Role.ADMIN ? await this.resolveOwnAstronautId(req) : null;
+
+    const canReceive = (event: IncidentNotificationEvent): boolean => {
+      if (!req.user || req.user.role === Role.ADMIN) return true;
+      return !event.incident.astronautId || event.incident.astronautId === ownAstronautId;
+    };
+
+    const writeEvent = (eventName: string, payload: unknown) => {
+      res.write(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    writeEvent("connected", { timestamp: new Date().toISOString() });
+
+    const listener = (payload: IncidentNotificationEvent) => {
+      if (canReceive(payload)) {
+        writeEvent(payload.event, payload);
+      }
+    };
+
+    incidentNotificationBus.on("incident-event", listener);
+
+    if (this.incidentRepo) {
+      await escalateOverdueIncidents(this.incidentRepo).catch(() => undefined);
+    }
+
+    const heartbeat = setInterval(() => {
+      res.write(": keepalive\n\n");
+      if (this.incidentRepo) {
+        void escalateOverdueIncidents(this.incidentRepo).catch(() => undefined);
+      }
+    }, 20_000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      incidentNotificationBus.off("incident-event", listener);
+      res.end();
+    });
+  };
+
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (this.incidentRepo) {
+        await escalateOverdueIncidents(this.incidentRepo).catch(() => undefined);
+      }
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
 
