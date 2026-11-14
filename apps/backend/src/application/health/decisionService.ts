@@ -1,0 +1,397 @@
+import { createHash } from "node:crypto";
+import { GoogleGenAI } from "@google/genai";
+import { BODY_ZONES, type BodyZoneId } from "./hazards.js";
+import type { DigitalTwinState } from "./digitalTwin.js";
+import {
+  ACTION_DESCRIPTIONS,
+  decideByRules,
+  detectDiscrepancies,
+  riskScoreToLevel,
+  type DecisionDiscrepancy,
+  type DecisionOutcome,
+  type RecommendedAction,
+  type ZoneScoreEstimate,
+} from "./decisionRules.js";
+
+export type DecisionSource = "gemini-decision-1" | "cache" | "rules-fallback";
+
+export interface InstrumentImageInput {
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  dataBase64: string;
+}
+
+export interface DecideOptions {
+  freeTextMood?: string;
+  instrumentImage?: InstrumentImageInput;
+}
+
+export interface FreeTextMoodEstimate {
+  /** Escala 1..5 mapeada desde score 0..4. */
+  moodScore: number;
+  rawScore: number;
+  confidence: number;
+}
+
+export interface InstrumentImageEstimate {
+  status: "green" | "amber" | "red" | "unreadable";
+  visibleAlert: boolean;
+  confidence: number;
+}
+
+export interface DecisionResult {
+  /** Valores oficiales gobernados por reglas deterministas. */
+  score: Record<BodyZoneId, ZoneScoreEstimate>;
+  escalar: boolean;
+  accion: RecommendedAction;
+  confianza: number;
+  /** Resultado oficial completo (reglas) y estimación cruda del modelo. */
+  official: DecisionOutcome;
+  modelEstimate: DecisionOutcome;
+  discrepancy: DecisionDiscrepancy;
+  source: DecisionSource;
+  disclaimer: "estimación del modelo, no diagnóstico";
+  freeTextMoodEstimate?: FreeTextMoodEstimate;
+  instrumentEstimate?: InstrumentImageEstimate;
+}
+
+export interface DecisionsClientLike {
+  decisions: {
+    create(params: {
+      model: string;
+      input: unknown;
+      questions: Record<string, unknown>;
+    }): Promise<{
+      answers?: Record<string, Record<string, unknown>>;
+    }>;
+  };
+}
+
+export interface DecisionServiceConfig {
+  apiKey?: string;
+  demoOffline?: boolean;
+  maxCalls?: number;
+  client?: DecisionsClientLike;
+}
+
+const SCORE_CRITERIA_LEVELS: string[] = [
+  "stable (0): Todos los indicadores de la zona en verde, tendencia estable o mejorando, medición vigente y peligros bajo umbral.",
+  "watch (1): Medición vencida con valores previos verdes, tendencia empeorando dentro de verde o peligro ambiental elevado sin desviación clínica.",
+  "elevated (2): Uno o más indicadores en ámbar, o combinación de tendencia empeorando + medición vencida + peligro activo en la zona.",
+  "critical (3): Cualquier indicador en rojo, o múltiples en ámbar agravados por radiación/ambiente cerrado crítico.",
+];
+
+const VALID_ACTIONS: readonly RecommendedAction[] = [
+  "re_measure",
+  "rest",
+  "exercise",
+  "shelter_shielding",
+  "contact_ground",
+  "no_action",
+] as const;
+
+function buildQuestions(options?: DecideOptions): Record<string, unknown> {
+  const questions: Record<string, unknown> = {};
+
+  for (const zone of BODY_ZONES) {
+    questions[`risk_${zone}`] = {
+      type: "score",
+      instructions: `Evalúa el nivel de riesgo operacional de la zona '${zone}' usando valor actual, tendencia, medición vencida y peligros HRP activos.`,
+      criteria: SCORE_CRITERIA_LEVELS,
+    };
+  }
+
+  questions.escalate_flight_surgeon = {
+    type: "noul",
+    instructions:
+      "¿Conviene escalar al médico de vuelo (Flight Surgeon) en Tierra ahora? SÍ si hay cualquier zona roja/crítica, >=2 zonas ámbar empeorando, o radiación S4/S5 sin Storm Shelter, o SpO2<95 en ambiente hostil. NO si todo está verde o hay un único ámbar aislado estable.",
+  };
+
+  questions.primary_action = {
+    type: "choice",
+    instructions:
+      "Selecciona la única acción prioritaria más segura para el astronauta en este momento.",
+    criteria: ACTION_DESCRIPTIONS,
+  };
+
+  if (options?.freeTextMood && options.freeTextMood.trim().length > 0) {
+    questions.mood_from_text = {
+      type: "score",
+      instructions:
+        "Clasifica el estado de ánimo del astronauta según su nota de texto libre.",
+      criteria: [
+        "1/5: Crisis emocional, desesperanza o incapacidad operativa.",
+        "2/5: Muy decaído, aislado, frustrado o fatigado emocionalmente.",
+        "3/5: Neutral, tenso o levemente decaído.",
+        "4/5: Bien, estable y colaborador.",
+        "5/5: Óptimo, motivado y resiliente.",
+      ],
+    };
+  }
+
+  if (options?.instrumentImage) {
+    questions.instrument_status = {
+      type: "choice",
+      instructions:
+        "Clasifica el estado visual del instrumento médico en la imagen (oxímetro, tensiómetro, glucómetro o termómetro).",
+      criteria: {
+        green: "Lectura claramente visible dentro de rango nominal.",
+        amber: "Lectura visible en rango de precaución/limítrofe.",
+        red: "Lectura visible en rango crítico o pantalla con alerta roja.",
+        unreadable: "Imagen borrosa, cortada o sin lectura legible.",
+      },
+    };
+    questions.instrument_visible_alert = {
+      type: "noul",
+      instructions:
+        "¿La pantalla del instrumento muestra algún icono de alerta, batería crítica o valor fuera de rango?",
+    };
+  }
+
+  return questions;
+}
+
+function buildInputPayload(
+  state: DigitalTwinState,
+  options?: DecideOptions
+): unknown {
+  const { evaluatedAt: _ignored, ...stableState } = state;
+  const serializedState = JSON.stringify({
+    twin: stableState,
+    freeTextMood: options?.freeTextMood?.trim() || undefined,
+  });
+
+  if (!options?.instrumentImage) {
+    return serializedState;
+  }
+
+  return [
+    { text: serializedState },
+    {
+      inline_data: {
+        mime_type: options.instrumentImage.mimeType,
+        data: options.instrumentImage.dataBase64,
+      },
+    },
+  ];
+}
+
+function hashRequest(state: DigitalTwinState, options?: DecideOptions): string {
+  const { evaluatedAt: _ignored, ...stableState } = state;
+  const imageHash = options?.instrumentImage
+    ? createHash("sha256")
+        .update(options.instrumentImage.mimeType)
+        .update(options.instrumentImage.dataBase64)
+        .digest("hex")
+    : "";
+
+  return createHash("sha256")
+    .update(JSON.stringify(stableState))
+    .update("|")
+    .update(options?.freeTextMood?.trim() ?? "")
+    .update("|")
+    .update(imageHash)
+    .digest("hex");
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asAction(
+  value: unknown,
+  fallback: RecommendedAction
+): RecommendedAction {
+  return typeof value === "string" &&
+    (VALID_ACTIONS as readonly string[]).includes(value)
+    ? (value as RecommendedAction)
+    : fallback;
+}
+
+export class DecisionService {
+  private readonly cache = new Map<string, DecisionResult>();
+  private callsUsed = 0;
+  private readonly maxCalls: number;
+  private readonly demoOffline: boolean;
+  private readonly apiKey: string | undefined;
+  private readonly injectedClient?: DecisionsClientLike;
+
+  constructor(config: DecisionServiceConfig = {}) {
+    this.apiKey = config.apiKey ?? process.env.GEMINI_API_KEY;
+    this.demoOffline =
+      config.demoOffline ?? process.env.DEMO_OFFLINE === "true";
+    this.maxCalls =
+      config.maxCalls ??
+      (Number(process.env.DECISION_API_MAX_CALLS) || 50);
+    this.injectedClient = config.client;
+  }
+
+  getStats(): { callsUsed: number; maxCalls: number; cacheSize: number } {
+    return {
+      callsUsed: this.callsUsed,
+      maxCalls: this.maxCalls,
+      cacheSize: this.cache.size,
+    };
+  }
+
+  private createFallbackResult(official: DecisionOutcome): DecisionResult {
+    return {
+      score: official.score,
+      escalar: official.escalar,
+      accion: official.accion,
+      confianza: official.confianza,
+      official,
+      modelEstimate: official,
+      discrepancy: detectDiscrepancies(official, official),
+      source: "rules-fallback",
+      disclaimer: "estimación del modelo, no diagnóstico",
+    };
+  }
+
+  async decide(
+    state: DigitalTwinState,
+    options?: DecideOptions
+  ): Promise<DecisionResult> {
+    const official = decideByRules(state);
+    const cacheKey = hashRequest(state, options);
+
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return { ...cached, source: "cache" };
+    }
+
+    const canCallApi =
+      !this.demoOffline &&
+      this.callsUsed < this.maxCalls &&
+      Boolean(this.injectedClient || this.apiKey);
+
+    if (!canCallApi) {
+      return this.createFallbackResult(official);
+    }
+
+    try {
+      const client: DecisionsClientLike =
+        this.injectedClient ??
+        (new GoogleGenAI({
+          apiVersion: "v1beta",
+          apiKey: this.apiKey,
+        }) as unknown as DecisionsClientLike);
+
+      this.callsUsed += 1;
+
+      const response = await client.decisions.create({
+        model: "gemini-decision-1",
+        input: buildInputPayload(state, options),
+        questions: buildQuestions(options),
+      });
+
+      const answers = response.answers ?? {};
+      const modelScore = {} as Record<BodyZoneId, ZoneScoreEstimate>;
+      const confidences: number[] = [];
+
+      for (const zone of BODY_ZONES) {
+        const ans = answers[`risk_${zone}`];
+        const rawScore = asNumber(ans?.score, official.score[zone].riskScore);
+        const conf = asNumber(ans?.confidence, 0.5);
+        confidences.push(conf);
+        modelScore[zone] = {
+          zone,
+          riskScore: Number(rawScore.toFixed(2)),
+          riskLevel: riskScoreToLevel(rawScore),
+          confidence: Number(conf.toFixed(3)),
+        };
+      }
+
+      const noulAns = answers.escalate_flight_surgeon;
+      const noulProb = asNumber(noulAns?.noul, official.escalarProbabilidad);
+      const noulConf = asNumber(noulAns?.confidence, 0.5);
+      confidences.push(noulConf);
+
+      const choiceAns = answers.primary_action;
+      const choiceAction = asAction(choiceAns?.choice, official.accion);
+      const choiceConf = asNumber(choiceAns?.confidence, 0.5);
+      confidences.push(choiceConf);
+
+      const avgConfidence = Number(
+        (
+          confidences.reduce((sum, c) => sum + c, 0) /
+          Math.max(1, confidences.length)
+        ).toFixed(3)
+      );
+
+      const modelEstimate: DecisionOutcome = {
+        score: modelScore,
+        escalar: noulProb >= 0.5,
+        escalarProbabilidad: Number(noulProb.toFixed(3)),
+        accion: choiceAction,
+        confianza: avgConfidence,
+      };
+
+      const discrepancy = detectDiscrepancies(official, modelEstimate);
+
+      let freeTextMoodEstimate: FreeTextMoodEstimate | undefined;
+      if (answers.mood_from_text) {
+        const rawScore = asNumber(answers.mood_from_text.score, 2);
+        freeTextMoodEstimate = {
+          moodScore: Math.max(1, Math.min(5, Math.round(rawScore) + 1)),
+          rawScore: Number(rawScore.toFixed(2)),
+          confidence: Number(
+            asNumber(answers.mood_from_text.confidence, 0.5).toFixed(3)
+          ),
+        };
+      }
+
+      let instrumentEstimate: InstrumentImageEstimate | undefined;
+      if (answers.instrument_status) {
+        const rawStatus = answers.instrument_status.choice;
+        const status =
+          rawStatus === "green" ||
+          rawStatus === "amber" ||
+          rawStatus === "red" ||
+          rawStatus === "unreadable"
+            ? rawStatus
+            : "unreadable";
+        instrumentEstimate = {
+          status,
+          visibleAlert:
+            asNumber(answers.instrument_visible_alert?.noul, 0) >= 0.5,
+          confidence: Number(
+            asNumber(answers.instrument_status.confidence, 0.5).toFixed(3)
+          ),
+        };
+      }
+
+      const result: DecisionResult = {
+        // Regla gana siempre como estado oficial
+        score: official.score,
+        escalar: official.escalar,
+        accion: official.accion,
+        confianza: avgConfidence,
+        official,
+        modelEstimate,
+        discrepancy,
+        source: "gemini-decision-1",
+        disclaimer: "estimación del modelo, no diagnóstico",
+        freeTextMoodEstimate,
+        instrumentEstimate,
+      };
+
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch {
+      return this.createFallbackResult(official);
+    }
+  }
+}
+
+const defaultService = new DecisionService();
+
+/**
+ * Interfaz única pública: decide(estado) → { score, escalar, accion, confianza, ... }
+ */
+export async function decide(
+  state: DigitalTwinState,
+  options?: DecideOptions
+): Promise<DecisionResult> {
+  return defaultService.decide(state, options);
+}
+

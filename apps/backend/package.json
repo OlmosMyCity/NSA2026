@@ -27,6 +27,7 @@
   "author": "Artemis IV Team",
   "license": "MIT",
   "dependencies": {
+    "@google/genai": "^3.3.0",
     "@nsa2026/radiation-engine": "*",
     "@prisma/client": "^6.4.1",
     "@vercel/blob": "^2.9.0",
