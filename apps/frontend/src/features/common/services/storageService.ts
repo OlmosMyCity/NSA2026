@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { ENV } from '../config/env';
+import { httpClient } from './httpClient';
 
 // Cliente Supabase para subida de archivos a Supabase Storage (S3-compatible)
 const supabase =
@@ -24,9 +25,8 @@ export const storageService = {
       throw new Error('El archivo excede el tamaño máximo permitido de 5 MB.');
     }
 
-    // 2. Si no hay credenciales de Supabase configuradas o estamos en modo mock
-    if (!supabase || ENV.USE_MOCKS) {
-      // Simular almacenamiento en mock generando un data URL persistente
+    // 2. Modo mock: generar un data URL local para pruebas sin backend
+    if (ENV.USE_MOCKS) {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -36,7 +36,15 @@ export const storageService = {
       });
     }
 
-    // 3. Subida real a Supabase Storage
+    // 3. Si no hay credenciales de Supabase en el cliente, subir vía backend a Vercel Blob
+    if (!supabase) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await httpClient.post<{ url: string }>(`/uploads/${folder}`, formData);
+      return res.url;
+    }
+
+    // 4. Subida directa a Supabase Storage (si está configurado en el cliente)
     const ext = file.name.split('.').pop() || 'png';
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
 

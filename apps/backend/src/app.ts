@@ -7,6 +7,7 @@ import { readingRouter } from "./interface/routers/healthReadingRouter.js";
 import { biodosimetryRouter } from "./interface/routers/biodosimetryRouter.js";
 import { adminRouter } from "./interface/routers/adminRouter.js";
 import { radiationRouter } from "./interface/routers/radiationRouter.js";
+import { uploadRouter } from "./interface/routers/uploadRouter.js";
 import { errorHandler } from "./interface/middlewares/errorHandler.js";
 
 /**
@@ -30,6 +31,7 @@ export function createApp(): Express {
   app.use("/api/health-readings", biodosimetryRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/radiation", radiationRouter);
+  app.use("/api/uploads", uploadRouter);
 
   // Health check rápido del microservicio
   app.get(["/health", "/api/health"], (_req, res) => {

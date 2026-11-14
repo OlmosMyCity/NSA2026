@@ -29,6 +29,7 @@
   "dependencies": {
     "@nsa2026/radiation-engine": "*",
     "@prisma/client": "^6.4.1",
+    "@vercel/blob": "^2.9.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { put } from "@vercel/blob";
 
 export type StorageFolder = "missions" | "astronauts";
 
@@ -10,20 +11,36 @@ export const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 
-function getConfig() {
+function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
-    throw new Error("SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar configurados para subir imágenes.");
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN o SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar configurados para subir imágenes."
+    );
   }
   return { url: url.replace(/\/+$/, ""), key, bucket: process.env.SUPABASE_STORAGE_BUCKET || "artemis-assets" };
 }
 
-/** Supabase Storage (API REST compatible con S3) usando la service key: solo desde el backend. */
+/**
+ * Servicio de almacenamiento de imágenes: usa Vercel Blob cuando BLOB_READ_WRITE_TOKEN
+ * está configurado y mantiene respaldo compatible con Supabase Storage.
+ */
 export const storageService = {
   async uploadImage(file: { buffer: Buffer; mimetype: string }, folder: StorageFolder): Promise<string> {
-    const { url, key, bucket } = getConfig();
     const path = `${folder}/${Date.now()}-${randomUUID()}.${IMAGE_EXTENSIONS[file.mimetype] ?? "bin"}`;
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+
+    if (blobToken) {
+      const blob = await put(path, file.buffer, {
+        access: "public",
+        contentType: file.mimetype,
+        token: blobToken,
+      });
+      return blob.url;
+    }
+
+    const { url, key, bucket } = getSupabaseConfig();
 
     const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
       method: "POST",
