@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Rocket } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { astronautService } from '@/features/astronauts/services/astronautService';
+import { missionService } from '@/features/missions/services/missionService';
 
 const TABS = [
   { href: '/dashboard', label: 'Anatomical Body' },
@@ -18,11 +19,34 @@ export function HealthTabs() {
   const [missionId, setMissionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.astronautId) return;
-    astronautService
-      .getById(user.astronautId)
-      .then((a) => setMissionId(a.missionId))
-      .catch(() => setMissionId(null));
+    let alive = true;
+
+    async function resolveMission() {
+      if (user?.astronautId) {
+        try {
+          const astro = await astronautService.getById(user.astronautId);
+          if (alive && astro.missionId) {
+            setMissionId(astro.missionId);
+            return;
+          }
+        } catch {
+          // Fallback to active mission list
+        }
+      }
+
+      try {
+        const res = await missionService.list({ limit: 10 });
+        const active = res.data.find((m) => m.status === 'IN_PROGRESS') ?? res.data[0];
+        if (alive) setMissionId(active?.id ?? null);
+      } catch {
+        if (alive) setMissionId(null);
+      }
+    }
+
+    resolveMission();
+    return () => {
+      alive = false;
+    };
   }, [user?.astronautId]);
 
   return (
