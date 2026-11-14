@@ -50,6 +50,8 @@ export interface HealthReadingInput {
 export interface HealthAlert {
   indicator: string;
   level: Exclude<ApiHealthStatus, 'OK'>;
+  /** Protocolo médico del catálogo del backend (p. ej. PROTO_HYPOXIA); la vista previa local no lo calcula. */
+  protocolId?: string;
   message: string;
   value: number;
 }

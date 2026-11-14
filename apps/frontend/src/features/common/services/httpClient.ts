@@ -19,6 +19,20 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   skipAuth?: boolean;
 }
 
+/**
+ * Transporte: el backend simulado cuando NEXT_PUBLIC_USE_MOCKS=true (solo para las rutas que
+ * simula) y el `fetch` real en cualquier otro caso. La comparación literal con process.env
+ * permite que Next.js elimine la rama y el import dinámico en los builds sin mocks.
+ */
+async function transport(url: string, init: RequestInit): Promise<Response> {
+  if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true') {
+    const { mockFetch } = await import('../mocks/mockServer');
+    const mocked = await mockFetch(url, init);
+    if (mocked) return mocked;
+  }
+  return fetch(url, init);
+}
+
 class HttpClient {
   private baseUrl: string;
 
@@ -79,7 +93,7 @@ class HttpClient {
 
     let response: Response;
     try {
-      response = await fetch(url, config);
+      response = await transport(url, config);
     } catch (networkError) {
       throw new ApiError(
         'Connection failure with mission telemetry center (network error).',

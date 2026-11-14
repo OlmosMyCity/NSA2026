@@ -1,13 +1,16 @@
 /**
  * Configuración centralizada de variables de entorno para el cliente frontend.
+ *
+ * API_HOST: en producción frontend y backend comparten dominio (vercel.json enruta `/api/*`
+ * al backend), así que por defecto es la ruta relativa `/api`; en `next dev` el backend
+ * corre aparte en el puerto 4000.
  */
+const DEFAULT_API_HOST = process.env.NODE_ENV === 'development' ? 'http://localhost:4000/api' : '/api';
+
 export const ENV = {
-  API_HOST: process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:4000/api',
+  API_HOST: process.env.NEXT_PUBLIC_API_HOST || DEFAULT_API_HOST,
   VISION_URL: process.env.NEXT_PUBLIC_VISION_URL || 'http://localhost:8000',
   USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true',
-  SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  SUPABASE_BUCKET: process.env.NEXT_PUBLIC_SUPABASE_BUCKET || 'artemis-assets',
 } as const;
 
 /**
