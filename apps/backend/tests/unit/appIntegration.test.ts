@@ -176,4 +176,76 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     expect(res.status).toBe(403);
     expect(upload).not.toHaveBeenCalled();
   });
+
+  it("debe aplicar headers de seguridad y omitir x-powered-by en rutas /api", async () => {
+    const res = await fetch(`${baseUrl}/api/health`);
+
+    expect(res.headers.get("x-powered-by")).toBeNull();
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("debe restringir CORS a orígenes permitidos y bloquear orígenes externos", async () => {
+    const allowed = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: "https://orbvital-nsa2026.vercel.app" },
+    });
+    const blocked = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: "https://evil.example" },
+    });
+
+    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://orbvital-nsa2026.vercel.app");
+    expect(blocked.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("debe exigir autenticación ADMIN en POST /api/radiation/simulate", async () => {
+    const adminToken = tokenService.sign({
+      id: "admin-test-01",
+      email: "elena.rodriguez@nasa.gov",
+      role: Role.ADMIN,
+    });
+
+    const anon = await fetch(`${baseUrl}/api/radiation/simulate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario: "PEAK_STORM_S4" }),
+    });
+    const asUser = await fetch(`${baseUrl}/api/radiation/simulate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+      body: JSON.stringify({ scenario: "PEAK_STORM_S4" }),
+    });
+    const asAdmin = await fetch(`${baseUrl}/api/radiation/simulate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ scenario: "RESET" }),
+    });
+
+    expect(anon.status).toBe(401);
+    expect(asUser.status).toBe(403);
+    expect(asAdmin.status).toBe(200);
+  });
+
+  it("debe rechazar valores NaN o fuera de rango en POST /api/readings con 400", async () => {
+    const res = await fetch(`${baseUrl}/api/readings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${userToken}`,
+      },
+      body: JSON.stringify({
+        astronautId: "astro-01",
+        heartRateBpm: "no-numero",
+        systolicMmHg: 120,
+        diastolicMmHg: 80,
+        glucoseMgDl: 95,
+        temperatureC: 36.6,
+        spo2Pct: 98,
+        sleepHours: 7.5,
+        mood: 4,
+      }),
+    });
+
+    expect(res.status).toBe(400);
+  });
 });

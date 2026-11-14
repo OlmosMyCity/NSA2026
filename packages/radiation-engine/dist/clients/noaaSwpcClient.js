@@ -3,17 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NoaaSwpcClient = void 0;
 class NoaaSwpcClient {
     baseUrl = 'https://services.swpc.noaa.gov';
+    async fetchNoaaJson(path) {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+            signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) {
+            throw new Error(`NOAA SWPC HTTP error (${path}): ${response.status}`);
+        }
+        return (await response.json());
+    }
     /**
      * Obtiene las probabilidades a 1, 2 y 3 días de fulguraciones (C, M, X) y eventos de protones
      * calculadas por el modelo operacional de NOAA SWPC.
      */
-    async getSolarProbabilities() {
+    async getSolarProbabilities(options = {}) {
         try {
-            const response = await fetch(`${this.baseUrl}/json/solar_probabilities.json`);
-            if (!response.ok) {
-                throw new Error(`NOAA SWPC probabilities HTTP error: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.fetchNoaaJson('/json/solar_probabilities.json');
             return (data || []).map((item) => ({
                 date: item.date,
                 cClass1DayPct: item.c_class_1_day ?? 0,
@@ -32,6 +37,8 @@ class NoaaSwpcClient {
             }));
         }
         catch (err) {
+            if (options.strict)
+                throw err;
             console.warn('[NoaaSwpcClient] Error fetching probabilities, using fallback:', err);
             return this.getFallbackProbabilities();
         }
@@ -39,12 +46,9 @@ class NoaaSwpcClient {
     /**
      * Obtiene la telemetría más reciente de rayos X de satélites GOES (primario).
      */
-    async getLatestXrays() {
+    async getLatestXrays(options = {}) {
         try {
-            const response = await fetch(`${this.baseUrl}/json/goes/primary/xrays-6-hour.json`);
-            if (!response.ok)
-                throw new Error(`GOES X-rays HTTP error: ${response.status}`);
-            const list = await response.json();
+            const list = await this.fetchNoaaJson('/json/goes/primary/xrays-6-hour.json');
             if (!Array.isArray(list) || list.length === 0)
                 return null;
             // Filtrar el canal 0.1-0.8nm (estándar para clasificación B, C, M, X)
@@ -68,6 +72,8 @@ class NoaaSwpcClient {
             };
         }
         catch (err) {
+            if (options.strict)
+                throw err;
             console.warn('[NoaaSwpcClient] Error fetching GOES X-rays, using fallback:', err);
             return {
                 timestamp: new Date().toISOString(),
@@ -82,12 +88,9 @@ class NoaaSwpcClient {
     /**
      * Obtiene la telemetría de protones de alta energía (para evaluar tormenta en curso)
      */
-    async getLatestProtons() {
+    async getLatestProtons(options = {}) {
         try {
-            const response = await fetch(`${this.baseUrl}/json/goes/primary/integral-protons-6-hour.json`);
-            if (!response.ok)
-                throw new Error(`GOES protons HTTP error: ${response.status}`);
-            const list = await response.json();
+            const list = await this.fetchNoaaJson('/json/goes/primary/integral-protons-6-hour.json');
             if (!Array.isArray(list) || list.length === 0)
                 return [];
             const latestTime = list[list.length - 1].time_tag;
@@ -99,6 +102,8 @@ class NoaaSwpcClient {
             }));
         }
         catch (err) {
+            if (options.strict)
+                throw err;
             console.warn('[NoaaSwpcClient] Error fetching GOES protons, using fallback:', err);
             return [
                 { timestamp: new Date().toISOString(), energyChannel: '>=10 MeV', fluxPfu: 0.8 },

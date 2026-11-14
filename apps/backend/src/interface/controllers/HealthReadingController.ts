@@ -8,6 +8,11 @@ import { GetAstronautHealthSummaryUseCase } from "../../application/use-cases/he
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
 import { HealthStatus, Role } from "@prisma/client";
+import {
+  createHealthReadingSchema,
+  parseWithValidation,
+  updateHealthReadingSchema,
+} from "../validation/schemas.js";
 
 export class HealthReadingController {
   constructor(
@@ -110,50 +115,18 @@ export class HealthReadingController {
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const {
-        astronautId,
-        heartRateBpm,
-        systolicMmHg,
-        diastolicMmHg,
-        glucoseMgDl,
-        temperatureC,
-        spo2Pct,
-        sleepHours,
-        mood,
-        notes,
-        takenAt,
-      } = req.body ?? {};
+      const payload = parseWithValidation(createHealthReadingSchema, req.body ?? {});
 
-      if (
-        !astronautId ||
-        heartRateBpm === undefined ||
-        systolicMmHg === undefined ||
-        diastolicMmHg === undefined ||
-        glucoseMgDl === undefined ||
-        temperatureC === undefined ||
-        spo2Pct === undefined ||
-        sleepHours === undefined ||
-        mood === undefined
-      ) {
-        res.status(400).json({
-          error:
-            "Todos los 7 indicadores vitales ('heartRateBpm', 'systolicMmHg', 'diastolicMmHg', 'glucoseMgDl', 'temperatureC', 'spo2Pct', 'sleepHours', 'mood') y el 'astronautId' son obligatorios.",
-        });
-        return;
+      if (req.user && req.user.role !== Role.ADMIN) {
+        const ownAstronautId = await this.resolveOwnAstronautId(req);
+        if (!ownAstronautId || payload.astronautId !== ownAstronautId) {
+          throw new ForbiddenError("No tienes permiso para registrar mediciones de otro tripulante.");
+        }
       }
 
       const reading = await this.createHealthReadingUseCase.execute({
-        astronautId,
-        heartRateBpm: Number(heartRateBpm),
-        systolicMmHg: Number(systolicMmHg),
-        diastolicMmHg: Number(diastolicMmHg),
-        glucoseMgDl: Number(glucoseMgDl),
-        temperatureC: Number(temperatureC),
-        spo2Pct: Number(spo2Pct),
-        sleepHours: Number(sleepHours),
-        mood: Number(mood),
-        notes,
-        takenAt: takenAt ? new Date(takenAt) : undefined,
+        ...payload,
+        takenAt: payload.takenAt ?? undefined,
       });
 
       res.status(201).json(reading);
@@ -178,32 +151,13 @@ export class HealthReadingController {
         }
       }
 
-      const {
-        heartRateBpm,
-        systolicMmHg,
-        diastolicMmHg,
-        glucoseMgDl,
-        temperatureC,
-        spo2Pct,
-        sleepHours,
-        mood,
-        notes,
-        recommendation,
-        takenAt,
-      } = req.body ?? {};
+      const payload = parseWithValidation(updateHealthReadingSchema, req.body ?? {});
+      const { recommendation, ...safeMetrics } = payload;
 
       const updated = await this.updateHealthReadingUseCase.execute(id, {
-        heartRateBpm: heartRateBpm !== undefined ? Number(heartRateBpm) : undefined,
-        systolicMmHg: systolicMmHg !== undefined ? Number(systolicMmHg) : undefined,
-        diastolicMmHg: diastolicMmHg !== undefined ? Number(diastolicMmHg) : undefined,
-        glucoseMgDl: glucoseMgDl !== undefined ? Number(glucoseMgDl) : undefined,
-        temperatureC: temperatureC !== undefined ? Number(temperatureC) : undefined,
-        spo2Pct: spo2Pct !== undefined ? Number(spo2Pct) : undefined,
-        sleepHours: sleepHours !== undefined ? Number(sleepHours) : undefined,
-        mood: mood !== undefined ? Number(mood) : undefined,
-        notes,
-        recommendation,
-        takenAt: takenAt ? new Date(takenAt) : undefined,
+        ...safeMetrics,
+        // Solo un cirujano de vuelo (ADMIN) puede sobrescribir la recomendación clínica calculada
+        ...(req.user?.role === Role.ADMIN && recommendation !== undefined ? { recommendation } : {}),
       });
 
       res.status(200).json(updated);

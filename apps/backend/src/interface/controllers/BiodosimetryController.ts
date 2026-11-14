@@ -3,12 +3,7 @@ import {
   BiodosimetryTriageUseCase,
   ShieldingType,
 } from "../../application/use-cases/health/BiodosimetryTriageUseCase.js";
-
-const VALID_SHIELDING: ReadonlySet<string> = new Set([
-  "EVA_SUIT",
-  "CREW_CABIN_NOMINAL",
-  "STORM_SHELTER",
-]);
+import { biodosimetryTriageSchema, parseWithValidation } from "../validation/schemas.js";
 
 export class BiodosimetryController {
   constructor(private readonly triageUseCase: BiodosimetryTriageUseCase) {}
@@ -16,14 +11,7 @@ export class BiodosimetryController {
   triage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { astronautId, shieldingType, healthReading, radiationState, biomarkers } =
-        req.body ?? {};
-
-      if (shieldingType !== undefined && !VALID_SHIELDING.has(shieldingType)) {
-        res.status(400).json({
-          error: "shieldingType inválido. Valores permitidos: EVA_SUIT, CREW_CABIN_NOMINAL, STORM_SHELTER.",
-        });
-        return;
-      }
+        parseWithValidation(biodosimetryTriageSchema, req.body ?? {});
 
       const result = await this.triageUseCase.execute({
         astronautId,

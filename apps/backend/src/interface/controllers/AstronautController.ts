@@ -4,6 +4,11 @@ import { GetAstronautByIdUseCase } from "../../application/use-cases/astronaut/G
 import { CreateAstronautUseCase } from "../../application/use-cases/astronaut/CreateAstronautUseCase.js";
 import { UpdateAstronautUseCase } from "../../application/use-cases/astronaut/UpdateAstronautUseCase.js";
 import { DeleteAstronautUseCase } from "../../application/use-cases/astronaut/DeleteAstronautUseCase.js";
+import {
+  createAstronautSchema,
+  parseWithValidation,
+  updateAstronautSchema,
+} from "../validation/schemas.js";
 
 export class AstronautController {
   constructor(
@@ -51,22 +56,15 @@ export class AstronautController {
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name, role, age, missionId, userId, photoUrl } = req.body ?? {};
-
-      if (!name || !role || !missionId || age === undefined) {
-        res.status(400).json({
-          error: "Los campos 'name', 'role', 'age' y 'missionId' son obligatorios.",
-        });
-        return;
-      }
+      const payload = parseWithValidation(createAstronautSchema, req.body ?? {});
 
       const astronaut = await this.createAstronautUseCase.execute({
-        name,
-        role,
-        age: Number(age),
-        missionId,
-        userId: userId || null,
-        photoUrl: photoUrl || null,
+        name: payload.name,
+        role: payload.role,
+        age: payload.age,
+        missionId: payload.missionId,
+        userId: payload.userId ?? null,
+        photoUrl: payload.photoUrl ?? null,
       });
 
       res.status(201).json(astronaut);
@@ -78,16 +76,9 @@ export class AstronautController {
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { name, role, age, missionId, userId, photoUrl } = req.body ?? {};
+      const payload = parseWithValidation(updateAstronautSchema, req.body ?? {});
 
-      const astronaut = await this.updateAstronautUseCase.execute(id, {
-        name,
-        role,
-        age: age !== undefined ? Number(age) : undefined,
-        missionId,
-        userId,
-        photoUrl,
-      });
+      const astronaut = await this.updateAstronautUseCase.execute(id, payload);
 
       res.status(200).json(astronaut);
     } catch (error) {

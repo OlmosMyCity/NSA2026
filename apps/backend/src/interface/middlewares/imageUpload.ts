@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import multer from "multer";
 import { ValidationError } from "../../domain/errors/AppError.js";
-import { IMAGE_EXTENSIONS, StorageFolder, storageService } from "../../infrastructure/services/StorageService.js";
+import {
+  hasValidImageMagicBytes,
+  IMAGE_EXTENSIONS,
+  StorageFolder,
+  storageService,
+} from "../../infrastructure/services/StorageService.js";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB, igual que el frontend
 
@@ -10,7 +15,7 @@ const parser = multer({
   limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype in IMAGE_EXTENSIONS) cb(null, true);
-    else cb(new ValidationError("Formato de imagen inválido. Solo se admiten JPG, PNG, WEBP o SVG."));
+    else cb(new ValidationError("Formato de imagen inválido. Solo se admiten JPG, PNG o WEBP."));
   },
 });
 
@@ -39,6 +44,9 @@ export function imageUpload(field: string, folder: StorageFolder, bodyKey: strin
   const store = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (req.file) {
+        if (!hasValidImageMagicBytes(req.file.buffer, req.file.mimetype)) {
+          throw new ValidationError("El contenido del archivo no coincide con un formato JPG, PNG o WEBP válido.");
+        }
         req.body = { ...(req.body ?? {}), [bodyKey]: await storageService.uploadImage(req.file, folder) };
       }
       next();

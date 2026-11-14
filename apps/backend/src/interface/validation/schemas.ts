@@ -1,0 +1,226 @@
+import { Environment, MissionStatus } from "@prisma/client";
+import { z } from "zod";
+import { ValidationError } from "../../domain/errors/AppError.js";
+
+/**
+ * Convierte cadenas numéricas no vacías sin transformar `""` o `null` en `0`.
+ */
+function finiteNumber(
+  label: string,
+  min: number,
+  max: number,
+  options: { int?: boolean } = {}
+) {
+  return z.preprocess(
+    (val) => {
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        return trimmed === "" ? NaN : Number(trimmed);
+      }
+      if (typeof val === "boolean" || val === null) return NaN;
+      return val;
+    },
+    (options.int
+      ? z.number({ message: `'${label}' debe ser un número válido.` }).int(`'${label}' debe ser un entero.`)
+      : z.number({ message: `'${label}' debe ser un número válido.` })
+    )
+      .finite(`'${label}' debe ser un número finito.`)
+      .min(min, `'${label}' debe ser mayor o igual a ${min}.`)
+      .max(max, `'${label}' debe ser menor o igual a ${max}.`)
+  );
+}
+
+/**
+ * Valida URLs opcionales de imagen permitiendo únicamente esquema `https:` o `null`.
+ * Conserva `undefined` para no sobrescribir valores en actualizaciones parciales.
+ */
+export const safeImageUrlSchema = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((val) => {
+    if (val === undefined) return undefined;
+    if (val === null) return null;
+    const trimmed = val.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  })
+  .refine(
+    (val) => {
+      if (val === undefined || val === null) return true;
+      try {
+        const parsed = new URL(val);
+        return parsed.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "La URL de imagen debe usar protocolo HTTPS válido." }
+  );
+
+const requiredNonEmptyString = (label: string, maxLen: number) =>
+  z
+    .string({ message: `El campo '${label}' es obligatorio.` })
+    .trim()
+    .min(1, `El campo '${label}' no puede estar vacío.`)
+    .max(maxLen, `El campo '${label}' no puede exceder ${maxLen} caracteres.`);
+
+const optionalDateSchema = z
+  .union([z.string(), z.date(), z.null(), z.undefined()])
+  .transform((val, ctx) => {
+    if (val === undefined) return undefined;
+    if (val === null || val === "") return null;
+    const date = val instanceof Date ? val : new Date(val);
+    if (isNaN(date.getTime())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de fecha inválido." });
+      return z.NEVER;
+    }
+    return date;
+  });
+
+const healthVitalsShape = {
+  heartRateBpm: finiteNumber("heartRateBpm", 20, 260, { int: true }),
+  systolicMmHg: finiteNumber("systolicMmHg", 40, 300, { int: true }),
+  diastolicMmHg: finiteNumber("diastolicMmHg", 20, 200, { int: true }),
+  glucoseMgDl: finiteNumber("glucoseMgDl", 15, 1000),
+  temperatureC: finiteNumber("temperatureC", 25, 45),
+  spo2Pct: finiteNumber("spo2Pct", 30, 100),
+  sleepHours: finiteNumber("sleepHours", 0, 24),
+  mood: finiteNumber("mood", 1, 5, { int: true }),
+  notes: z.string().trim().max(1000, "Las notas no pueden exceder 1000 caracteres.").nullable().optional(),
+  takenAt: optionalDateSchema,
+};
+
+export const createHealthReadingSchema = z.object({
+  astronautId: requiredNonEmptyString("astronautId", 128),
+  ...healthVitalsShape,
+});
+
+export const updateHealthReadingSchema = z.object({
+    heartRateBpm: healthVitalsShape.heartRateBpm.optional(),
+    systolicMmHg: healthVitalsShape.systolicMmHg.optional(),
+    diastolicMmHg: healthVitalsShape.diastolicMmHg.optional(),
+    glucoseMgDl: healthVitalsShape.glucoseMgDl.optional(),
+    temperatureC: healthVitalsShape.temperatureC.optional(),
+    spo2Pct: healthVitalsShape.spo2Pct.optional(),
+    sleepHours: healthVitalsShape.sleepHours.optional(),
+    mood: healthVitalsShape.mood.optional(),
+    notes: healthVitalsShape.notes,
+    recommendation: z
+      .string()
+      .trim()
+      .max(2000, "La recomendación no puede exceder 2000 caracteres.")
+      .nullable()
+      .optional(),
+    takenAt: z
+      .union([z.string(), z.date(), z.undefined()])
+      .transform((val, ctx) => {
+        if (val === undefined) return undefined;
+        const date = val instanceof Date ? val : new Date(val);
+        if (isNaN(date.getTime())) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de 'takenAt' inválido." });
+          return z.NEVER;
+        }
+        return date;
+      }),
+  });
+
+export const createMissionSchema = z
+  .object({
+    name: requiredNonEmptyString("name", 200),
+    description: requiredNonEmptyString("description", 4000),
+    environment: z.nativeEnum(Environment).optional(),
+    status: z.nativeEnum(MissionStatus).optional(),
+    startDate: z
+      .union([z.string(), z.date()], {
+        message: "El campo 'startDate' es obligatorio y debe ser una fecha válida.",
+      })
+      .transform((val, ctx) => {
+        const date = val instanceof Date ? val : new Date(val);
+        if (isNaN(date.getTime())) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "El formato de 'startDate' no es una fecha válida.",
+          });
+          return z.NEVER;
+        }
+        return date;
+      }),
+    endDate: optionalDateSchema,
+    patchUrl: safeImageUrlSchema.optional(),
+  })
+  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
+    message: "La fecha de fin ('endDate') no puede ser anterior a 'startDate'.",
+  });
+
+export const updateMissionSchema = z.object({
+  name: requiredNonEmptyString("name", 200).optional(),
+  description: requiredNonEmptyString("description", 4000).optional(),
+  environment: z.nativeEnum(Environment).optional(),
+  status: z.nativeEnum(MissionStatus).optional(),
+  startDate: z
+    .union([z.string(), z.date(), z.undefined()])
+    .transform((val, ctx) => {
+      if (val === undefined) return undefined;
+      const d = val instanceof Date ? val : new Date(val);
+      if (isNaN(d.getTime())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El formato de 'startDate' no es válido." });
+        return z.NEVER;
+      }
+      return d;
+    }),
+  endDate: optionalDateSchema,
+  patchUrl: safeImageUrlSchema.optional(),
+});
+
+export const createAstronautSchema = z.object({
+  name: requiredNonEmptyString("name", 200),
+  role: requiredNonEmptyString("role", 120),
+  age: finiteNumber("age", 1, 120, { int: true }),
+  missionId: requiredNonEmptyString("missionId", 128),
+  userId: z.string().trim().min(1).max(128).nullable().optional(),
+  photoUrl: safeImageUrlSchema.optional(),
+});
+
+export const updateAstronautSchema = z.object({
+  name: requiredNonEmptyString("name", 200).optional(),
+  role: requiredNonEmptyString("role", 120).optional(),
+  age: finiteNumber("age", 1, 120, { int: true }).optional(),
+  missionId: requiredNonEmptyString("missionId", 128).optional(),
+  userId: z.string().trim().min(1).max(128).nullable().optional(),
+  photoUrl: safeImageUrlSchema.optional(),
+});
+
+export const directivesSchema = z.object({
+  directives: requiredNonEmptyString("directives", 2000),
+});
+
+export const radiationSimulateSchema = z.object({
+  scenario: z.enum(["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4", "RESET"]).optional(),
+});
+
+export const biodosimetryTriageSchema = z.object({
+  astronautId: z.string().trim().min(1).max(128).optional(),
+  shieldingType: z.enum(["EVA_SUIT", "CREW_CABIN_NOMINAL", "STORM_SHELTER"]).optional(),
+  healthReading: z.record(z.unknown()).optional(),
+  radiationState: z.record(z.unknown()).optional(),
+  biomarkers: z
+    .object({
+      gammaH2axFociPerCell: finiteNumber("gammaH2axFociPerCell", 0, 50).optional(),
+      urine8OhdgNgMg: finiteNumber("urine8OhdgNgMg", 0, 200).optional(),
+      fdxrFoldChange: finiteNumber("fdxrFoldChange", 0.1, 30).optional(),
+    })
+    .optional(),
+});
+
+/**
+ * Parsea un objeto con un esquema Zod y traduce cualquier falla a ValidationError (400).
+ */
+export function parseWithValidation<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  input: unknown
+): z.output<TSchema> {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    const first = result.error.issues[0];
+    throw new ValidationError(first?.message || "Los datos proporcionados no son válidos.");
+  }
+  return result.data as z.output<TSchema>;
+}

@@ -10,45 +10,7 @@ import {
 import { prisma } from "../database/prismaClient.js";
 
 export class PrismaAstronautRepository implements IAstronautRepository {
-  private async syncUnlinkedUsers(): Promise<void> {
-    try {
-      const unlinkedUsers = await prisma.user.findMany({
-        where: {
-          role: "USER",
-          deletedAt: null,
-          astronaut: null,
-        },
-        select: { id: true, name: true },
-      });
-
-      if (!unlinkedUsers || unlinkedUsers.length === 0) return;
-
-      const activeMission = await prisma.mission.findFirst({
-        where: { deletedAt: null },
-        orderBy: { createdAt: "asc" },
-        select: { id: true },
-      });
-
-      if (!activeMission) return;
-
-      for (const u of unlinkedUsers) {
-        await prisma.astronaut.create({
-          data: {
-            missionId: activeMission.id,
-            userId: u.id,
-            name: u.name,
-            role: "Especialista de Misión",
-            age: 35,
-          },
-        });
-      }
-    } catch {
-      // No bloquear listados si la sincronización automática no aplica
-    }
-  }
-
   async findMany(filters: AstronautFilters): Promise<PaginatedResult<AstronautWithMission>> {
-    await this.syncUnlinkedUsers();
 
     const page = Math.max(1, filters.page || 1);
     const limit = Math.max(1, Math.min(100, filters.limit || 10));

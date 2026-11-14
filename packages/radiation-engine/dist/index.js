@@ -46,11 +46,25 @@ class RadiationEngine {
             return this.simulator.getSimulatedState(this.activeSimulatedScenario);
         }
         try {
-            const [probabilities, latestXray, latestProtons] = await Promise.all([
-                this.noaaClient.getSolarProbabilities(),
-                this.noaaClient.getLatestXrays(),
-                this.noaaClient.getLatestProtons()
+            const [probabilitiesRes, latestXrayRes, latestProtonsRes] = await Promise.allSettled([
+                this.noaaClient.getSolarProbabilities({ strict: true }),
+                this.noaaClient.getLatestXrays({ strict: true }),
+                this.noaaClient.getLatestProtons({ strict: true })
             ]);
+            const degradedFeeds = [];
+            if (probabilitiesRes.status === 'rejected')
+                degradedFeeds.push('solar_probabilities');
+            if (latestXrayRes.status === 'rejected')
+                degradedFeeds.push('goes_xrays');
+            if (latestProtonsRes.status === 'rejected')
+                degradedFeeds.push('goes_protons');
+            if (degradedFeeds.length === 3) {
+                throw new Error('All NOAA SWPC live feeds unavailable.');
+            }
+            const nominalFallback = degradedFeeds.length > 0 ? this.simulator.getSimulatedState('NOMINAL') : null;
+            const probabilities = probabilitiesRes.status === 'fulfilled' ? probabilitiesRes.value : nominalFallback.probabilities;
+            const latestXray = latestXrayRes.status === 'fulfilled' ? latestXrayRes.value : nominalFallback.currentTelemetry.latestXray;
+            const latestProtons = latestProtonsRes.status === 'fulfilled' ? latestProtonsRes.value : nominalFallback.currentTelemetry.latestProtons;
             const primaryProtonFlux = latestProtons.find(p => p.energyChannel.includes('10'))?.fluxPfu ?? 0.8;
             const stormScale = this.mitigationEngine.evaluateStormScale(primaryProtonFlux);
             const earlyWarning = this.sepEngine.evaluateEarlyWarning(latestXray);
@@ -59,6 +73,10 @@ class RadiationEngine {
             return {
                 timestamp: new Date().toISOString(),
                 isSimulated: false,
+                telemetryDegraded: degradedFeeds.length > 0,
+                ...(degradedFeeds.length > 0
+                    ? { degradationReason: `NOAA SWPC feeds unavailable: ${degradedFeeds.join(', ')}` }
+                    : {}),
                 probabilities,
                 currentTelemetry: {
                     latestXray,
@@ -71,8 +89,13 @@ class RadiationEngine {
             };
         }
         catch (err) {
-            console.warn('[RadiationEngine] Error compiling live state, falling back to nominal simulation:', err);
-            return this.simulator.getSimulatedState('NOMINAL');
+            console.warn('[RadiationEngine] Error compiling live state, falling back to nominal baseline:', err);
+            const fallback = this.simulator.getSimulatedState('NOMINAL');
+            return {
+                ...fallback,
+                telemetryDegraded: true,
+                degradationReason: 'NOAA SWPC live telemetry unavailable; reporting nominal baseline fallback.',
+            };
         }
     }
     /**

@@ -1,11 +1,16 @@
 """FastAPI microservice for Signal vs. Noise multi-hazard biodosimetry attribution."""
 
+import hashlib
+import math
+import os
+import secrets
 from pathlib import Path
 from typing import Dict
 import joblib
 import numpy as np
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import ValidationError
 
 from schemas import (
     AttributionBreakdown,
@@ -26,6 +31,48 @@ STORM_SCALE_MAP: Dict[str, int] = {
     "S5_EXTREME": 5,
 }
 
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://orbvital-nsa2026.vercel.app",
+]
+
+
+def _get_allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "")
+    parsed = [origin.strip() for origin in raw.split(",") if origin.strip() and origin.strip() != "*"]
+    return parsed or DEFAULT_ALLOWED_ORIGINS
+
+
+def _require_service_token(
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+) -> None:
+    expected = os.getenv("AI_SERVICE_TOKEN", "").strip()
+    app_env = os.getenv("APP_ENV", os.getenv("ENV", "")).strip().lower()
+    if not expected:
+        if app_env == "production":
+            raise HTTPException(status_code=503, detail="Service authentication is not configured")
+        return
+    if not x_service_token or not secrets.compare_digest(x_service_token, expected):
+        raise HTTPException(status_code=401, detail="Invalid or missing service token")
+
+
+def _verify_model_checksum(model_path: Path) -> None:
+    expected = os.getenv("MODEL_SHA256", "").strip().lower()
+    if not expected:
+        sha_file = Path(f"{model_path}.sha256")
+        if not sha_file.exists():
+            raise RuntimeError("Model integrity manifest (.sha256) is missing")
+        tokens = sha_file.read_text(encoding="utf-8").strip().split()
+        if not tokens:
+            raise RuntimeError("Model integrity manifest is empty")
+        expected = tokens[0].lower()
+
+    actual = hashlib.sha256(model_path.read_bytes()).hexdigest().lower()
+    if not secrets.compare_digest(actual, expected):
+        raise RuntimeError("Model artifact checksum verification failed")
+
+
 app = FastAPI(
     title="Artemis IV Signal vs. Noise Biodosimetry Engine",
     version="0.1.0",
@@ -34,9 +81,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_get_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Service-Token"],
 )
 
 _model_bundle = None
@@ -47,6 +95,7 @@ def get_model_bundle():
     if _model_bundle is None:
         if not MODEL_PATH.exists():
             train_and_save()
+        _verify_model_checksum(MODEL_PATH)
         _model_bundle = joblib.load(MODEL_PATH)
     return _model_bundle
 
@@ -159,37 +208,69 @@ def health():
     return {"status": "ok", "modelLoaded": bundle is not None, "classes": bundle["classes"]}
 
 
-@app.post("/api/biodosimetry/attribution", response_model=BiodosimetryResponse)
+def _parse_finite_float(mapping: dict, key: str, default: float) -> float:
+    try:
+        val = float(mapping.get(key, default))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid numeric field: {key}") from exc
+    if not math.isfinite(val):
+        raise HTTPException(status_code=422, detail=f"Field must be finite: {key}")
+    return val
+
+
+@app.post(
+    "/api/biodosimetry/attribution",
+    response_model=BiodosimetryResponse,
+    dependencies=[Depends(_require_service_token)],
+)
 def predict_attribution(payload: BiodosimetryInput):
     return run_attribution(payload)
 
 
-@app.post("/api/biodosimetry/triage-from-engine", response_model=BiodosimetryResponse)
+@app.post(
+    "/api/biodosimetry/triage-from-engine",
+    response_model=BiodosimetryResponse,
+    dependencies=[Depends(_require_service_token)],
+)
 def triage_from_engine(req: EngineTriageRequest):
     """Bridge endpoint accepting raw HealthReading + NSA2026/radiation-engine state."""
     bio_doses = req.radiationState.get("biologicalDoses", {})
+    if not isinstance(bio_doses, dict):
+        raise HTTPException(status_code=422, detail="radiationState.biologicalDoses must be an object")
     shield_data = bio_doses.get(req.shieldingType.value, {})
-    dose_rate = float(shield_data.get("doseRateMicroSvPerHour", 25.0))
+    if not isinstance(shield_data, dict):
+        shield_data = {}
+    dose_rate = _parse_finite_float(shield_data, "doseRateMicroSvPerHour", 25.0)
 
     telemetry = req.radiationState.get("currentTelemetry", {})
+    if not isinstance(telemetry, dict):
+        telemetry = {}
     storm_str = telemetry.get("stormScale", "S0_NOMINAL")
-    storm_level = STORM_SCALE_MAP.get(storm_str, 0)
+    storm_level = STORM_SCALE_MAP.get(storm_str if isinstance(storm_str, str) else "S0_NOMINAL", 0)
 
     hr = req.healthReading
-    combined = BiodosimetryInput(
-        doseRateMicroSvPerHour=dose_rate,
-        stormScaleLevel=storm_level,
-        shieldingType=req.shieldingType,
-        heartRateBpm=float(hr.get("heartRateBpm", 72.0)),
-        systolicMmHg=float(hr.get("systolicMmHg", 118.0)),
-        diastolicMmHg=float(hr.get("diastolicMmHg", 76.0)),
-        glucoseMgDl=float(hr.get("glucoseMgDl", 95.0)),
-        temperatureC=float(hr.get("temperatureC", 36.8)),
-        spo2Pct=float(hr.get("spo2Pct", 98.0)),
-        sleepHours=float(hr.get("sleepHours", 7.5)),
-        mood=int(hr.get("mood", 4)),
-        gammaH2axFociPerCell=float(hr.get("gammaH2axFociPerCell", 0.8)),
-        urine8OhdgNgMg=float(hr.get("urine8OhdgNgMg", 12.0)),
-        fdxrFoldChange=float(hr.get("fdxrFoldChange", 1.0)),
-    )
+    try:
+        mood = int(hr.get("mood", 4))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid integer field: mood") from exc
+
+    try:
+        combined = BiodosimetryInput(
+            doseRateMicroSvPerHour=dose_rate,
+            stormScaleLevel=storm_level,
+            shieldingType=req.shieldingType,
+            heartRateBpm=_parse_finite_float(hr, "heartRateBpm", 72.0),
+            systolicMmHg=_parse_finite_float(hr, "systolicMmHg", 118.0),
+            diastolicMmHg=_parse_finite_float(hr, "diastolicMmHg", 76.0),
+            glucoseMgDl=_parse_finite_float(hr, "glucoseMgDl", 95.0),
+            temperatureC=_parse_finite_float(hr, "temperatureC", 36.8),
+            spo2Pct=_parse_finite_float(hr, "spo2Pct", 98.0),
+            sleepHours=_parse_finite_float(hr, "sleepHours", 7.5),
+            mood=mood,
+            gammaH2axFociPerCell=_parse_finite_float(hr, "gammaH2axFociPerCell", 0.8),
+            urine8OhdgNgMg=_parse_finite_float(hr, "urine8OhdgNgMg", 12.0),
+            fdxrFoldChange=_parse_finite_float(hr, "fdxrFoldChange", 1.0),
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="Invalid physiological or dosimetry telemetry range") from exc
     return run_attribution(combined)

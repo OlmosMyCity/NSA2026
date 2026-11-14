@@ -13,6 +13,10 @@ export interface StoredUser {
   astronautId?: string;
 }
 
+function getSecureCookieSuffix(): string {
+  return typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+}
+
 export const authStorage = {
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -27,7 +31,7 @@ export const authStorage = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(TOKEN_KEY, token);
-      document.cookie = `artemis_auth_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `artemis_auth_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax${getSecureCookieSuffix()}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
       // Ignorar si localStorage está bloqueado
@@ -48,7 +52,7 @@ export const authStorage = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
-      document.cookie = `artemis_auth_role=${encodeURIComponent(user.role)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `artemis_auth_role=${encodeURIComponent(user.role)}; path=/; max-age=86400; SameSite=Lax${getSecureCookieSuffix()}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
       // Ignorar
@@ -60,8 +64,9 @@ export const authStorage = {
     try {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
-      document.cookie = 'artemis_auth_token=; path=/; max-age=0; SameSite=Lax';
-      document.cookie = 'artemis_auth_role=; path=/; max-age=0; SameSite=Lax';
+      const secure = getSecureCookieSuffix();
+      document.cookie = `artemis_auth_token=; path=/; max-age=0; SameSite=Lax${secure}`;
+      document.cookie = `artemis_auth_role=; path=/; max-age=0; SameSite=Lax${secure}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
       // Ignorar

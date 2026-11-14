@@ -1,5 +1,5 @@
-import express, { Express } from "express";
-import cors from "cors";
+import express, { Express, Request } from "express";
+import cors, { CorsOptions } from "cors";
 import { authRouter } from "./interface/routers/authRouter.js";
 import { missionRouter } from "./interface/routers/missionRouter.js";
 import { astronautRouter } from "./interface/routers/astronautRouter.js";
@@ -9,6 +9,53 @@ import { adminRouter } from "./interface/routers/adminRouter.js";
 import { radiationRouter } from "./interface/routers/radiationRouter.js";
 import { uploadRouter } from "./interface/routers/uploadRouter.js";
 import { errorHandler } from "./interface/middlewares/errorHandler.js";
+import { securityHeaders } from "./interface/middlewares/securityHeaders.js";
+import { createRateLimiter } from "./interface/middlewares/rateLimiter.js";
+
+function buildAllowedOrigins(): Set<string> {
+  const origins = new Set<string>([
+    "https://orbvital-nsa2026.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+  ]);
+
+  const envOrigins = process.env.ALLOWED_ORIGINS?.split(",") ?? [];
+  for (const item of envOrigins) {
+    const trimmed = item.trim().replace(/\/+$/, "");
+    if (trimmed) origins.add(trimmed);
+  }
+
+  for (const host of [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_BRANCH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  ]) {
+    if (host) origins.add(`https://${host.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`);
+  }
+
+  return origins;
+}
+
+function buildCorsDelegate(): (req: Request, cb: (err: Error | null, options?: CorsOptions) => void) => void {
+  const allowedOrigins = buildAllowedOrigins();
+
+  return (req, callback) => {
+    const origin = req.headers.origin;
+    const reqHost = req.headers.host;
+
+    const isSameHost =
+      Boolean(origin && reqHost) &&
+      (origin === `https://${reqHost}` || origin === `http://${reqHost}`);
+
+    const allowOrigin = !origin || allowedOrigins.has(origin) || isSameHost;
+    callback(null, {
+      origin: allowOrigin,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    });
+  };
+}
 
 /**
  * Función factory para instanciar y configurar la app de Express.
@@ -17,11 +64,29 @@ import { errorHandler } from "./interface/middlewares/errorHandler.js";
 export function createApp(): Express {
   const app = express();
 
-  // Middlewares base
-  app.use(cors());
-  app.use(express.json());
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
 
-  // Autenticación (register / login)
+  const authRateLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: "Demasiados intentos de autenticación. Intenta de nuevo en unos minutos.",
+  });
+
+  const sensitiveMutationLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: "Límite de solicitudes excedido para esta operación.",
+  });
+
+  // Middlewares base
+  app.use(securityHeaders);
+  app.use(cors(buildCorsDelegate()));
+  app.use(express.json({ limit: "256kb" }));
+
+  // Autenticación (register / login) con limitación de tasa
+  app.use("/api/auth/login", authRateLimiter);
+  app.use("/api/auth/register", authRateLimiter);
   app.use("/api/auth", authRouter);
 
   // Rutas de dominio: Misiones, Astronautas, Lecturas de Salud, Consola de Administración y Radiación
@@ -30,8 +95,9 @@ export function createApp(): Express {
   app.use("/api/readings", readingRouter);
   app.use("/api/health-readings", biodosimetryRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/radiation/simulate", sensitiveMutationLimiter);
   app.use("/api/radiation", radiationRouter);
-  app.use("/api/uploads", uploadRouter);
+  app.use("/api/uploads", sensitiveMutationLimiter, uploadRouter);
 
   // Health check rápido del microservicio
   app.get(["/health", "/api/health"], (_req, res) => {

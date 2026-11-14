@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { HealthStatus } from "@prisma/client";
 import { prisma } from "../../infrastructure/database/prismaClient.js";
-import { NotFoundError, ValidationError } from "../../domain/errors/AppError.js";
+import { NotFoundError } from "../../domain/errors/AppError.js";
+import { directivesSchema, parseWithValidation } from "../validation/schemas.js";
 
 function normalizeAlertMessages(alerts: unknown): string[] {
   if (!Array.isArray(alerts)) return [];
@@ -87,11 +88,7 @@ export class AdminTriageController {
   sendClinicalDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { directives } = req.body ?? {};
-
-      if (!directives || typeof directives !== "string" || directives.trim().length === 0) {
-        throw new ValidationError("El texto de la directiva médica ('directives') es obligatorio.");
-      }
+      const { directives } = parseWithValidation(directivesSchema, req.body ?? {});
 
       const astronaut = await prisma.astronaut.findFirst({
         where: { id, deletedAt: null },
@@ -106,7 +103,7 @@ export class AdminTriageController {
         orderBy: { takenAt: "desc" },
       });
 
-      const directiveText = `[DIRECTIVA MÉDICA EN VIGOR]: ${directives.trim()}`;
+      const directiveText = `[DIRECTIVA MÉDICA EN VIGOR]: ${directives}`;
 
       if (latestReading) {
         await prisma.healthReading.update({

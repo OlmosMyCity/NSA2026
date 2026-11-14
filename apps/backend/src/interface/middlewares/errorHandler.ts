@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
 import { AppError } from "../../domain/errors/AppError.js";
 
 /**
  * Middleware centralizado de manejo de errores (Criterio 5 de la rúbrica).
- * Captura AppError de dominio, errores conocidos de Prisma y errores inesperados.
+ * Captura AppError de dominio, errores conocidos de Prisma, Zod y errores inesperados.
  * NUNCA expone el stack trace en la respuesta HTTP.
  */
 export function errorHandler(
@@ -13,6 +14,20 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
+  // 0. JSON malformado en el cuerpo HTTP
+  if (err instanceof SyntaxError && "status" in err && (err as { status?: number }).status === 400) {
+    res.status(400).json({ error: "Cuerpo JSON inválido en la solicitud." });
+    return;
+  }
+
+  // 0b. Validación de esquema HTTP (Zod)
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      error: err.issues[0]?.message || "Los datos proporcionados no son válidos.",
+    });
+    return;
+  }
+
   // 1. Errores de Dominio / Aplicación (400, 404, 409)
   if (err instanceof AppError) {
     res.status(err.statusCode).json({

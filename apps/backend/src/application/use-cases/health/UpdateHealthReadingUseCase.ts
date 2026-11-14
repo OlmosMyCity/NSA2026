@@ -3,6 +3,7 @@ import { IHealthReadingRepository } from "../../../domain/repository/IHealthRead
 import { UpdateHealthReadingDTO } from "../../../domain/models/HealthReading.js";
 import { evaluateReading } from "../../health/evaluateReading.js";
 import { NotFoundError } from "../../../domain/errors/AppError.js";
+import { assertValidVitals } from "./CreateHealthReadingUseCase.js";
 
 export class UpdateHealthReadingUseCase {
   constructor(private readonly readingRepo: IHealthReadingRepository) {}
@@ -23,6 +24,8 @@ export class UpdateHealthReadingUseCase {
       sleepHours: data.sleepHours ?? existing.sleepHours,
       mood: data.mood ?? existing.mood,
     };
+
+    assertValidVitals(mergedMetrics);
 
     const evaluation = evaluateReading(mergedMetrics);
 

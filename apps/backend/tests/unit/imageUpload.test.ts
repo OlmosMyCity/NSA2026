@@ -24,10 +24,21 @@ describe("imageUpload middleware + storageService", () => {
   afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
   afterEach(() => vi.restoreAllMocks());
 
-  const form = (type: string, size = 10) => {
+  const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  const form = (type: string, size = 10, bytes?: Uint8Array) => {
+    const payload =
+      bytes ??
+      (() => {
+        const buf = new Uint8Array(size);
+        if (type === "image/png" && size >= PNG_HEADER.length) {
+          buf.set(PNG_HEADER, 0);
+        }
+        return buf;
+      })();
     const fd = new FormData();
     fd.append("name", "Artemis V");
-    fd.append("patch", new Blob([new Uint8Array(size)], { type }), "parche.png");
+    fd.append("patch", new Blob([payload], { type }), "parche.png");
     return fd;
   };
 
@@ -66,13 +77,32 @@ describe("imageUpload middleware + storageService", () => {
     expect(((await res.json()) as { error: string }).error).toContain("5 MB");
   });
 
+  it("debe responder 400 con SVG o contenido falsificado sin llamar a Storage", async () => {
+    const upload = vi.spyOn(storageService, "uploadImage");
+
+    const svgRes = await fetch(`${baseUrl}/echo`, {
+      method: "POST",
+      body: form("image/svg+xml", 24, Buffer.from("<svg><script>alert(1)</script></svg>")),
+    });
+    expect(svgRes.status).toBe(400);
+
+    const spoofedRes = await fetch(`${baseUrl}/echo`, {
+      method: "POST",
+      body: form("image/png", 24, Buffer.from("<svg>malicious</svg>")),
+    });
+    expect(spoofedRes.status).toBe(400);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
   it("storageService debe hacer POST a Supabase y devolver la URL pública", async () => {
     process.env.SUPABASE_URL = "https://demo.supabase.co/";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
     process.env.SUPABASE_STORAGE_BUCKET = "artemis-assets";
+    delete process.env.BLOB_READ_WRITE_TOKEN;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
 
-    const url = await storageService.uploadImage({ buffer: Buffer.from("x"), mimetype: "image/webp" }, "astronauts");
+    const webpBuffer = Buffer.from("RIFF\x00\x00\x00\x00WEBP");
+    const url = await storageService.uploadImage({ buffer: webpBuffer, mimetype: "image/webp" }, "astronauts");
 
     const [target, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(target).toMatch(/^https:\/\/demo\.supabase\.co\/storage\/v1\/object\/artemis-assets\/astronauts\/.+\.webp$/);

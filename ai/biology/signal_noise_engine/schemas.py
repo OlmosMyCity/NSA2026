@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 
 
@@ -18,7 +18,7 @@ class PrimaryCause(str, Enum):
 
 class BiodosimetryInput(BaseModel):
     # Physical telemetry from NSA2026/radiation-engine
-    doseRateMicroSvPerHour: float = Field(default=25.0, ge=0.0)
+    doseRateMicroSvPerHour: float = Field(default=25.0, ge=0.0, le=1_000_000.0)
     stormScaleLevel: int = Field(default=0, ge=0, le=5)
     shieldingType: ShieldingType = ShieldingType.CREW_CABIN_NOMINAL
 
@@ -72,5 +72,5 @@ class BiodosimetryResponse(BaseModel):
 
 class EngineTriageRequest(BaseModel):
     shieldingType: ShieldingType = ShieldingType.CREW_CABIN_NOMINAL
-    healthReading: Dict
-    radiationState: Dict
+    healthReading: Dict[str, Any]
+    radiationState: Dict[str, Any]

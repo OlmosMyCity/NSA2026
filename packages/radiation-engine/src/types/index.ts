@@ -74,6 +74,8 @@ export interface RadiationMitigationProtocol {
 export interface RadiationEngineState {
   timestamp: string;
   isSimulated: boolean;
+  telemetryDegraded?: boolean;
+  degradationReason?: string;
   activeScenario?: string;
   probabilities: NOAASolarProbability[];
   currentTelemetry: {

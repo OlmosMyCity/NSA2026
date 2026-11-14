@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../../domain/errors/AppError.js";
 import { IAstronautRepository } from "../../../domain/repository/IAstronautRepository.js";
 import { IHealthReadingRepository } from "../../../domain/repository/IHealthReadingRepository.js";
+import { radiationEngine } from "../../../infrastructure/services/radiationEngine.js";
 
 export type ShieldingType = "EVA_SUIT" | "CREW_CABIN_NOMINAL" | "STORM_SHELTER";
 
@@ -38,15 +39,16 @@ export interface BiodosimetryTriageResult {
   astronautId: string | null;
   shieldingType: ShieldingType;
   radiationSource: "radiation-engine" | "request-override" | "fallback-nominal";
+  telemetryDegraded: boolean;
   healthReadingTimestamp: string | null;
   triage: BiodosimetryAttributionResponse;
 }
 
-const DEFAULT_RADIATION_ENGINE_URL = process.env.RADIATION_ENGINE_URL || "http://localhost:4001";
 const DEFAULT_SIGNAL_NOISE_URL = process.env.SIGNAL_NOISE_ENGINE_URL || "http://localhost:8001";
 
 function buildNominalRadiationFallback(): Record<string, unknown> {
   return {
+    telemetryDegraded: true,
     currentTelemetry: { stormScale: "S0_NOMINAL" },
     biologicalDoses: {
       EVA_SUIT: { doseRateMicroSvPerHour: 28.0 },
@@ -59,12 +61,89 @@ function buildNominalRadiationFallback(): Record<string, unknown> {
 export class BiodosimetryTriageUseCase {
   constructor(
     private readonly readingRepo: IHealthReadingRepository,
-    private readonly astronautRepo: IAstronautRepository
+    private readonly astronautRepo: IAstronautRepository,
+    private readonly radiationStatusProvider?: () => Promise<Record<string, unknown>>
   ) {}
+
+  private async resolveRadiationState(
+    overrideState?: Record<string, unknown>
+  ): Promise<{
+    radiationState: Record<string, unknown>;
+    radiationSource: BiodosimetryTriageResult["radiationSource"];
+    telemetryDegraded: boolean;
+  }> {
+    if (overrideState) {
+      return {
+        radiationState: overrideState,
+        radiationSource: "request-override",
+        telemetryDegraded: Boolean((overrideState as { telemetryDegraded?: unknown }).telemetryDegraded),
+      };
+    }
+
+    const externalEngineUrl = process.env.RADIATION_ENGINE_URL;
+    if (this.radiationStatusProvider) {
+      try {
+        const state = await this.radiationStatusProvider();
+        return {
+          radiationState: state,
+          radiationSource: "radiation-engine",
+          telemetryDegraded: Boolean((state as { telemetryDegraded?: unknown }).telemetryDegraded),
+        };
+      } catch {
+        return {
+          radiationState: buildNominalRadiationFallback(),
+          radiationSource: "fallback-nominal",
+          telemetryDegraded: true,
+        };
+      }
+    }
+
+    if (externalEngineUrl) {
+      try {
+        const radRes = await fetch(`${externalEngineUrl.replace(/\/+$/, "")}/api/radiation/status`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!radRes.ok) {
+          throw new Error(`Radiation engine HTTP ${radRes.status}`);
+        }
+        const state = (await radRes.json()) as Record<string, unknown>;
+        return {
+          radiationState: state,
+          radiationSource: "radiation-engine",
+          telemetryDegraded: Boolean((state as { telemetryDegraded?: unknown }).telemetryDegraded),
+        };
+      } catch {
+        // Reintentar con el motor en proceso antes de declarar degradación total
+      }
+    }
+
+    try {
+      const state = (await radiationEngine.getCurrentState()) as unknown as Record<string, unknown>;
+      return {
+        radiationState: state,
+        radiationSource: "radiation-engine",
+        telemetryDegraded: Boolean((state as { telemetryDegraded?: unknown }).telemetryDegraded),
+      };
+    } catch {
+      return {
+        radiationState: buildNominalRadiationFallback(),
+        radiationSource: "fallback-nominal",
+        telemetryDegraded: true,
+      };
+    }
+  }
 
   async execute(input: BiodosimetryTriageInput): Promise<BiodosimetryTriageResult> {
     const shieldingType: ShieldingType = input.shieldingType ?? "CREW_CABIN_NOMINAL";
     let targetAstronautId = input.astronautId ?? null;
+
+    if (input.requestingUserRole && input.requestingUserRole !== Role.ADMIN) {
+      if (input.healthReading !== undefined || input.radiationState !== undefined) {
+        throw new ForbiddenError(
+          "Solo el cirujano de vuelo (ADMIN) puede enviar overrides manuales de telemetría."
+        );
+      }
+    }
 
     if (input.requestingUserId && input.requestingUserRole !== Role.ADMIN) {
       const ownAstronaut = this.astronautRepo.findByUserId
@@ -119,28 +198,18 @@ export class BiodosimetryTriageUseCase {
       }
     }
 
-    let radiationState = input.radiationState;
-    let radiationSource: BiodosimetryTriageResult["radiationSource"] = "request-override";
+    const { radiationState, radiationSource, telemetryDegraded } = await this.resolveRadiationState(
+      input.radiationState
+    );
 
-    if (!radiationState) {
-      try {
-        const radRes = await fetch(`${DEFAULT_RADIATION_ENGINE_URL}/api/radiation/status`, {
-          signal: AbortSignal.timeout(3000),
-        });
-        if (!radRes.ok) {
-          throw new Error(`Radiation engine HTTP ${radRes.status}`);
-        }
-        radiationState = (await radRes.json()) as Record<string, unknown>;
-        radiationSource = "radiation-engine";
-      } catch {
-        radiationState = buildNominalRadiationFallback();
-        radiationSource = "fallback-nominal";
-      }
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (process.env.AI_SERVICE_TOKEN) {
+      headers["X-Service-Token"] = process.env.AI_SERVICE_TOKEN;
     }
 
     const triageRes = await fetch(`${DEFAULT_SIGNAL_NOISE_URL}/api/biodosimetry/triage-from-engine`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         shieldingType,
         healthReading: readingPayload,
@@ -160,6 +229,7 @@ export class BiodosimetryTriageUseCase {
       astronautId: targetAstronautId,
       shieldingType,
       radiationSource,
+      telemetryDegraded,
       healthReadingTimestamp,
       triage,
     };

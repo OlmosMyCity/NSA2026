@@ -191,11 +191,15 @@
     document.getElementById("alertness-bar").style.width = `${mood.alertness_score}%`;
 
     const probsContainer = document.getElementById("emotion-probs");
-    probsContainer.innerHTML = "";
+    probsContainer.replaceChildren();
     Object.entries(mood.emotion_probabilities || {}).forEach(([emo, prob]) => {
       const chip = document.createElement("div");
       chip.className = "prob-chip";
-      chip.innerHTML = `<span>${emo}</span><strong>${(prob * 100).toFixed(0)}%</strong>`;
+      const label = document.createElement("span");
+      label.textContent = String(emo);
+      const value = document.createElement("strong");
+      value.textContent = `${(prob * 100).toFixed(0)}%`;
+      chip.append(label, value);
       probsContainer.appendChild(chip);
     });
 
@@ -276,12 +280,31 @@
         return;
       }
       const s = data.summary;
-      reportOutput.innerHTML = `
-        <strong>Reporte de Sesión (${data.duration_seconds}s / ${data.frames_processed} cuadros):</strong><br/>
-        • <b>Pulso Promedio:</b> ${s.mean_bpm} BPM (Final: ${s.final_bpm} BPM | HRV RMSSD: ${s.hrv_rmssd_ms} ms)<br/>
-        • <b>Estado de Ánimo Dominante:</b> ${s.dominant_mood} (Estrés medio: ${s.mean_stress_index}%)<br/>
-        • <b>Calidad de Sueño/Alerta:</b> ${s.mean_sleep_quality_score}/100 | PERCLOS: ${s.final_perclos}% | Bostezos: ${s.yawn_count}
-      `;
+      const heading = document.createElement("strong");
+      heading.textContent = `Reporte de Sesión (${data.duration_seconds}s / ${data.frames_processed} cuadros):`;
+
+      const appendLine = (label, text) => {
+        reportOutput.appendChild(document.createElement("br"));
+        reportOutput.appendChild(document.createTextNode("• "));
+        const bold = document.createElement("b");
+        bold.textContent = label;
+        reportOutput.appendChild(bold);
+        reportOutput.appendChild(document.createTextNode(` ${text}`));
+      };
+
+      reportOutput.replaceChildren(heading);
+      appendLine(
+        "Pulso Promedio:",
+        `${s.mean_bpm} BPM (Final: ${s.final_bpm} BPM | HRV RMSSD: ${s.hrv_rmssd_ms} ms)`
+      );
+      appendLine(
+        "Estado de Ánimo Dominante:",
+        `${s.dominant_mood} (Estrés medio: ${s.mean_stress_index}%)`
+      );
+      appendLine(
+        "Calidad de Sueño/Alerta:",
+        `${s.mean_sleep_quality_score}/100 | PERCLOS: ${s.final_perclos}% | Bostezos: ${s.yawn_count}`
+      );
     } catch (err) {
       reportOutput.textContent = `Error de red: ${err}`;
     }

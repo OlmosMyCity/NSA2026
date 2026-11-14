@@ -1,8 +1,10 @@
 """FastAPI microservice for Plan B: Molecular Twin & ODE Kinetics."""
 
 import json
+import os
+import secrets
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from kinetics_ode import (
@@ -20,6 +22,32 @@ from schemas import (
     ShieldingKineticsResult,
 )
 
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://orbvital-nsa2026.vercel.app",
+]
+
+
+def _get_allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "")
+    parsed = [origin.strip() for origin in raw.split(",") if origin.strip() and origin.strip() != "*"]
+    return parsed or DEFAULT_ALLOWED_ORIGINS
+
+
+def _require_service_token(
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+) -> None:
+    expected = os.getenv("AI_SERVICE_TOKEN", "").strip()
+    app_env = os.getenv("APP_ENV", os.getenv("ENV", "")).strip().lower()
+    if not expected:
+        if app_env == "production":
+            raise HTTPException(status_code=503, detail="Service authentication is not configured")
+        return
+    if not x_service_token or not secrets.compare_digest(x_service_token, expected):
+        raise HTTPException(status_code=401, detail="Invalid or missing service token")
+
+
 app = FastAPI(
     title="Artemis IV Molecular Twin & Biophysics Engine",
     version="0.1.0",
@@ -31,9 +59,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_get_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Service-Token"],
 )
 
 _scenarios_cache: Optional[dict] = None
@@ -100,7 +129,11 @@ def get_scenario(scenario: ScenarioId) -> BiophysicsScenarioResponse:
     )
 
 
-@app.post("/api/biophysics/simulate-kinetics", response_model=ShieldingKineticsResult)
+@app.post(
+    "/api/biophysics/simulate-kinetics",
+    response_model=ShieldingKineticsResult,
+    dependencies=[Depends(_require_service_token)],
+)
 def run_custom_kinetics(req: CustomKineticsRequest) -> ShieldingKineticsResult:
     return simulate_kinetics(
         peak_flux_pfu=req.peakFluxPfu,

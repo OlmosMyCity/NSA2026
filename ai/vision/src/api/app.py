@@ -2,13 +2,16 @@
 
 import base64
 import json
+import math
+import os
+import secrets
 import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +22,62 @@ from src.schemas import AstronautTelemetryFrame, CameraMode, MonitoringContext
 from src.vision.synthetic_stream import SimulationConfig, SyntheticAstronautGenerator
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+MAX_FRAME_BYTES = 5 * 1024 * 1024
+MAX_VIDEO_BYTES = 50 * 1024 * 1024
+MAX_WS_MESSAGE_BYTES = 8 * 1024 * 1024
+ALLOWED_VIDEO_SUFFIXES = {".mp4", ".avi", ".mov", ".webm", ".mkv"}
+
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://orbvital-nsa2026.vercel.app",
+]
+
+
+def _get_allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "")
+    parsed = [origin.strip() for origin in raw.split(",") if origin.strip() and origin.strip() != "*"]
+    return parsed or DEFAULT_ALLOWED_ORIGINS
+
+
+def _is_token_valid(provided: str | None) -> tuple[bool, str]:
+    expected = os.getenv("AI_SERVICE_TOKEN", "").strip()
+    app_env = os.getenv("APP_ENV", os.getenv("ENV", "")).strip().lower()
+    if not expected:
+        if app_env == "production":
+            return False, "Service authentication is not configured"
+        return True, ""
+    if not provided or not secrets.compare_digest(provided, expected):
+        return False, "Invalid or missing service token"
+    return True, ""
+
+
+def _require_service_token(
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+) -> None:
+    ok, reason = _is_token_valid(x_service_token)
+    if not ok:
+        status_code = 503 if "not configured" in reason else 401
+        raise HTTPException(status_code=status_code, detail=reason)
+
+
+async def _read_bounded_upload(upload: UploadFile, max_bytes: int) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    chunk_size = 1024 * 1024
+    while True:
+        chunk = await upload.read(min(chunk_size, max_bytes - total + 1))
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Uploaded file exceeds {max_bytes // (1024 * 1024)} MB limit",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 
 app = FastAPI(
     title="OrbVital - Astronaut Biometrics & Vitals API",
@@ -31,10 +90,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_get_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Service-Token"],
 )
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -65,7 +124,7 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
-@app.post("/api/reset")
+@app.post("/api/reset", dependencies=[Depends(_require_service_token)])
 async def reset_pipeline() -> Dict[str, str]:
     global _global_sim_time
     global_pipeline.reset()
@@ -73,7 +132,11 @@ async def reset_pipeline() -> Dict[str, str]:
     return {"status": "reset"}
 
 
-@app.get("/api/telemetry/latest", response_model=AstronautTelemetryFrame)
+@app.get(
+    "/api/telemetry/latest",
+    response_model=AstronautTelemetryFrame,
+    dependencies=[Depends(_require_service_token)],
+)
 async def get_latest_telemetry() -> AstronautTelemetryFrame:
     global _global_sim_time
     if global_pipeline.latest_telemetry is None:
@@ -84,14 +147,20 @@ async def get_latest_telemetry() -> AstronautTelemetryFrame:
     return global_pipeline.latest_telemetry
 
 
-@app.post("/api/analyze/frame", response_model=AstronautTelemetryFrame)
+@app.post(
+    "/api/analyze/frame",
+    response_model=AstronautTelemetryFrame,
+    dependencies=[Depends(_require_service_token)],
+)
 async def analyze_single_frame(
     file: UploadFile = File(...),
     camera_mode: CameraMode = Form(CameraMode.RGB_POS),
     context: MonitoringContext = Form(MonitoringContext.CABIN_ACTIVE),
     include_hud: bool = Form(False),
 ) -> AstronautTelemetryFrame:
-    raw_bytes = await file.read()
+    raw_bytes = await _read_bounded_upload(file, MAX_FRAME_BYTES)
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Empty image upload")
     arr = np.frombuffer(raw_bytes, dtype=np.uint8)
     frame_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if frame_bgr is None:
@@ -104,18 +173,21 @@ async def analyze_single_frame(
     )
 
 
-@app.post("/api/analyze/video")
+@app.post("/api/analyze/video", dependencies=[Depends(_require_service_token)])
 async def analyze_video_file(
     file: UploadFile = File(...),
     camera_mode: CameraMode = Form(CameraMode.RGB_POS),
     context: MonitoringContext = Form(MonitoringContext.CABIN_ACTIVE),
-    max_frames: int = Form(450),
+    max_frames: int = Form(450, ge=1, le=1800),
 ) -> Dict[str, Any]:
-    raw_bytes = await file.read()
+    suffix = Path(file.filename or "video.mp4").suffix.lower() or ".mp4"
+    if suffix not in ALLOWED_VIDEO_SUFFIXES:
+        raise HTTPException(status_code=400, detail="Unsupported video container format")
+
+    raw_bytes = await _read_bounded_upload(file, MAX_VIDEO_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty video upload")
 
-    suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
         tmp.write(raw_bytes)
         tmp.flush()
@@ -189,12 +261,16 @@ async def analyze_video_file(
 
 
 def _decode_base64_image(data_uri: str) -> np.ndarray | None:
+    if not isinstance(data_uri, str) or len(data_uri) > MAX_WS_MESSAGE_BYTES:
+        return None
     if "," in data_uri:
         _, b64_part = data_uri.split(",", 1)
     else:
         b64_part = data_uri
     try:
-        raw = base64.b64decode(b64_part)
+        raw = base64.b64decode(b64_part, validate=True)
+        if len(raw) > MAX_FRAME_BYTES:
+            return None
         arr = np.frombuffer(raw, dtype=np.uint8)
         return cv2.imdecode(arr, cv2.IMREAD_COLOR)
     except Exception:
@@ -203,6 +279,11 @@ def _decode_base64_image(data_uri: str) -> np.ndarray | None:
 
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(ws: WebSocket) -> None:
+    ok, _reason = _is_token_valid(ws.headers.get("x-service-token"))
+    if not ok:
+        await ws.close(code=1008)
+        return
+
     await ws.accept()
     session_pipeline = AstronautBiometricsPipeline()
     simulator = SyntheticAstronautGenerator(SimulationConfig(target_bpm=72.0, state="nominal"))
@@ -213,13 +294,28 @@ async def websocket_telemetry(ws: WebSocket) -> None:
     try:
         while True:
             raw_msg = await ws.receive_text()
-            msg = json.loads(raw_msg)
+            if len(raw_msg.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+                await ws.send_json({"type": "error", "detail": "WebSocket message exceeds size limit"})
+                continue
+            try:
+                msg = json.loads(raw_msg)
+            except json.JSONDecodeError:
+                await ws.send_json({"type": "error", "detail": "Invalid JSON payload"})
+                continue
+            if not isinstance(msg, dict):
+                await ws.send_json({"type": "error", "detail": "Expected JSON object"})
+                continue
+
             msg_type = msg.get("type", "tick")
 
-            if "camera_mode" in msg:
-                camera_mode = CameraMode(msg["camera_mode"])
-            if "context" in msg:
-                context = MonitoringContext(msg["context"])
+            try:
+                if "camera_mode" in msg:
+                    camera_mode = CameraMode(msg["camera_mode"])
+                if "context" in msg:
+                    context = MonitoringContext(msg["context"])
+            except ValueError:
+                await ws.send_json({"type": "error", "detail": "Invalid camera_mode or context"})
+                continue
 
             if msg_type == "reset":
                 session_pipeline.reset()
@@ -241,7 +337,14 @@ async def websocket_telemetry(ws: WebSocket) -> None:
                 if frame_bgr is None:
                     await ws.send_json({"type": "error", "detail": "Invalid frame_b64"})
                     continue
-                client_ts = float(msg.get("timestamp", sim_ts + (1.0 / 30.0)))
+                try:
+                    client_ts = float(msg.get("timestamp", sim_ts + (1.0 / 30.0)))
+                except (TypeError, ValueError):
+                    await ws.send_json({"type": "error", "detail": "Invalid timestamp"})
+                    continue
+                if not math.isfinite(client_ts):
+                    await ws.send_json({"type": "error", "detail": "Timestamp must be finite"})
+                    continue
                 sim_ts = client_ts
                 telemetry = session_pipeline.process_frame(
                     frame_bgr=frame_bgr,

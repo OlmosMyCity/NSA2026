@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -81,3 +82,34 @@ def test_docking_catalog_endpoint():
     items = res.json()
     assert len(items) == 3
     assert all(item["bindingAffinityKcalMol"] < 0 for item in items)
+
+
+def test_simulate_kinetics_requires_service_token_when_configured(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("AI_SERVICE_TOKEN", "biophysics-secret")
+    payload = {
+        "peakFluxPfu": 8000.0,
+        "onsetDelayHours": 1.0,
+        "stormDurationHours": 8.0,
+        "horizonHours": 24.0,
+        "shieldingType": "CREW_CABIN_NOMINAL",
+    }
+    res_unauth = client.post("/api/biophysics/simulate-kinetics", json=payload)
+    assert res_unauth.status_code == 401
+
+    res_auth = client.post(
+        "/api/biophysics/simulate-kinetics",
+        json=payload,
+        headers={"X-Service-Token": "biophysics-secret"},
+    )
+    assert res_auth.status_code == 200
+
+
+def test_cors_blocks_disallowed_origin():
+    res = client.options(
+        "/api/biophysics/health",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert "access-control-allow-origin" not in {k.lower(): v for k, v in res.headers.items()}

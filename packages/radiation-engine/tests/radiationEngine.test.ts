@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { RadiationEngine } from '../src/index';
 import { SepPredictionEngine } from '../src/physics/sepPrediction';
 import { DoseCalculator } from '../src/physics/doseCalculator';
 import { MitigationRulesEngine } from '../src/alert/mitigationRules';
@@ -85,5 +86,20 @@ describe('StormSimulator (Demo Scenarios)', () => {
     expect(state.earlyWarning.isWarningActive).toBe(true);
     expect(state.earlyWarning.estimatedProtonArrivalMinutes).toBe(48);
     expect(state.mitigation.abortEvaImmediately).toBe(true);
+  });
+});
+
+describe('RadiationEngine (Telemetry Degradation)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('sets telemetryDegraded=true when NOAA telemetry fails instead of returning silent nominal', async () => {
+    const engine = new RadiationEngine();
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network offline'));
+
+    const state = await engine.getCurrentState();
+
+    expect(state.telemetryDegraded).toBe(true);
+    expect(state.degradationReason).toContain('unavailable');
+    expect(state.currentTelemetry.stormScale).toBe('S0_NOMINAL');
   });
 });

@@ -288,14 +288,14 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
                 <input
                   id="patch-file"
                   type="file"
-                  accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                  accept="image/png, image/jpeg, image/webp"
                   onChange={handleFileChange}
                   className="sr-only"
                 />
               </label>
 
               <p className="mt-2 text-xs text-stem">
-                Supported formats: JPG, PNG, WEBP, or SVG (max. 5 MB).
+                Supported formats: JPG, PNG, or WEBP (max. 5 MB).
               </p>
 
               {selectedFile && (

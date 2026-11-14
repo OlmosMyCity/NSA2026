@@ -6,6 +6,11 @@ import { UpdateMissionUseCase } from "../../application/use-cases/mission/Update
 import { DeleteMissionUseCase } from "../../application/use-cases/mission/DeleteMissionUseCase.js";
 import { Environment, MissionStatus } from "@prisma/client";
 import { UnauthorizedError } from "../../domain/errors/AppError.js";
+import {
+  createMissionSchema,
+  parseWithValidation,
+  updateMissionSchema,
+} from "../validation/schemas.js";
 
 export class MissionController {
   constructor(
@@ -54,33 +59,20 @@ export class MissionController {
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name, description, environment, status, startDate, endDate, patchUrl } = req.body;
-
-      if (!name || !description || !startDate) {
-        res.status(400).json({
-          error: "Campos requeridos faltantes: 'name', 'description' y 'startDate' son obligatorios.",
-        });
-        return;
-      }
-
-      const parsedStartDate = new Date(startDate);
-      if (isNaN(parsedStartDate.getTime())) {
-        res.status(400).json({ error: "El formato de 'startDate' no es una fecha válida." });
-        return;
-      }
-
       // El creador sale SIEMPRE del JWT (authenticate): nunca se acepta `createdById` desde el body.
       if (!req.user) throw new UnauthorizedError();
       const createdById = req.user.id;
 
+      const payload = parseWithValidation(createMissionSchema, req.body ?? {});
+
       const mission = await this.createMissionUseCase.execute({
-        name,
-        description,
-        environment,
-        status,
-        startDate: parsedStartDate,
-        endDate: endDate ? new Date(endDate) : null,
-        patchUrl,
+        name: payload.name,
+        description: payload.description,
+        environment: payload.environment,
+        status: payload.status,
+        startDate: payload.startDate,
+        endDate: payload.endDate ?? null,
+        patchUrl: payload.patchUrl ?? null,
         createdById,
       });
 
@@ -93,17 +85,9 @@ export class MissionController {
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { name, description, environment, status, startDate, endDate, patchUrl } = req.body;
+      const payload = parseWithValidation(updateMissionSchema, req.body ?? {});
 
-      const mission = await this.updateMissionUseCase.execute(id, {
-        name,
-        description,
-        environment,
-        status,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
-        patchUrl,
-      });
+      const mission = await this.updateMissionUseCase.execute(id, payload);
 
       res.status(200).json(mission);
     } catch (error) {

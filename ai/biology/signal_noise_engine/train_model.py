@@ -5,6 +5,7 @@ caused by microgravity fluid shifts or sleep/psychological stress, using
 physical dosimetry + astronaut vitals + molecular biomarkers.
 """
 
+import hashlib
 from pathlib import Path
 import joblib
 import numpy as np
@@ -212,7 +213,9 @@ def train_and_save() -> Pipeline:
 
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump({"pipeline": pipeline, "classes": CLASSES, "features": FEATURE_NAMES}, MODEL_PATH)
-    print(f"\nSaved model artifact to {MODEL_PATH}")
+    digest = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
+    Path(f"{MODEL_PATH}.sha256").write_text(f"{digest}  {MODEL_PATH.name}\n", encoding="utf-8")
+    print(f"\nSaved model artifact to {MODEL_PATH} (sha256={digest})")
     return pipeline
 
 

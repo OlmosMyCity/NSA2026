@@ -55,10 +55,15 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
     const loadCrew = async () => {
       try {
         const res = await astronautService.list({ limit: 50 });
-        setAstronauts(res.data);
-        if (!selectedAstronautId && res.data.length > 0) {
-          const myAstro = res.data.find((a) => a.userId === user?.id);
-          setSelectedAstronautId(myAstro ? myAstro.id : res.data[0].id);
+        const isAdmin = user?.role === 'ADMIN';
+        const myAstro = res.data.find((a) => a.userId === user?.id || a.id === user?.astronautId);
+        const visibleCrew = isAdmin || !myAstro ? res.data : [myAstro];
+
+        setAstronauts(visibleCrew);
+        if (!isAdmin && myAstro) {
+          setSelectedAstronautId(myAstro.id);
+        } else if (!selectedAstronautId && visibleCrew.length > 0) {
+          setSelectedAstronautId(myAstro ? myAstro.id : visibleCrew[0].id);
         }
       } catch {
         // Fallback
@@ -200,8 +205,9 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
         <select
           id="select-astronaut"
           value={selectedAstronautId}
+          disabled={user?.role !== 'ADMIN' && astronauts.length <= 1}
           onChange={(e) => setSelectedAstronautId(e.target.value)}
-          className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
+          className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm text-blueberry focus:border-blueberry focus:outline-none disabled:opacity-75 [&>option]:bg-canvas [&>option]:text-blueberry"
         >
           {astronauts.map((a) => (
             <option key={a.id} value={a.id}>

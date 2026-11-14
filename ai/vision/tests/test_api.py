@@ -4,7 +4,10 @@ import tempfile
 import cv2
 from fastapi.testclient import TestClient
 
-from src.api.app import app
+import pytest
+from starlette.websockets import WebSocketDisconnect
+
+from src.api.app import MAX_FRAME_BYTES, app
 from src.vision.synthetic_stream import SimulationConfig, SyntheticAstronautGenerator
 
 client = TestClient(app)
@@ -81,3 +84,57 @@ def test_websocket_telemetry_stream() -> None:
         assert msg["camera_mode"] == "nir_ir"
         assert msg["context"] == "sleep_pod"
         assert msg["annotated_frame_jpeg_b64"] is not None
+
+
+def test_frame_upload_enforces_size_limit() -> None:
+    oversized = b"\xff\xd8\xff" + b"0" * MAX_FRAME_BYTES
+    res = client.post(
+        "/api/analyze/frame",
+        files={"file": ("huge.jpg", oversized, "image/jpeg")},
+    )
+    assert res.status_code == 413
+
+
+def test_video_upload_rejects_bad_extension_and_unbounded_frames() -> None:
+    res_ext = client.post(
+        "/api/analyze/video",
+        files={"file": ("payload.sh", b"echo hi", "application/octet-stream")},
+    )
+    assert res_ext.status_code == 400
+
+    res_frames = client.post(
+        "/api/analyze/video",
+        files={"file": ("clip.mp4", b"0000", "video/mp4")},
+        data={"max_frames": "999999"},
+    )
+    assert res_frames.status_code == 422
+
+
+def test_service_token_guards_endpoints_and_websocket(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AI_SERVICE_TOKEN", "vision-secret")
+
+    res_unauth = client.post("/api/reset")
+    assert res_unauth.status_code == 401
+
+    res_auth = client.post("/api/reset", headers={"X-Service-Token": "vision-secret"})
+    assert res_auth.status_code == 200
+
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/ws/telemetry"):
+            pass
+
+    with client.websocket_connect("/ws/telemetry", headers={"X-Service-Token": "vision-secret"}) as ws:
+        ws.send_json({"type": "reset"})
+        ack = ws.receive_json()
+        assert ack["status"] == "reset"
+
+
+def test_cors_blocks_disallowed_origin_and_credentials() -> None:
+    res = client.options(
+        "/api/health",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert "access-control-allow-origin" not in {k.lower(): v for k, v in res.headers.items()}

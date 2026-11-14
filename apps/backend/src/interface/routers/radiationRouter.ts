@@ -1,14 +1,15 @@
-import { Router, Request, Response } from "express";
-import { RadiationEngine } from "@nsa2026/radiation-engine";
-
-type SimulationScenarioId = NonNullable<Parameters<RadiationEngine["setSimulationScenario"]>[0]>;
+import { Router, Request, Response, NextFunction } from "express";
+import { Role } from "@prisma/client";
+import { radiationEngine } from "../../infrastructure/services/radiationEngine.js";
+import { authenticate } from "../middlewares/authenticate.js";
+import { authorizeRoles } from "../middlewares/authorizeRoles.js";
+import { parseWithValidation, radiationSimulateSchema } from "../validation/schemas.js";
 
 export const radiationRouter = Router();
-const engine = new RadiationEngine();
 
 radiationRouter.get("/status", async (_req: Request, res: Response) => {
   try {
-    const state = await engine.getCurrentState();
+    const state = await radiationEngine.getCurrentState();
     res.json(state);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch radiation status";
@@ -18,7 +19,7 @@ radiationRouter.get("/status", async (_req: Request, res: Response) => {
 
 radiationRouter.get("/cme-forecast", async (_req: Request, res: Response) => {
   try {
-    const cmes = await engine.getCmeForecasts();
+    const cmes = await radiationEngine.getCmeForecasts();
     res.json(cmes);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch CME forecast";
@@ -26,22 +27,24 @@ radiationRouter.get("/cme-forecast", async (_req: Request, res: Response) => {
   }
 });
 
-radiationRouter.post("/simulate", (req: Request, res: Response) => {
-  const { scenario } = (req.body || {}) as { scenario?: SimulationScenarioId | "RESET" };
+radiationRouter.post(
+  "/simulate",
+  authenticate,
+  authorizeRoles(Role.ADMIN),
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { scenario } = parseWithValidation(radiationSimulateSchema, req.body ?? {});
 
-  if (!scenario || scenario === "RESET") {
-    engine.setSimulationScenario(null);
-    res.json({ message: "Simulation mode disabled. Using live NOAA/NASA telemetry." });
-    return;
+      if (!scenario || scenario === "RESET") {
+        radiationEngine.setSimulationScenario(null);
+        res.json({ message: "Simulation mode disabled. Using live NOAA/NASA telemetry." });
+        return;
+      }
+
+      radiationEngine.setSimulationScenario(scenario);
+      res.json({ message: `Simulation scenario activated: ${scenario}` });
+    } catch (error) {
+      next(error);
+    }
   }
-
-  if (["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4"].includes(scenario)) {
-    engine.setSimulationScenario(scenario as SimulationScenarioId);
-    res.json({ message: `Simulation scenario activated: ${scenario}` });
-    return;
-  }
-
-  res.status(400).json({
-    error: "Invalid scenario. Allowed values: NOMINAL, FLARE_EARLY_WARNING, PEAK_STORM_S4, RESET",
-  });
-});
+);

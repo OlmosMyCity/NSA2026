@@ -14,10 +14,10 @@ export const storageService = {
    * Devuelve la URL pública accesible resultante.
    */
   async uploadImage(file: File, folder: 'missions' | 'astronauts'): Promise<string> {
-    // 1. Validaciones de cliente (tipo y tamaño máximo de 5MB)
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    // 1. Validaciones de cliente (tipo y tamaño máximo de 5MB; sin SVG por seguridad)
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      throw new Error('Formato de imagen inválido. Solo se admiten JPG, PNG, WEBP o SVG.');
+      throw new Error('Formato de imagen inválido. Solo se admiten JPG, PNG o WEBP.');
     }
 
     const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
