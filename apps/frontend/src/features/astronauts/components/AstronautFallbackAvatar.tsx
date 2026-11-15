@@ -3,6 +3,7 @@ interface AstronautFallbackAvatarProps {
   name?: string;
 }
 
+/** Fallback EVA helmet silhouette rendered when an astronaut profile has no photo URL. */
 export function AstronautFallbackAvatar({
   className = 'h-16 w-16',
   name = 'Astronaut',
@@ -19,10 +20,10 @@ export function AstronautFallbackAvatar({
         xmlns="http://www.w3.org/2000/svg"
         className="h-full w-full"
       >
-        {/* Fondo sutil */}
+        {/* Subtle background */}
         <circle cx="50" cy="50" r="45" fill="hsl(80, 14%, 96%)" fillOpacity="0.65" />
 
-        {/* Hombros del traje EVA */}
+        {/* EVA suit shoulders */}
         <path
           d="M18 92 C18 75, 32 70, 42 70 L58 70 C68 70, 82 75, 82 92 Z"
           fill="hsl(223, 29%, 26%)"
@@ -34,7 +35,7 @@ export function AstronautFallbackAvatar({
           strokeOpacity="0.5"
         />
 
-        {/* Anillo de cuello */}
+        {/* Neck ring */}
         <rect
           x="41"
           y="64"
@@ -46,7 +47,7 @@ export function AstronautFallbackAvatar({
           strokeWidth="1.5"
         />
 
-        {/* Casco exterior */}
+        {/* Outer helmet */}
         <circle
           cx="50"
           cy="41"
@@ -62,7 +63,7 @@ export function AstronautFallbackAvatar({
           fill="hsl(223, 29%, 26%)"
         />
 
-        {/* Reflejo sutil en visor */}
+        {/* Subtle visor reflection */}
         <path
           d="M38 35 C43 32.5, 57 32.5, 62 35"
           stroke="hsl(27, 16%, 89%)"
@@ -71,7 +72,7 @@ export function AstronautFallbackAvatar({
           strokeOpacity="0.6"
         />
 
-        {/* Insignia de misión en el pecho */}
+        {/* Chest mission insignia */}
         <circle cx="50" cy="81" r="4" fill="hsl(27, 16%, 89%)" />
       </svg>
     </div>

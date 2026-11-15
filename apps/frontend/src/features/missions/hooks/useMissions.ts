@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { missionService } from '../services/missionService';
 import { Mission, MissionFilters, PaginationMeta } from '../domain/types';
 
+/**
+ * React hook managing paginated mission registry queries, filter state, and
+ * soft-delete actions via `missionService`.
+ */
 export function useMissions(initialFilters: MissionFilters = { page: 1, limit: 6 }) {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({
@@ -39,7 +43,7 @@ export function useMissions(initialFilters: MissionFilters = { page: 1, limit: 6
     setFilters((prev) => ({
       ...prev,
       ...newFilters,
-      // Si cambia el filtro de búsqueda o entorno, volver a página 1
+      // Reset to page 1 whenever search or environment filters change
       page: newFilters.page !== undefined ? newFilters.page : 1,
     }));
   };

@@ -9,10 +9,10 @@ import { OpenIncidentUseCase } from "../incident/OpenIncidentUseCase.js";
 import { openMedicalIncidentsFromReading } from "../incident/syncSystemIncidents.js";
 
 /**
- * P1 — Una corrección es un registro nuevo.
- * Crea una lectura nueva con los valores correctos (re-evaluada clínicamente) que
- * apunta a la original con `supersedesId`, e invalida la original con el motivo.
- * Ambas operaciones ocurren en una sola transacción.
+ * P1 — Corrections are persisted as superseding records.
+ * Creates a new clinically re-evaluated health reading pointing to the original via
+ * `supersedesId` and invalidates the original reading with an audit reason inside a
+ * single database transaction.
  */
 export class CorrectHealthReadingUseCase {
   constructor(
@@ -57,7 +57,7 @@ export class CorrectHealthReadingUseCase {
         alerts: evaluation.alerts,
         recommendation: evaluation.recommendation,
         notes: dto.notes ?? original.notes,
-        // Por defecto la corrección describe el mismo momento clínico que la original
+        // Default to the original clinical timestamp unless an explicit timestamp is supplied
         takenAt: dto.takenAt ?? original.takenAt,
       },
       { reason: `Corregida: ${reason}`, invalidatedById: correctedById }

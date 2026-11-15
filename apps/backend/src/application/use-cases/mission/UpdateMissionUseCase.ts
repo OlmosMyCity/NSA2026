@@ -1,8 +1,17 @@
+/**
+ * @module application/use-cases/mission/UpdateMissionUseCase
+ * Use case for partial validation and update of an existing space mission.
+ */
+
 import { Mission } from "@prisma/client";
 import { IMissionRepository } from "../../../domain/repository/IMissionRepository.js";
 import { UpdateMissionDTO } from "../../../domain/models/Mission.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
 
+/**
+ * Validates non-empty `name` and `description` when supplied and updates the mission;
+ * throws `NotFoundError` (404) if missing.
+ */
 export class UpdateMissionUseCase {
   constructor(private readonly missionRepo: IMissionRepository) {}
 

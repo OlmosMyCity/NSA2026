@@ -1,5 +1,16 @@
+/**
+ * @module application/health/evaluateReading
+ * Pure deterministic clinical triage engine enforcing NASA Human Research Program (HRP)
+ * biomedical thresholds for Artemis crew health readings.
+ *
+ * Architectural role: Acts as the authoritative deterministic rule engine for reading
+ * classification (`OK`, `WARNING`, `CRITICAL`), triggered alerts, and protocol selection.
+ * Alert messages are preserved in Spanish for clinical UI and test assertions.
+ */
+
 import { getMedicalProtocol } from "./medicalProtocols.js";
 
+/** Raw vital-sign and behavioral metrics for a single biomedical reading. */
 export interface HealthReadingInput {
   heartRateBpm: number;
   systolicMmHg: number;
@@ -8,11 +19,13 @@ export interface HealthReadingInput {
   temperatureC: number;
   spo2Pct: number;
   sleepHours: number;
-  mood: number; // 1 a 5
+  mood: number; // 1 to 5 scale
 }
 
+/** Severity level assigned to an individual physiological threshold breach. */
 export type HealthAlertLevel = "WARNING" | "CRITICAL";
 
+/** Individual clinical alert produced when a vital indicator breaches HRP bounds. */
 export interface HealthAlert {
   indicator: string;
   level: HealthAlertLevel;
@@ -21,8 +34,10 @@ export interface HealthAlert {
   value: number;
 }
 
+/** Aggregate health classification derived from all evaluated vital indicators. */
 export type OverallHealthStatus = "OK" | "WARNING" | "CRITICAL";
 
+/** Output of `evaluateReading` pairing overall status, primary protocol ID, alerts, and guidance. */
 export interface HealthEvaluationResult {
   status: OverallHealthStatus;
   protocolId: string;
@@ -31,15 +46,23 @@ export interface HealthEvaluationResult {
 }
 
 /**
- * Evalúa los 7 indicadores vitales de un astronauta según los estándares
- * del Human Research Program (HRP) de la NASA para misiones Artemis.
+ * Evaluates 7 astronaut physiological and behavioral indicators against NASA Human Research
+ * Program (HRP) thresholds for Artemis missions:
+ * - Heart rate (bpm): critical `< 40` or `> 100`; warning `40–49` or `91–100`
+ * - Blood pressure (mmHg): critical `>= 140` sys or `>= 90` dia or `< 90` sys; warning `130–139` sys or `85–89` dia
+ * - Blood glucose (mg/dL): critical `< 70` or `> 180`; warning `141–180`
+ * - Body temperature (°C): critical `< 35.5` or `> 38.0`; warning `37.6–38.0`
+ * - SpO2 (%): critical `< 92`; warning `92–94`
+ * - Sleep (hours): critical `< 6.0`; warning `6.0–6.99`
+ * - Mood (1–5): critical `<= 2`; warning `3`
  *
- * Función de dominio puro (sin efectos secundarios ni dependencias externas).
+ * Pure domain function with zero side effects or external dependencies; `CRITICAL` alerts
+ * take precedence over `WARNING` alerts when selecting the primary `protocolId`.
  */
 export function evaluateReading(reading: HealthReadingInput): HealthEvaluationResult {
   const alerts: HealthAlert[] = [];
 
-  // 1. Frecuencia Cardiaca (lpm)
+  // 1. Heart Rate (bpm)
   if (reading.heartRateBpm > 100) {
     alerts.push({
       indicator: "heartRate",
@@ -69,7 +92,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 2. Presión Arterial (mmHg)
+  // 2. Blood Pressure (mmHg)
   const isHypertensiveCrisis = reading.systolicMmHg >= 140 || reading.diastolicMmHg >= 90;
   const isHypotension = reading.systolicMmHg < 90;
   const isSysWarning = reading.systolicMmHg >= 130 && reading.systolicMmHg <= 139;
@@ -101,7 +124,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 3. Glucosa en Sangre (mg/dL)
+  // 3. Blood Glucose (mg/dL)
   if (reading.glucoseMgDl < 70) {
     alerts.push({
       indicator: "glucose",
@@ -128,7 +151,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 4. Temperatura Corporal (°C)
+  // 4. Body Temperature (°C)
   if (reading.temperatureC > 38.0) {
     alerts.push({
       indicator: "temperature",
@@ -155,7 +178,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 5. Saturación de O2 (SpO2 %)
+  // 5. Oxygen Saturation (SpO2 %)
   if (reading.spo2Pct < 92) {
     alerts.push({
       indicator: "spo2",
@@ -174,7 +197,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 6. Horas de Sueño
+  // 6. Sleep Hours
   if (reading.sleepHours < 6.0) {
     alerts.push({
       indicator: "sleep",
@@ -193,7 +216,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // 7. Estado de Ánimo (escala 1-5)
+  // 7. Mood (1–5 scale)
   if (reading.mood <= 2) {
     alerts.push({
       indicator: "mood",
@@ -212,7 +235,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
     });
   }
 
-  // Clasificación Global y selección del protocolo principal
+  // Overall classification and primary protocol selection
   const criticalAlert = alerts.find((a) => a.level === "CRITICAL");
   const warningAlert = alerts.find((a) => a.level === "WARNING");
 

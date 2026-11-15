@@ -1,3 +1,11 @@
+/**
+ * @module health/services/biodosimetryService
+ * Radiobiological Signal-vs.-Noise attribution service.
+ * Separates genuine ionizing radiation genotoxicity (`γ-H2AX` double-strand break
+ * foci, `FDXR` transcriptional fold-change, physical dose rate) from non-radiation
+ * oxidative stress (`8-OHdG`) induced by sleep deprivation or microgravity fluid shifts.
+ */
+
 import type { ApiHealthReading } from '../domain/api-adapter';
 
 export type ShieldingType = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
@@ -52,6 +60,7 @@ export interface BiodosimetryTriageResult {
   triage: BiodosimetryResponse;
 }
 
+/** Curated benchmark scenarios illustrating false-positive filtering vs. true S4 SPE exposure. */
 export const SIMULATION_PRESETS: Record<
   Exclude<SimulationScenarioKey, 'LIVE_READING'>,
   { label: string; description: string; payload: BiodosimetryPayload }
@@ -118,6 +127,10 @@ export const SIMULATION_PRESETS: Record<
   },
 };
 
+/**
+ * Builds a complete biodosimetry triage payload from a standard vital-signs reading
+ * and active shielding tier, synthesizing coherent baseline molecular markers when absent.
+ */
 export function buildPayloadFromReading(
   reading: Partial<ApiHealthReading> | null | undefined,
   shieldingType: ShieldingType
@@ -127,7 +140,7 @@ export function buildPayloadFromReading(
   const hr = reading?.heartRateBpm ?? 72;
   const sys = reading?.systolicMmHg ?? 118;
 
-  // Estimar biomarcadores in-situ coherentes si la lectura no los trae explícitos
+  // Synthesize coherent in-situ molecular biomarkers when the live reading omits them
   const sleepStress = sleepHours < 5.5 || mood <= 2;
   const microgravityLoad = sys >= 135 || hr >= 92;
   const urine8Ohdg = sleepStress || microgravityLoad ? 24.5 : 12.0;

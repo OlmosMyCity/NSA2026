@@ -1,24 +1,23 @@
-# Guía de Integración: Deep Space Radiation Engine (NSA2026)
+# Integration Guide: Deep Space Radiation Engine (`@nsa2026/radiation-engine`)
 
-Este documento explica cómo integrar el **Módulo de Predicción y Alerta Temprana de Radiación Espacial** con el frontend y backend de su equipo.
-
----
-
-## 1. ¿Cómo funciona el módulo?
-El módulo se encuentra en `NSA2026/radiation-engine`. Puede ser consumido de dos formas:
-1. **Como Servicio REST (Microservicio):** Ejecutándolo con `npm run start` o `npm run dev` en el puerto `4000` (o el que configure en `.env`).
-2. **Como Librería / SDK TypeScript Directo:** Importando `RadiationEngine` directamente en el backend de su aplicación Node.js.
+This guide documents how `@nsa2026/radiation-engine` connects heliophysics feeds from NOAA SWPC and NASA DONKI into the Orbvital backend (`apps/backend`) and Next.js frontend (`apps/frontend`).
 
 ---
 
-## 2. Endpoints del Microservicio REST
+## 1. Integration Modes
 
-Base URL por defecto: `http://localhost:4000`
+Located in `packages/radiation-engine`, the engine operates in two modes:
+1. **Embedded TypeScript SDK (Default in Orbvital):** Imported directly by `apps/backend/src/infrastructure/services/radiationEngine.ts` and exposed through `/api/radiation/*` routes alongside automated `RADIATION` incident synchronization.
+2. **Standalone REST Microservice (`src/server.ts`):** Can be booted independently during isolated testing or demos (`npm run dev` inside `packages/radiation-engine`).
 
-### A. Obtener Estado en Tiempo Real / Alerta Actual
-`GET /api/radiation/status`
+---
 
-**Respuesta JSON de ejemplo:**
+## 2. Backend REST Endpoints (`/api/radiation/*`)
+
+### `GET /api/radiation/status`
+Returns real-time (or active simulated) space-weather telemetry, relativistic early-warning state, shielding-attenuated biological doses, solar wind impact corridor predictions, and crew mitigation directives.
+
+**Sample Response:**
 ```json
 {
   "timestamp": "2026-11-14T14:58:14.494Z",
@@ -54,21 +53,24 @@ Base URL por defecto: `http://localhost:4000`
   },
   "biologicalDoses": {
     "EVA_SUIT": {
-      "doseRateMicroSvPerHour": 34439.3,
-      "projected30DayDoseMsv": 826.54,
-      "careerDosePercentage": 165.3,
-      "clinicalRiskLevel": "HAZARDOUS"
+      "shieldingType": "EVA_SUIT",
+      "doseRateMicroSvPerHour": 12.3,
+      "projected30DayDoseMsv": 1.54,
+      "careerDosePercentage": 0.3,
+      "clinicalRiskLevel": "NOMINAL"
     },
     "CREW_CABIN_NOMINAL": {
-      "doseRateMicroSvPerHour": 9064.3,
-      "projected30DayDoseMsv": 217.54,
-      "careerDosePercentage": 43.5,
-      "clinicalRiskLevel": "ELEVATED"
+      "shieldingType": "CREW_CABIN_NOMINAL",
+      "doseRateMicroSvPerHour": 4.43,
+      "projected30DayDoseMsv": 1.38,
+      "careerDosePercentage": 0.3,
+      "clinicalRiskLevel": "NOMINAL"
     },
     "STORM_SHELTER": {
-      "doseRateMicroSvPerHour": 1451.8,
-      "projected30DayDoseMsv": 34.84,
-      "careerDosePercentage": 6.9,
+      "shieldingType": "STORM_SHELTER",
+      "doseRateMicroSvPerHour": 2.22,
+      "projected30DayDoseMsv": 1.33,
+      "careerDosePercentage": 0.3,
       "clinicalRiskLevel": "NOMINAL"
     }
   },
@@ -78,65 +80,49 @@ Base URL por defecto: `http://localhost:4000`
     "evacuateToStormShelter": true,
     "powerDownExternalSensors": true,
     "medicalCountermeasures": [
-      "Administer prophylactic antiemetic to prevent acute motion/radiation sickness",
-      "Oral radioprotector supplement regimen (Vitamins C, E, Selenium, N-acetylcysteine)",
-      "Prepare peripheral blood sample kit for post-event lymphocyte count"
+      "Administer prophylactic antiemetic to prevent acute motion/radiation sickness"
     ],
     "actionChecklist": [
-      "Abort all EVA operations; repressurize airlock on rapid cycle",
+      "Abort all EVA operations; depressurize/repressurize airlock on rapid emergency cycle",
       "Crew ingress to dedicated Storm Shelter within 20 minutes"
     ]
   }
 }
 ```
 
----
+### `GET /api/radiation/cme-forecast`
+Returns latest NASA DONKI WSA-ENLIL Coronal Mass Ejection shock analyses.
 
-### B. Disparador de Simulación para la Presentación a los Jurados
-`POST /api/radiation/simulate`
-
-**Cuerpo de la petición (JSON):**
+### `POST /api/radiation/simulate` *(Admin Only)*
+Activates demonstration scenarios for operational drills or judge walkthroughs and immediately synchronizes any resulting `RADIATION` incident:
 ```json
 {
   "scenario": "FLARE_EARLY_WARNING"
 }
 ```
+Allowed values: `"NOMINAL"`, `"FLARE_EARLY_WARNING"`, `"PEAK_STORM_S4"`, `"SIDE_MISS_CME"`, `"RESET"`.
 
-Valores permitidos para `scenario`:
-* `"FLARE_EARLY_WARNING"`: Simula una fulguración solar X4.5 y activa la cuenta regresiva de 48 minutos de alerta temprana antes de que lleguen los protones.
-* `"PEAK_STORM_S4"`: Simula el impacto del pico de protones de alta energía (14,500 pfu, Tormenta S4). Muestra la enorme diferencia de dosis biológica entre estar en EVA suit vs. estar en el Storm Shelter.
-* `"NOMINAL"`: Simula radiación de fondo tranquila.
-* `"RESET"`: Regresa a la telemetría en vivo de los satélites NOAA GOES y NASA DONKI.
+### `POST /api/radiation/predict-impact`
+Evaluates custom synthetic CME/flare parameters (`sourceLocation`, `flareClass`, `cmeSpeedKmS`, `halfAngleDeg`, `solarWindSpeedKmS`, `densityPcm3`, `bzNt`, `moonPhaseAngleDeg`) across Earth magnetosphere, cislunar corridor, Gateway NRHO, and Lunar South Pole targets.
 
 ---
 
-## 3. Uso como SDK TypeScript directo en su Backend
-
-Si prefieren importar el código directamente en su servidor sin levantar un microservicio adicional:
+## 3. Direct TypeScript SDK Usage
 
 ```typescript
-import { RadiationEngine } from './radiation-engine/src';
+import { RadiationEngine } from '@nsa2026/radiation-engine';
 
-const radiationEngine = new RadiationEngine();
+const engine = new RadiationEngine();
+const state = await engine.getCurrentState();
 
-// Obtener estado actual
-const state = await radiationEngine.getCurrentState();
-
-// Activar escenario para demo
-radiationEngine.setSimulationScenario('FLARE_EARLY_WARNING');
+// Toggle scenario simulation programmatically
+engine.setSimulationScenario('FLARE_EARLY_WARNING');
 ```
 
 ---
 
-## 4. Ideas de Visualización para el Frontend (UI)
+## 4. Frontend UI Patterns
 
-1. **Banner de Alerta Temprana en el Header:**
-   * Si `earlyWarning.isWarningActive === true`: mostrar banner naranja/rojo parpadeante:
-   * *"⚠️ SOLAR PARTICLE EVENT IMMINENT — ETA to Peak Flux: XX min — ACTION: Proceed to Crew Storm Shelter"*.
-2. **Selector de Escenarios de Demo:**
-   * Un dropdown discreto o botones para que el presentador pueda alternar entre `Nominal`, `Solar Flare Warning` y `Peak Storm S4` durante el video o la presentación con jueces.
-3. **Tarjeta de Dosis por Blindaje:**
-   * Mostrar una comparativa visual de barras o medidores de aguja con los 3 valores:
-     - Traje EVA: Rojo / Peligro
-     - Cabina Estándar: Ámbar / Elevado
-     - Storm Shelter: Verde / Protegido (reducción del 95.8% de radiación)
+1. **Global Radiation Banner (`RadiationStatusBanner.tsx`):** Polls live storm telemetry and displays actionable early-warning countdowns and emergency checklists.
+2. **Digital Twin Coupling (`/dashboard`):** Feeds `stormScale` and selected habitat shielding (`EVA_SUIT`, `CREW_CABIN_NOMINAL`, `STORM_SHELTER`) into both the NASA HRP hazard load bars and Gemini Decision 1 triage context.
+3. **Cross-Domain Incident Escalation (`/admin`):** Automatically promotes `CRITICAL` crew readings during `S3+` solar storms to `P0_STORM_CRITICAL` shelter-in-place protocols.

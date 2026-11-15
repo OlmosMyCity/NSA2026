@@ -1,10 +1,17 @@
+/**
+ * @module StorageService
+ * Image storage adapter supporting Vercel Blob (primary) and Supabase Storage (fallback),
+ * enforcing an explicit MIME allowlist and magic-byte validation to block spoofed files and Stored XSS.
+ */
+
 import { randomUUID } from "node:crypto";
 import { put } from "@vercel/blob";
 import { ValidationError } from "../../domain/errors/AppError.js";
 
+/** Supported object-storage folders for uploaded assets. */
 export type StorageFolder = "missions" | "astronauts";
 
-/** Tipos aceptados (sin SVG para prevenir Stored XSS) → extensión del archivo. */
+/** Accepted raster MIME types mapped to canonical file extensions (SVG excluded to prevent Stored XSS). */
 export const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -12,7 +19,7 @@ export const IMAGE_EXTENSIONS: Record<string, string> = {
 };
 
 /**
- * Verifica que los bytes iniciales del archivo coincidan con el tipo MIME declarado.
+ * Verifies that the leading bytes (magic signature) of an uploaded buffer match its declared MIME type.
  */
 export function hasValidImageMagicBytes(buffer: Buffer, mimetype: string): boolean {
   if (!Buffer.isBuffer(buffer)) return false;
@@ -55,10 +62,14 @@ function getSupabaseConfig() {
 }
 
 /**
- * Servicio de almacenamiento de imágenes: usa Vercel Blob cuando BLOB_READ_WRITE_TOKEN
- * está configurado y mantiene respaldo compatible con Supabase Storage.
+ * Image storage service: uploads to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set,
+ * and falls back to the Supabase Storage REST API otherwise.
  */
 export const storageService = {
+  /**
+   * Validates image MIME type and magic bytes, stores the payload under a UUID key,
+   * and returns the public HTTPS asset URL.
+   */
   async uploadImage(file: { buffer: Buffer; mimetype: string }, folder: StorageFolder): Promise<string> {
     const ext = IMAGE_EXTENSIONS[file.mimetype];
     if (!ext || !hasValidImageMagicBytes(file.buffer, file.mimetype)) {

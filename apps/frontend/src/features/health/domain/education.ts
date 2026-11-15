@@ -1,3 +1,10 @@
+/**
+ * @module health/domain/education
+ * Crew-facing educational copy: NASA HRP 5-hazard labels, physiological role
+ * summaries for the 5 Digital Twin zones, measurement instructions, spaceflight
+ * physiology context, and status-specific operational actions per indicator.
+ */
+
 import type { BodyZoneId, HealthStatus, IndicatorId, SpaceHazard } from './types';
 
 /** Educational guide for a physiological indicator, written for crew members. */

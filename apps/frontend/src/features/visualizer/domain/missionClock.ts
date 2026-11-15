@@ -1,8 +1,15 @@
+/**
+ * Mission Elapsed Time (MET) timeline mapping and physiological reading alignment
+ * utilities for synchronizing clinical telemetry with the 3D orbital viewer.
+ *
+ * @module features/visualizer/domain/missionClock
+ */
+
 import { evaluateIndicator, worstStatus } from '@/features/health/domain/evaluate';
 import { toIndicatorReadings, type ApiHealthReading } from '@/features/health/domain/api-adapter';
 import type { HealthStatus } from '@/features/health/domain/types';
 
-/** Fase de la simulación, tal como la envía el visor en el mensaje `ready`. */
+/** Simulation phase metadata emitted by the 3D viewer in its `ready` handshake message. */
 export interface MissionPhase {
   id: string;
   name: string;
@@ -15,16 +22,16 @@ export interface MissionEvent {
   label: string;
 }
 
-/** Una lectura de salud ubicada en el reloj de misión (MET, segundos desde el lanzamiento). */
+/** Health reading anchored on the Mission Elapsed Time (MET, seconds from liftoff) clock. */
 export interface TimelineReading {
   reading: ApiHealthReading;
   met: number;
   status: HealthStatus;
-  /** `null` antes del lanzamiento (línea base en Tierra). */
+  /** `null` prior to liftoff (Earth pre-launch baseline). */
   phaseId: string | null;
 }
 
-/** MET de un instante: segundos desde el lanzamiento (negativo = antes). */
+/** Computes Mission Elapsed Time (MET) in seconds from liftoff (negative indicates pre-launch). */
 export function metOf(iso: string, missionStart: string): number {
   return (Date.parse(iso) - Date.parse(missionStart)) / 1000;
 }
@@ -55,7 +62,7 @@ export function readingsOnTimeline(
     .sort((a, b) => a.met - b.met);
 }
 
-/** Última lectura tomada en o antes de `met`. */
+/** Returns the most recent reading recorded at or before `met` (expects ascending MET order). */
 export function readingAt(items: TimelineReading[], met: number): TimelineReading | null {
   let found: TimelineReading | null = null;
   for (const it of items) {
@@ -65,13 +72,14 @@ export function readingAt(items: TimelineReading[], met: number): TimelineReadin
   return found;
 }
 
-/** Fracción del ancho reservada a la línea base en Tierra (antes de T+0). */
+/** Fraction of timeline width reserved for the pre-launch Earth baseline (before T+0). */
 export const BASELINE_SHARE = 0.14;
 
 /**
- * Escala MET → [0, 1]. Igual que la barra del visor: cada fase ocupa un ancho
- * proporcional a log(duración), para que el ascenso (8 min) no desaparezca
- * frente a la NRHO (11 días). Antes de T+0 hay un tramo lineal de línea base.
+ * Maps MET -> [0, 1] horizontal coordinates. Matches the 3D viewer scrubber:
+ * each flight phase occupies width proportional to log(1 + duration) so brief phases
+ * like ascent (8 min) remain visible alongside multi-day NRHO segments, preceded by
+ * a linear baseline span before T+0.
  */
 export function createMissionScale(phases: MissionPhase[], baselineSeconds: number) {
   const w = phases.map((p) => Math.log1p(p.t_end - p.t_start));

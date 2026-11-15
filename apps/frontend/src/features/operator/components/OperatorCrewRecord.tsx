@@ -110,9 +110,6 @@ export function OperatorCrewRecord({ astronautId }: { astronautId: string }) {
   const nowMs = serverNow();
   const status = STATUS_META[detail.status];
   const isHistorical = !!detail.vitals && !detail.isFresh;
-  const xDomain: [number, number] = detail.history.length
-    ? [Date.parse(detail.history[detail.history.length - 1].takenAt), Date.parse(detail.history[0].takenAt)]
-    : [0, 1];
 
   return (
     <div className="animate-materialize space-y-6">
@@ -240,7 +237,7 @@ export function OperatorCrewRecord({ astronautId }: { astronautId: string }) {
                   </p>
                   {points.length > 1 && (
                     <div className="mt-2 h-12">
-                      <TrendChart indicator={indicator} points={points} xDomain={xDomain} height={48} compact />
+                      <TrendChart indicator={indicator} points={points} height={48} compact />
                     </div>
                   )}
                 </li>

@@ -1,6 +1,14 @@
+/**
+ * Domain contracts for the Flight Surgeon triage console, active solar radiation
+ * incident summaries, and crew-wide clinical metrics.
+ *
+ * @module features/admin/domain/types
+ */
+
 /** `NO_DATA`: sin lecturas. Nunca se presenta como `OK`. */
 export type TriageStatus = 'CRITICAL' | 'WARNING' | 'OK' | 'NO_DATA';
 
+/** Aggregated clinical triage snapshot for a single crew member's latest health reading. */
 export interface CrewMemberTriage {
   astronautId: string;
   astronautName: string;

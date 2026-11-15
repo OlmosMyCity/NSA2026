@@ -1,7 +1,13 @@
+/**
+ * @module application/use-cases/health/ListHealthReadingsUseCase
+ * Use case for paginated listing of astronaut biomedical health readings.
+ */
+
 import { HealthReading } from "@prisma/client";
 import { IHealthReadingRepository } from "../../../domain/repository/IHealthReadingRepository.js";
 import { HealthReadingFilters, PaginatedResult } from "../../../domain/models/HealthReading.js";
 
+/** Lists paginated health readings filtered by astronaut, status, and timestamp window. */
 export class ListHealthReadingsUseCase {
   constructor(private readonly readingRepo: IHealthReadingRepository) {}
 

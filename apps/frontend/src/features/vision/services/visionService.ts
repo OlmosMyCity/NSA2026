@@ -1,3 +1,12 @@
+/**
+ * Client adapter for the Python/FastAPI Computer Vision telemetry service (`ENV.VISION_URL`)
+ * and backend `/readings/vision-ingest` persistence endpoint.
+ * Provides HTTP simulator ticks, webcam frame analysis, WebSocket URL resolution,
+ * health checks, and 30s biometric-to-clinical reading ingestion with mock-DB fallback.
+ *
+ * @module features/vision/services/visionService
+ */
+
 import { ENV, isReachableServiceUrl } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
@@ -10,11 +19,13 @@ import type {
   VisionIngestResponse,
 } from '../domain/types';
 
+/** Returns the normalized Vision API base URL if reachable from the current origin, else `null`. */
 export function getVisionBaseUrl(): string | null {
   if (!isReachableServiceUrl(ENV.VISION_URL)) return null;
   return ENV.VISION_URL.replace(/\/+$/, '');
 }
 
+/** Advances the Vision AI synthetic biometric simulator by one frame over HTTP (WebSocket fallback). */
 export async function tickSimulatorHttp(params: {
   camera_mode: CameraMode;
   context: MonitoringContext;
@@ -32,6 +43,7 @@ export async function tickSimulatorHttp(params: {
   return (await res.json()) as AstronautTelemetryFrame;
 }
 
+/** Submits a captured JPEG webcam frame to `/api/analyze/frame` when WebSockets are unavailable. */
 export async function analyzeWebcamFrameHttp(params: {
   blob: Blob;
   camera_mode: CameraMode;
@@ -53,12 +65,14 @@ export async function analyzeWebcamFrameHttp(params: {
   return (await res.json()) as AstronautTelemetryFrame;
 }
 
+/** Resets Vision AI temporal rPPG and blink-rate ring buffers on the service. */
 export async function resetVisionHttp(): Promise<void> {
   const base = getVisionBaseUrl();
   if (!base) return;
   await fetch(`${base}/api/reset`, { method: 'POST' }).catch(() => undefined);
 }
 
+/** Resolves the `ws://` or `wss://` telemetry stream endpoint if `ENV.VISION_URL` is reachable. */
 export function getVisionWsUrl(): string | null {
   if (!isReachableServiceUrl(ENV.VISION_URL)) return null;
   try {
@@ -70,6 +84,7 @@ export function getVisionWsUrl(): string | null {
   }
 }
 
+/** Polls `/api/health` on the Vision microservice to inspect loaded ONNX/MediaPipe models. */
 export async function checkVisionHealth(): Promise<VisionHealthResponse | null> {
   if (!isReachableServiceUrl(ENV.VISION_URL)) return null;
   try {
@@ -84,6 +99,11 @@ export async function checkVisionHealth(): Promise<VisionHealthResponse | null> 
   }
 }
 
+/**
+ * Persists a Vision telemetry snapshot as a clinical health reading for `astronautId`.
+ * Maps continuous valence (`[-1, 1]`) and sleep quality (`[0, 100]`) into clinical 1–5 mood
+ * and 4–9h sleep scales in mock mode, or delegates to `/readings/vision-ingest` in API mode.
+ */
 export async function ingestVisionTelemetry(
   astronautId: string,
   frame: AstronautTelemetryFrame

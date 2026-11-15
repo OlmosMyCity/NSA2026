@@ -1,13 +1,16 @@
 /**
- * Matriz de los 5 peligros del vuelo espacial (NASA Human Research Program - HRP)
- * y perfiles de entorno de misión con multiplicadores de exposición.
+ * @module application/health/hazards
+ * Matrix of the 5 Hazards of Human Spaceflight (NASA Human Research Program — HRP)
+ * and mission habitat environment profiles with radiation shielding modifiers.
  *
- * Fuente conceptual: NASA HRP — The 5 Hazards of Human Spaceflight
- * (https://www.nasa.gov/hrp/hazards) y docs/NASA_SPACE_APPS_CHALLENGE.md.
+ * Conceptual reference: NASA HRP — The 5 Hazards of Human Spaceflight
+ * (https://www.nasa.gov/hrp/hazards) and `docs/NASA_SPACE_APPS_CHALLENGE.md`.
  */
 
+/** Physiological body zones modeled by the Astronaut Digital Twin. */
 export type BodyZoneId = "heart" | "brain" | "blood" | "bones" | "sleep";
 
+/** Five canonical spaceflight health hazards defined by the NASA Human Research Program. */
 export type SpaceHazard =
   | "radiation"
   | "isolation"
@@ -15,6 +18,7 @@ export type SpaceHazard =
   | "gravity"
   | "hostileEnvironment";
 
+/** Operational habitat profiles that determine baseline environmental hazard intensity. */
 export type MissionEnvironment =
   | "SPACECRAFT"
   | "STATION"
@@ -22,11 +26,13 @@ export type MissionEnvironment =
   | "LUNAR_BASE"
   | "MARS_BASE";
 
+/** Crew shielding configuration modulating ionizing radiation exposure. */
 export type ShieldingType =
   | "EVA_SUIT"
   | "CREW_CABIN_NOMINAL"
   | "STORM_SHELTER";
 
+/** NOAA Space Weather Prediction Center solar radiation storm scale (S0 nominal to S5 extreme). */
 export type NOAAStormScale =
   | "S0_NOMINAL"
   | "S1_MINOR"
@@ -35,22 +41,25 @@ export type NOAAStormScale =
   | "S4_SEVERE"
   | "S5_EXTREME";
 
+/** Active radiation storm and shielding state injected into Digital Twin hazard evaluations. */
 export interface RadiationContext {
   stormScale: NOAAStormScale;
   shielding: ShieldingType;
-  /** Flujo de protones >10 MeV en pfu (opcional, informativo). */
+  /** Optional >10 MeV proton flux in particle flux units (pfu), informational only. */
   fluxPfu?: number;
 }
 
+/** Normalized [0, 1] environmental hazard load aggregated onto a single body zone. */
 export interface ZoneHazardLoad {
-  /** Carga ambiental normalizada [0, 1] sobre la zona. */
+  /** Normalized aggregate environmental load [0, 1] across all 5 hazards on this zone. */
   total: number;
-  /** Peligro con mayor contribución en la zona. */
+  /** Space hazard contributing the highest weighted impact in this zone. */
   topHazard: SpaceHazard;
-  /** Contribución individual [0, 1] por cada peligro HRP. */
+  /** Individual weighted contribution [0, 1] for each HRP space hazard. */
   breakdown: Record<SpaceHazard, number>;
 }
 
+/** Canonical ordered list of body zones evaluated by the Digital Twin and decision engine. */
 export const BODY_ZONES: readonly BodyZoneId[] = [
   "heart",
   "brain",
@@ -59,6 +68,7 @@ export const BODY_ZONES: readonly BodyZoneId[] = [
   "sleep",
 ] as const;
 
+/** Canonical ordered list of the 5 NASA HRP spaceflight hazards. */
 export const SPACE_HAZARDS: readonly SpaceHazard[] = [
   "radiation",
   "isolation",
@@ -68,13 +78,12 @@ export const SPACE_HAZARDS: readonly SpaceHazard[] = [
 ] as const;
 
 /**
- * Pesos base [0..1] de cómo cada peligro espacial afecta cada zona corporal.
- * Refleja la sensibilidad fisiológica documentada por NASA HRP:
- * - radiation: sistema inmune/sangre (0.95), SNC/cerebro (0.55), cardiovascular (0.45)
- * - isolation: cerebro/ánimo (0.95), sueño (0.90), cardiovascular por estrés (0.35)
- * - distance: cerebro/estrés por autonomía y retraso (0.75), metabólico/nutrición (0.60)
- * - gravity: huesos/músculos (0.95), corazón/fluidos (0.85), sueño (0.30)
- * - hostileEnvironment: sangre/respiratorio CO2-O2 (0.90), sueño por ruido/luz (0.55)
+ * Base physiological sensitivity weights [0..1] mapping how each HRP hazard affects each body zone:
+ * - `radiation`: immune/hematologic system (`blood`: 0.95), CNS (`brain`: 0.55), cardiovascular (`heart`: 0.45)
+ * - `isolation`: mood/cognition (`brain`: 0.95), circadian rhythm (`sleep`: 0.90), stress response (`heart`: 0.35)
+ * - `distance`: autonomy/comms-delay stress (`brain`: 0.75), metabolic/nutrition (`blood`: 0.60)
+ * - `gravity`: bone/muscle loss (`bones`: 0.95), cephalad fluid shift (`heart`: 0.85), `sleep` (0.30)
+ * - `hostileEnvironment`: CO2/O2 & thermal regulation (`blood`: 0.90), cabin noise/lighting (`sleep`: 0.55)
  */
 export const HAZARD_ZONE_WEIGHTS: Record<SpaceHazard, Record<BodyZoneId, number>> = {
   radiation: {
@@ -115,12 +124,12 @@ export const HAZARD_ZONE_WEIGHTS: Record<SpaceHazard, Record<BodyZoneId, number>
 };
 
 /**
- * Perfiles de entorno: intensidad base [0..1] de cada peligro según el hábitat.
- * - SPACECRAFT (Orión): tránsito cislunar, espacio confinado, microgravedad.
- * - STATION (Gateway / ISS): mejor soporte vital y rutina, microgravedad prolongada.
- * - ROVER: exposición directa en superficie, alto riesgo de ambiente hostil/radiación.
- * - LUNAR_BASE: gravedad 1/6 g, polvo lunar, radiación moderada-alta.
- * - MARS_BASE: distancia extrema (latencia de comunicaciones), aislamiento prolongado, 3/8 g.
+ * Habitat environment profiles defining baseline hazard intensity [0..1]:
+ * - `SPACECRAFT` (Orion): cislunar transit, confined volume, microgravity.
+ * - `STATION` (Gateway / ISS): stronger life support & routine, prolonged microgravity.
+ * - `ROVER`: direct surface exposure, high hostile-environment and radiation risk.
+ * - `LUNAR_BASE`: 1/6 g partial gravity, lunar dust exposure, moderate-high radiation.
+ * - `MARS_BASE`: extreme comms latency (`distance`: 1.00), prolonged isolation, 3/8 g.
  */
 export const ENVIRONMENT_PROFILES: Record<MissionEnvironment, Record<SpaceHazard, number>> = {
   SPACECRAFT: {
@@ -160,7 +169,7 @@ export const ENVIRONMENT_PROFILES: Record<MissionEnvironment, Record<SpaceHazard
   },
 };
 
-/** Escala NOAA S0-S5 convertida a severidad normalizada [0..1]. */
+/** NOAA S0–S5 solar radiation storm scale mapped to normalized severity [0..1]. */
 export const STORM_SCALE_SEVERITY: Record<NOAAStormScale, number> = {
   S0_NOMINAL: 0.15,
   S1_MINOR: 0.35,
@@ -171,9 +180,9 @@ export const STORM_SCALE_SEVERITY: Record<NOAAStormScale, number> = {
 };
 
 /**
- * Factor de transmisión efectiva del blindaje sobre el componente de radiación.
- * Coherente con DoseCalculator (`EVA_SUIT`=0.95, `CREW_CABIN_NOMINAL`=0.25, `STORM_SHELTER`=0.04),
- * normalizado para modular el peligro ambiental en el gemelo.
+ * Effective transmission multiplier applied to the radiation hazard component.
+ * Normalized from `DoseCalculator` physical attenuation (`EVA_SUIT`=0.95, `CREW_CABIN_NOMINAL`=0.25,
+ * `STORM_SHELTER`=0.04) so nominal crew cabin remains the 1.0x reference baseline.
  */
 export const SHIELDING_MODIFIER: Record<ShieldingType, number> = {
   EVA_SUIT: 1.35,
@@ -186,7 +195,7 @@ function clamp01(value: number): number {
 }
 
 /**
- * Calcula la intensidad efectiva [0..1] de los 5 peligros para un entorno y contexto de radiación.
+ * Resolves effective [0..1] hazard intensities for a mission environment and optional radiation context.
  */
 export function resolveHazardIntensities(
   environment: MissionEnvironment,
@@ -198,7 +207,7 @@ export function resolveHazardIntensities(
   if (radiation) {
     const stormSeverity = STORM_SCALE_SEVERITY[radiation.stormScale];
     const shieldingMod = SHIELDING_MODIFIER[radiation.shielding];
-    // Combina exposición base del entorno con la tormenta solar modulada por blindaje
+    // Combine baseline habitat radiation and solar storm severity, both modulated by shielding
     intensities.radiation = clamp01(
       Math.max(base.radiation * shieldingMod, stormSeverity * shieldingMod)
     );
@@ -208,7 +217,7 @@ export function resolveHazardIntensities(
 }
 
 /**
- * Calcula el impacto ponderado de los 5 peligros sobre una zona corporal.
+ * Computes the weighted environmental hazard load (`[0, 1]`), dominant hazard, and per-hazard breakdown for a body zone.
  */
 export function computeZoneHazardLoad(
   zone: BodyZoneId,

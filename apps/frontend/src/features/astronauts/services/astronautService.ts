@@ -1,3 +1,11 @@
+/**
+ * Service layer for astronaut roster CRUD operations and pagination.
+ * Switches transparently between the local `mockDb` store and the REST API
+ * based on `ENV.USE_MOCKS`.
+ *
+ * @module features/astronauts/services/astronautService
+ */
+
 import { ENV } from '@/features/common/config/env';
 import type { CrewLocation } from '@/features/operator/domain/types';
 import { httpClient } from '@/features/common/services/httpClient';
@@ -11,6 +19,7 @@ import {
 } from '../domain/types';
 
 class AstronautService {
+  /** Lists active (non-deleted) astronauts with optional mission, search, and page filters. */
   async list(filters: AstronautFilters = {}): Promise<PaginatedAstronauts> {
     const page = filters.page || 1;
     const limit = filters.limit || 6;
@@ -29,7 +38,7 @@ class AstronautService {
         );
       }
 
-      // Asociar nombre de misión
+      // Attach parent mission name
       const withMission = filtered.map((a) => {
         const mission = mockDb.missions.find((m) => m.id === a.missionId);
         return {

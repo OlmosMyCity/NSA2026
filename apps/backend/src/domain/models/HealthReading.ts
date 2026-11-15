@@ -1,9 +1,15 @@
+/**
+ * @module domain/models/HealthReading
+ * Domain DTOs, filters, and entity shapes for astronaut biomedical telemetry readings.
+ */
+
 import { HealthStatus } from "@prisma/client";
 import { HealthAlert } from "../../application/health/evaluateReading.js";
 import { PaginatedResult } from "./Mission.js";
 
 export { PaginatedResult };
 
+/** Query filters for paginated health reading queries. */
 export interface HealthReadingFilters {
   page?: number;
   limit?: number;
@@ -15,6 +21,11 @@ export interface HealthReadingFilters {
   includeInvalid?: boolean;
 }
 
+/**
+ * Input payload for recording a biomedical health reading.
+ * Units: `heartRateBpm` (bpm), `systolicMmHg`/`diastolicMmHg` (mmHg), `glucoseMgDl` (mg/dL),
+ * `temperatureC` (°C), `spo2Pct` (%), `sleepHours` (hours), `mood` (1–5 scale).
+ */
 export interface CreateHealthReadingDTO {
   astronautId: string;
   heartRateBpm: number;
@@ -61,6 +72,7 @@ export interface NewHealthReadingData {
   takenAt?: Date;
 }
 
+/** Persisted biomedical reading including deterministic clinical status, alerts, and soft-delete metadata. */
 export interface HealthReadingEntity {
   id: string;
   astronautId: string;

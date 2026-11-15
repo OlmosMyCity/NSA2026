@@ -1,3 +1,9 @@
+/**
+ * @module AdminTriageController
+ * HTTP controller for Flight Surgeon administrative triage console endpoints:
+ * crew-wide clinical prioritization correlated with solar storm telemetry and clinical directives.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { GetTriageOverviewUseCase } from "../../application/use-cases/admin/GetTriageOverviewUseCase.js";
 import {
@@ -14,6 +20,9 @@ import {
   parseWithValidation,
 } from "../validation/schemas.js";
 
+/**
+ * Controller backing `/api/admin` triage overview and crew directive dispatch routes.
+ */
 export class AdminTriageController {
   constructor(
     private readonly getTriageOverviewUseCase: GetTriageOverviewUseCase,
@@ -24,6 +33,11 @@ export class AdminTriageController {
     private readonly operatorCrewRepo: IOperatorCrewRepository
   ) {}
 
+  /**
+   * `GET /api/admin/triage` — Aggregates latest vitals and directives for all active crew,
+   * correlates each astronaut's clinical status against the active NOAA storm scale (`>= S3` escalation),
+   * and returns the crew sorted by ascending triage priority score alongside fleet metrics.
+   */
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       res.status(200).json(await this.getTriageOverviewUseCase.execute());
@@ -32,7 +46,12 @@ export class AdminTriageController {
     }
   };
 
-  listAstronautDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  /** `GET /api/admin/astronauts/:id/directives` — Lists recent clinical directives issued to an astronaut. */
+  listAstronautDirectives = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       res.status(200).json({ data: await this.listAstronautDirectivesUseCase.execute(req.params.id) });
     } catch (error) {
@@ -40,6 +59,7 @@ export class AdminTriageController {
     }
   };
 
+  /** `POST /api/admin/astronauts/:id/directives` — Persists and dispatches a flight-surgeon directive. */
   sendClinicalDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { directives, incidentId } = parseWithValidation(directivesSchema, req.body ?? {});

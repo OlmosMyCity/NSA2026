@@ -1,3 +1,8 @@
+/**
+ * @module authenticate
+ * Express JWT authentication middleware and `Request.user` module augmentation.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { AuthTokenPayload } from "../../domain/models/User.js";
 import { UnauthorizedError } from "../../domain/errors/AppError.js";
@@ -7,13 +12,16 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      /** Inyectado por `authenticate` a partir del JWT. */
+      /** Authenticated user claims injected by `authenticate` after verifying the JWT. */
       user?: AuthTokenPayload;
     }
   }
 }
 
-/** Exige `Authorization: Bearer <jwt>` válido; si no, responde 401 vía errorHandler. */
+/**
+ * Requires a valid `Authorization: Bearer <jwt>` header; forwards `UnauthorizedError` (401)
+ * to `errorHandler` if missing or invalid.
+ */
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   const [scheme, token] = req.headers.authorization?.split(" ") ?? [];
 

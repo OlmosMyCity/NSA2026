@@ -1,3 +1,8 @@
+/**
+ * @module domain/repository/IHealthReadingRepository
+ * Repository contract and multi-system physiological summary projection for biomedical readings.
+ */
+
 import { HealthReading, HealthStatus } from "@prisma/client";
 import {
   HealthReadingFilters,
@@ -6,6 +11,10 @@ import {
   PaginatedResult,
 } from "../models/HealthReading.js";
 
+/**
+ * Aggregated physiological summary for an astronaut combining the latest telemetry reading,
+ * 5 subsystem statuses, and a 7-day longitudinal reading window.
+ */
 export interface AstronautHealthSummary {
   astronautId: string;
   astronautName: string;
@@ -31,6 +40,11 @@ export interface AstronautHealthSummary {
   totalReadingsCount?: number;
 }
 
+/**
+ * Persistence port for biomedical health readings.
+ * Clinical `status`, `alerts`, and `recommendation` fields are deterministically computed by the
+ * application layer before persistence.
+ */
 export interface IHealthReadingRepository {
   findMany(filters: HealthReadingFilters): Promise<PaginatedResult<HealthReading>>;
   findById(id: string): Promise<HealthReading | null>;

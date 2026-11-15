@@ -1,11 +1,16 @@
+/**
+ * Mission trajectory and spacecraft resolver for the embedded 3D flight-dynamics viewer.
+ * Selects preset or custom trajectory JSON data files and launch vehicle overrides based
+ * on saved per-mission simulation config, mission ID, environment, and metadata keywords.
+ *
+ * @module features/visualizer/domain/trajectories
+ */
+
 import type { Mission } from '@/features/missions/domain/types';
 import { getCustomBlobUrl, getMissionSimConfig } from './missionSimulationConfig';
 
 /**
- * Simulated 3D trajectory for each mission (served from public/mission-viewer/data/).
- * Adapts automatically to any mission by saved simulation config, ID, environment,
- * or name/description keywords (Earth LEO, Moon / Lunar Base, Cislunar, Mars Transit),
- * and supports custom uploaded trajectory JSONs and launch vehicles.
+ * Simulated 3D trajectory catalog mapping (served from `public/mission-viewer/data/`).
  */
 const TRAJECTORIES_BY_ID: Record<string, string> = {
   'mission-01': 'data/apollo_11.json',
@@ -38,6 +43,7 @@ export interface TrajectoryOverrides {
   dataFile?: string;
 }
 
+/** Resolves the default trajectory JSON asset path for a mission ID or metadata descriptor. */
 export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): string {
   if (typeof missionOrId === 'string') {
     return TRAJECTORIES_BY_ID[missionOrId] ?? DATA_FILES.cislunar;
@@ -88,12 +94,14 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
   return DATA_FILES.cislunar;
 }
 
+/** Resolves the default 3D vehicle identifier inferred from the mission environment and name. */
 export function resolveDefaultVehicleId(missionOrId: TrajectoryMissionInput): string {
   if (typeof missionOrId === 'string') return 'auto';
   if (missionOrId.environment === 'ROVER') return 'rover';
   return 'auto';
 }
 
+/** Builds the embedded `/mission-viewer/index.html` iframe URL with `data` and optional `vehicle` params. */
 export function trajectoryUrl(
   missionOrId: TrajectoryMissionInput,
   overrides?: TrajectoryOverrides,

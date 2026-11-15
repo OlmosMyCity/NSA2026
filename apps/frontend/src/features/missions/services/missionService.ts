@@ -1,3 +1,10 @@
+/**
+ * Service layer for space mission CRUD operations and paginated filtering.
+ * Routes operations to `mockDb` when `ENV.USE_MOCKS` is enabled or `/missions` via `httpClient`.
+ *
+ * @module features/missions/services/missionService
+ */
+
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb, MockMission } from '@/features/common/mocks/mockDb';
@@ -10,6 +17,7 @@ import {
 } from '../domain/types';
 
 class MissionService {
+  /** Lists active missions filtered by environment, lifecycle status, and search query. */
   async list(filters: MissionFilters = {}): Promise<PaginatedMissions> {
     const page = filters.page || 1;
     const limit = filters.limit || 6;

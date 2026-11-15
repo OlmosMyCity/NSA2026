@@ -1,9 +1,15 @@
+/**
+ * @module health/mocks/healthHistory
+ * Deterministic 30-day synthetic telemetry generator used in mock mode (`ENV.USE_MOCKS`)
+ * to populate historical trend charts and baseline readings per astronaut.
+ */
+
 import { mockDb } from '@/features/common/mocks/mockDb';
 import type { ApiHealthReading } from '../domain/api-adapter';
 
 const DAYS = 30;
 
-/** Pseudoaleatorio determinista: mismas gráficas en cada recarga. */
+/** Deterministic Park–Miller PRNG so mock charts remain identical across reloads. */
 function seeded(seed: number) {
   let s = seed;
   return () => {
@@ -15,14 +21,14 @@ function seeded(seed: number) {
 const round = (v: number, d = 0) => Math.round(v * 10 ** d) / 10 ** d;
 
 /**
- * Historial de 30 días por astronauta derivado de las lecturas iniciales.
+ * Builds a 30-day synthetic reading history per astronaut anchored to their initial seed readings.
  */
 export function buildMockHistory(astronautId: string): ApiHealthReading[] {
   const own = mockDb.readings
     .filter((r) => r.astronautId === astronautId && !r.deletedAt)
     .sort((x, y) => Date.parse(x.takenAt) - Date.parse(y.takenAt));
-  // El historial sintético se ancla a la lectura semilla más antigua; las demás
-  // (p. ej. las registradas con el formulario) se añaden tal cual al final.
+  // Anchor synthetic drift to the earliest seed reading; subsequent entries
+  // (e.g., readings logged via the intake wizard) are appended verbatim at the end.
   const base = own[0];
   if (!base) return [];
   const rand = seeded(astronautId.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
@@ -31,7 +37,7 @@ export function buildMockHistory(astronautId: string): ApiHealthReading[] {
 
   const history: ApiHealthReading[] = [];
   for (let day = DAYS - 1; day >= 1; day--) {
-    // Los días antiguos tienden a valores más sanos; la última lectura es la real.
+    // Earlier days drift toward healthier baselines so the final reading reflects real seed state.
     const drift = day / DAYS;
     history.push({
       id: `${base.id}-h${day}`,

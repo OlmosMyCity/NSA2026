@@ -1,3 +1,9 @@
+/**
+ * @module incidentRouter
+ * Express router for clinical and mission contingency incidents, SSE notifications,
+ * medical/mission catalogs, and RBAC-guarded lifecycle transitions.
+ */
+
 import { Router } from "express";
 import { Role } from "@prisma/client";
 import { PrismaIncidentRepository } from "../../infrastructure/repository/PrismaIncidentRepository.js";
@@ -24,6 +30,7 @@ const controller = new IncidentController(
   incidentRepo
 );
 
+/** Router mounted at `/api/incidents` (authenticated; opening/closing restricted to `ADMIN`). */
 export const incidentRouter = Router();
 
 incidentRouter.get("/", authenticate, controller.list);

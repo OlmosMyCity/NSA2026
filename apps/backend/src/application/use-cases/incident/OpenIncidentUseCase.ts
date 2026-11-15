@@ -1,3 +1,8 @@
+/**
+ * @module application/use-cases/incident/OpenIncidentUseCase
+ * Use case for opening, catalog-hydrating, deduplicating, and escalating incidents.
+ */
+
 import { Incident, IncidentCategory, IncidentSeverity } from "@prisma/client";
 import { OpenIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
@@ -5,6 +10,7 @@ import { ValidationError } from "../../../domain/errors/AppError.js";
 import { getMissionContingencySpec } from "../../incident/missionCatalog.js";
 import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
+/** Input payload for opening an incident; metadata fields may be auto-filled from `MISSION_CONTINGENCY_CATALOG`. */
 export type OpenIncidentInput = Omit<OpenIncidentDTO, "category" | "severity" | "title" | "description"> & {
   category?: IncidentCategory;
   severity?: IncidentSeverity;
@@ -12,11 +18,21 @@ export type OpenIncidentInput = Omit<OpenIncidentDTO, "category" | "severity" | 
   description?: string;
 };
 
+/** Result pairing the persisted or deduplicated `Incident` with a flag indicating whether a new record was created. */
 export interface OpenIncidentResult {
   incident: Incident;
   created: boolean;
 }
 
+/**
+ * Opens an operational, medical, or radiation incident with automatic catalog enrichment and deduplication.
+ *
+ * Invariants:
+ * - Catalog types (`CONT-01`..`CONT-05`) inherit default title, description, severity, protocolId, and checklist.
+ * - Deduplicates against any active (`OPEN` or `ACKNOWLEDGED`) incident matching `(type, astronautId)`.
+ * - Escalates an existing `WARNING` incident in place if the incoming event has `CRITICAL` severity,
+ *   publishing `incident:escalated`; newly created incidents publish `incident:opened`.
+ */
 export class OpenIncidentUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
 
@@ -54,8 +70,8 @@ export class OpenIncidentUseCase {
 
     const existing = await this.incidentRepo.findActiveByType(normalizedType, astronautScope);
     if (existing) {
-      // Si ya existe uno activo del mismo tipo, evitar duplicados.
-      // Si la severidad escaló de WARNING a CRITICAL, actualizar el incidente activo.
+      // Deduplicate against an active incident of the same type and scope;
+      // if severity escalated from WARNING to CRITICAL, upgrade the active incident in place.
       if (
         existing.severity === IncidentSeverity.WARNING &&
         resolvedSeverity === IncidentSeverity.CRITICAL

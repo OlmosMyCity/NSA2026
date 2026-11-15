@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { astronautService } from '../services/astronautService';
 import { Astronaut, AstronautFilters, PaginationMeta } from '../domain/types';
 
+/**
+ * React hook managing paginated crew directory queries, filter state, and
+ * soft-delete mutations against `astronautService`.
+ */
 export function useAstronauts(initialFilters: AstronautFilters = { page: 1, limit: 6 }) {
   const [astronauts, setAstronauts] = useState<Astronaut[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({

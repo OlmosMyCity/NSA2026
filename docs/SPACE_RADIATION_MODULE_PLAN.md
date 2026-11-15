@@ -1,104 +1,55 @@
-# Plan de Implementación: Módulo de Predicción y Alerta Temprana de Radiación Espacial (Deep Space Radiation Engine)
-**Ubicación:** `NSA2026/docs/SPACE_RADIATION_MODULE_PLAN.md`
+# Technical Specification: Deep Space Radiation Early Warning Engine (`packages/radiation-engine`)
 
-## Resumen del Enfoque Técnico
-Para garantizar máxima robustez científica y un desarrollo ágil en hackathon sin perder tiempo entrenando redes neuronales pesadas desde cero, este módulo implementa una arquitectura híbrida de **Consumo de Modelos Operacionales Oficiales (NOAA SWPC / NASA WSA-ENLIL)** + **Inferencia Cinemática y Relativista en Tiempo Real (GOES X-ray Nowcasting & Parker Spiral Transit)**.
-
-El módulo residirá en `NSA2026/radiation-engine` y se expondrá como una librería modular y un micro-servicio REST con fallback offline y simulador interactivo para la demo a los jueces.
+**Package:** `@nsa2026/radiation-engine`  
+**Status:** Implemented & integrated into `apps/backend`
 
 ---
 
-## Fases Detalladas de Implementación
+## Architectural Summary
 
-### Fase 1: Entorno, Modelos Operacionales y Clientes de Datos Oficiales (NASA & NOAA)
-**Objetivo:** Obtener las salidas ya calculadas por las supercomputadoras de NASA y NOAA, junto con telemetría en tiempo real de satélites GOES y datasets históricos reales de respaldo.
-
-* **1.1 Configuración del entorno del módulo (`NSA2026/radiation-engine`):**
-  * Inicializar proyecto TypeScript/Node.js con configuración estricta, scripts de build y tests con Jest/Vitest.
-* **1.2 Ingestor del Modelo Operacional de Probabilidad Solar NOAA SWPC:**
-  * Consumir `https://services.swpc.noaa.gov/json/solar_probabilities.json`.
-  * Extraer probabilidades a 1, 2 y 3 días de:
-    * Fulguraciones Clase C, M y X.
-    * Eventos de protones energéticos >10 MeV (SPE).
-    * Estado de polar cap absorption.
-* **1.3 Ingestor de Telemetría en Tiempo Real Satelital GOES:**
-  * Consumir flujos a 1 minuto: `https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json` y `differential-protons-6-hour.json`.
-  * Detección de clase en curso mediante flujo 0.1-0.8 nm ($10^{-8} = B$, $10^{-6} = C$, $10^{-5} = M$, $\ge 10^{-4} = X$).
-* **1.4 Conector NASA DONKI (WSA-ENLIL Solar Wind Model):**
-  * Consumir endpoints de `CMEAnalysis` para obtener predicción de choque de masa coronal (velocidad de plasma en km/s y hora estimada de impacto $T_{shock}$).
-* **1.5 Cache y Datasets Históricos Offline:**
-  * Guardar réplicas estáticas de eventos históricos (Mayo 2024 Tormenta Solar G5/S3 y Halloween 2003) para operar en modo offline sin depender de la conectividad en la presentación.
+To deliver scientifically grounded space-weather forecasting under real-time constraints, the radiation engine combines **official operational forecasts (NOAA SWPC & NASA DONKI WSA-ENLIL)** with **real-time GOES X-ray derivative nowcasting and relativistic proton transport kinematics**.
 
 ---
 
-### Fase 2: Motor Físico de Tránsito Relativista y Ventana de Alerta Temprana
-**Objetivo:** Calcular la ventana de tiempo exacta entre la detección de rayos X y el arribo de las partículas energéticas a la órbita de la Luna/espacio profundo.
+## 1. Operational Heliophysics Ingestion (`src/clients/`)
 
-* **2.1 Algoritmo de Nowcasting por Derivada de Flujo ($dF/dt$):**
-  * Analizar la ventana móvil de los últimos 5-15 minutos de rayos X de GOES.
-  * Si la derivada supera el umbral crítico ($\ge M5$ con subida empinada), disparar el evento de *Early Warning*.
-* **2.2 Motor de Cinemática Relativista de Partículas Solares (SPE Arrival Model):**
-  * Ecuación relativista para energías de protones $E \in [10, 100, 500]\text{ MeV}$:
-    $$v(E) = c \sqrt{1 - \left(\frac{m_p c^2}{E + m_p c^2}\right)^2}$$
-  * Modelado de longitud de línea de campo magnético interplanetario vía Espiral de Parker ($L \approx 1.15-1.25\text{ AU}$):
-    $$\Delta t = \frac{L}{v(E)} - \frac{1\text{ AU}}{c}$$
-  * Genera el valor clave: **Ventana de Tiempo Útil (ETA to Peak Impact)** (típicamente entre 30 y 90 minutos para protones de 50-100 MeV).
+1. **NOAA SWPC Probabilistic Forecast (`noaaSwpcClient.ts`):**
+   - Consumes `https://services.swpc.noaa.gov/json/solar_probabilities.json` for 1-, 2-, and 3-day flare odds (Classes C, M, X), energetic proton event (`>10 MeV` SPE) probabilities, and Polar Cap Absorption status.
+2. **GOES Primary Satellite Telemetry (`noaaSwpcClient.ts`):**
+   - Streams 1-minute soft/hard X-ray flux (`0.1–0.8 nm`, mapping C/M/X flare classes) and integral proton fluxes (`>=10`, `>=50`, `>=100 MeV`), plus DSCOVR/ACE solar wind plasma speed, proton density, and IMF $B_t / B_z$ (computing dynamic ram pressure $P_{\text{dyn}}$ in $\text{nPa}$).
+3. **NASA DONKI WSA-ENLIL (`nasaDonkiClient.ts`):**
+   - Fetches Coronal Mass Ejection (`CMEAnalysis`) kinematics (half-angle, velocity in $\text{km/s}$, source Stonyhurst coordinates, and estimated shock arrival).
+4. **Resilient Fallback:**
+   - Partial feed degradation gracefully substitutes nominal baseline fields while preserving intact live sensors, or triggers offline fallback profiles when upstream networks are unreachable.
 
 ---
 
-### Fase 3: Calculadora de Dosis Biológica y Atenuación por Blindaje (NASA HRP)
-**Objetivo:** Convertir el flujo físico de radiación en dosis absorbida en tejido humano ($\mu\text{Sv/h}$ y $\text{mSv}$) según el hábitat del astronauta.
+## 2. Relativistic SPE Transport & Early Warning (`src/physics/sepPrediction.ts`)
 
-* **3.1 Modelo de Coeficientes de Atenuación por Blindaje:**
-  * Factores basados en masa superficial ($g/cm^2$):
-    * `EVA_SUIT`: Blindaje mínimo ($1.2\text{ g/cm}^2$) $\rightarrow$ Exposición casi directa a protones solares.
-    * `CREW_CABIN_NOMINAL`: Blindaje estándar módulo Orión / Hábitat lunar ($10\text{ g/cm}^2$).
-    * `STORM_SHELTER`: Búnker de supervivencia rodeado de tanques de agua, alimentos y polietileno ($25\text{ g/cm}^2$).
-* **3.2 Cálculo de Tasa de Dosis y Acumulada:**
-  * Conversión de $\text{pfu}$ (particle flux units) a microSieverts por hora ($\mu\text{Sv/h}$).
-  * Contraste con los límites del estándar de la NASA **NASA-STD-3001**:
-    * Límite de 30 días: $250\text{ mSv}$.
-    * Límite anual de carrera: $500\text{ mSv}$.
-    * Umbral agudo de síntomas (náusea, eritema): $>500\text{ mSv}$.
+Computes the operational reaction window between X-ray flare observation (photons arriving in $8.32\text{ min}$) and peak arrival of biologically dangerous $50\text{–}100\text{ MeV}$ solar protons along interplanetary field lines:
+
+1. **Flux Derivative Nowcasting ($dF/dt$):**
+   - Monitors 1-minute GOES $0.1\text{–}0.8\text{ nm}$ X-ray flux for major flares ($\ge M5$, $5\times 10^{-5}\ \text{W/m}^2$) or rapid impulsive rises ($\ge M2$ with $dF/dt > 5\times 10^{-6}\ \text{W/m}^2/\text{min}$).
+2. **Relativistic Proton Kinematics:**
+   $$\beta(E) = \frac{v(E)}{c} = \sqrt{1 - \frac{1}{\gamma^2}}, \qquad \gamma = 1 + \frac{E}{m_p c^2}$$
+3. **Parker Spiral Effective Path:**
+   - Models an effective $1.25\text{ AU}$ curved interplanetary magnetic field path scaled by pitch-angle scattering ($\times 2.0$), minus the $8.32\text{ min}$ speed-of-light observation delay—yielding an actionable **$20\text{–}90\text{ min}$ warning lead window** (nominal $\sim 48\text{ min}$ for $100\text{ MeV}$ protons).
 
 ---
 
-### Fase 4: Clasificación Oficial NOAA (S1–S5) y Protocolos de Mitigación
-**Objetivo:** Generar salidas accionables inmediatas para la tripulación.
+## 3. Biological Dosimetry & Shielding Attenuation (`src/physics/doseCalculator.ts`)
 
-* **4.1 Evaluador de Escala NOAA Solar Radiation Storm:**
-  * `S0_NOMINAL`: $<10\text{ pfu}$.
-  * `S1_MINOR`: $\ge 10\text{ pfu}$ (Monitoreo reforzado).
-  * `S2_MODERATE`: $\ge 100\text{ pfu}$ (Peligro biológico leve; restringir EVA).
-  * `S3_STRONG`: $\ge 1,000\text{ pfu}$ (Abortar inmediatamente paseos espaciales; radioprotectores).
-  * `S4_SEVERE`: $\ge 10,000\text{ pfu}$ (Evacuación inmediata al *Storm Shelter*).
-  * `S5_EXTREME`: $\ge 100,000\text{ pfu}$ (Peligro letal; supervivencia en refugio durante 24-48h).
-* **4.2 Generador de Protocolos de Acción:**
-  * Lista estructurada de directivas para la UI:
-    * `EVACUATE_TO_SHELTER: true/false`
-    * `ABORT_EVA: true/false`
-    * `RECOMMENDED_MEDICAL_ACTION`: p. ej., *"Administrar antieméticos profilácticos y antioxidantes radioprotectores"*.
+Converts $E > 10\text{ MeV}$ proton flux ($\text{pfu}$, using $2.5\ \mu\text{Sv/h}$ per unshielded $\text{pfu}$ plus $1.8\ \mu\text{Sv/h}$ Galactic Cosmic Ray background) into effective tissue dose rates and 30-day cumulative estimates evaluated against **NASA-STD-3001** ($250\text{ mSv}$ 30-day limit, $500\text{ mSv}$ reference cap):
+
+| Shielding Configuration | Areal Density | Transmission Factor | Attenuation | Operational Profile |
+| :--- | :--- | :--- | :--- | :--- |
+| `EVA_SUIT` | $1.2\text{ g/cm}^2$ | `0.95` | $5\%$ | Minimal shielding; immediate EVA abort required on SPE onset |
+| `CREW_CABIN_NOMINAL` | $10.0\text{ g/cm}^2$ | `0.25` | $75\%$ | Orion / Lunar Gateway aluminum-polymer nominal habitable volume |
+| `STORM_SHELTER` | $25.0\text{ g/cm}^2$ | `0.04` | $96\%$ | Core compartment surrounded by potable water reserves & polyethylene shielding |
 
 ---
 
-### Fase 5: Simulador Interactivo y API REST para Integración del Equipo
-**Objetivo:** Permitir que el equipo consuma los datos fácilmente y que los jueces experimenten la alerta en vivo.
+## 4. NOAA S1–S5 Mitigation Matrix & Solar Wind Target Exposure
 
-* **5.1 Controlador de Escenarios de Simulación:**
-  * Escenario 1: `NOMINAL` (Condiciones tranquilas en espacio interplanetario).
-  * Escenario 2: `SOLAR_FLARE_IN_PROGRESS` (Fulguración X3.2 detectada; cuenta regresiva de 48 minutos de alerta temprana).
-  * Escenario 3: `PEAK_PROTON_STORM` (Tormenta S4 en curso; muestra la reducción drástica de dosis al alternar entre "Exterior EVA" y "Storm Shelter").
-* **5.2 Endpoints REST y SDK TypeScript:**
-  * `GET /api/radiation/status`: Estado actual en vivo de NOAA/NASA.
-  * `GET /api/radiation/forecast`: Probabilidades a 3 días y predicción de impacto CME.
-  * `POST /api/radiation/simulate`: Dispara un escenario para pruebas del frontend.
-* **5.3 Documentación de Integración para el Frontend:**
-  * Guía rápida en `docs/` con ejemplos de llamadas y tipos TypeScript listos para copiar y pegar.
-
----
-
-## Verificación del Módulo
-* **Pruebas unitarias:**
-  * Verificar que la cinemática relativista calcule tiempos de viaje entre 35 y 90 min para energías de 50-100 MeV.
-  * Verificar que la atenuación del *Storm Shelter* reduzca la dosis en al menos 85-95% respecto a un traje EVA.
-  * Verificar que el ingestor consuma correctamente `solar_probabilities.json` de NOAA.
+- **NOAA Storm Classification (`mitigationRules.ts`):** Evaluates `S0_NOMINAL` ($<10\text{ pfu}$) up to `S5_EXTREME` ($\ge 100{,}000\text{ pfu}$), generating structured boolean triggers (`abortEvaImmediately`, `evacuateToStormShelter`, `powerDownExternalSensors`), medical countermeasures (antiemetics, oral radioprotector stacks, peripheral blood kits), and operational checklists.
+- **Target Exposure Modeling (`solarWindImpact.ts`):** Maps CME angular half-cone width vs. Stonyhurst source coordinates (`N/S`, `E/W`) across `EARTH_MAGNETOSPHERE`, `CISLUNAR_TRANSIT`, `GATEWAY_NRHO`, and `LUNAR_SURFACE` (accounting for Earth magnetosphere shielding vs. lunar magnetotail crossing protection).

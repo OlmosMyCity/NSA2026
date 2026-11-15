@@ -1,4 +1,9 @@
-"""Pydantic schemas for Astronaut Vitals telemetry and API responses."""
+"""Pydantic schemas for Astronaut Vitals telemetry and API responses.
+
+Defines optical acquisition modes (`RGB_POS`, `RGB_CHROM`, `NIR_IR`), mission contexts
+(`CABIN_ACTIVE`, `SLEEP_POD`), and validated telemetry contracts for mood/stress,
+sleep/drowsiness actigraphy, rPPG cardiovascular metrics, and per-frame snapshots.
+"""
 
 from enum import Enum
 from typing import Dict, List, Optional
@@ -6,17 +11,23 @@ from pydantic import BaseModel, Field
 
 
 class CameraMode(str, Enum):
+    """Supported optical camera acquisition and rPPG signal-extraction modes."""
+
     RGB_POS = "rgb_pos"          # Standard RGB camera using Plane-Orthogonal-to-Skin (POS)
     RGB_CHROM = "rgb_chrom"      # Standard RGB camera using Chrominance (CHROM)
     NIR_IR = "nir_ir"            # Near-Infrared / Night-Vision / Thermal monochrome camera
 
 
 class MonitoringContext(str, Enum):
+    """Operational monitoring context controlling drowsiness vs. sleep-pod scoring rules."""
+
     CABIN_ACTIVE = "cabin_active"  # Active mission duty (drowsiness, stress, mood, BPM)
     SLEEP_POD = "sleep_pod"        # Sleep quarter monitoring (actigraphy, sleep quality, BPM/HRV)
 
 
 class MoodMetrics(BaseModel):
+    """Astronaut affective state, stress index, and alertness metrics from ONNX FERPlus + Action Units."""
+
     dominant_mood: str = Field(..., description="Operational astronaut psychological state")
     raw_emotion: str = Field(..., description="Primary facial emotion class")
     emotion_probabilities: Dict[str, float] = Field(default_factory=dict)
@@ -29,6 +40,8 @@ class MoodMetrics(BaseModel):
 
 
 class SleepMetrics(BaseModel):
+    """Ocular drowsiness (EAR, PERCLOS, blink rate, MAR), head-pose, and video actigraphy metrics."""
+
     sleep_quality_score: float = Field(..., ge=0.0, le=100.0, description="Composite sleep/rest quality score (0-100)")
     fatigue_level: str = Field(..., description="Nominal, Mild Fatigue, High Drowsiness, Microsleep Alert, or Sleeping")
     sleep_stage_estimate: str = Field(..., description="Awake, Light/Restless Sleep, or Deep Rest")
@@ -48,6 +61,8 @@ class SleepMetrics(BaseModel):
 
 
 class HeartRateMetrics(BaseModel):
+    """Contactless rPPG heart rate (BPM), HRV (RMSSD/SDNN in ms), respiration (RPM), and spectral diagnostics."""
+
     bpm: float = Field(..., ge=0.0, description="Estimated Heart Rate in Beats Per Minute")
     hrv_rmssd_ms: float = Field(0.0, ge=0.0, description="Heart Rate Variability (RMSSD in milliseconds)")
     hrv_sdnn_ms: float = Field(0.0, ge=0.0, description="Heart Rate Variability (SDNN in milliseconds)")
@@ -62,6 +77,8 @@ class HeartRateMetrics(BaseModel):
 
 
 class AstronautTelemetryFrame(BaseModel):
+    """Complete per-frame biometric telemetry packet emitted over REST and WebSocket endpoints."""
+
     timestamp: float
     frame_index: int
     face_detected: bool

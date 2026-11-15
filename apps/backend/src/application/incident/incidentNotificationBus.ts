@@ -1,13 +1,21 @@
+/**
+ * @module application/incident/incidentNotificationBus
+ * In-process pub/sub notification bus and SLA escalation sweep for active operational,
+ * medical, and radiation incidents (consumed by SSE streams and incident lifecycle use cases).
+ */
+
 import { EventEmitter } from "node:events";
 import { Incident, IncidentSeverity, IncidentStatus, Prisma } from "@prisma/client";
 import { IIncidentRepository } from "../../domain/repository/IIncidentRepository.js";
 
+/** Domain lifecycle event types emitted over the incident notification bus. */
 export type IncidentEventType =
   | "incident:opened"
   | "incident:escalated"
   | "incident:acknowledged"
   | "incident:closed";
 
+/** Structured SSE-ready payload broadcast whenever an incident transitions state. */
 export interface IncidentNotificationEvent {
   event: IncidentEventType;
   incident: Incident;
@@ -15,9 +23,10 @@ export interface IncidentNotificationEvent {
   timestamp: string;
 }
 
+/** Default acknowledgment SLA windows (ms) by severity before automatic escalation. */
 export const DEFAULT_ACK_TIMEOUT_MS: Record<IncidentSeverity, number> = {
-  CRITICAL: 5 * 60 * 1000, // 5 minutos sin confirmación
-  WARNING: 15 * 60 * 1000, // 15 minutos sin confirmación
+  CRITICAL: 5 * 60 * 1000, // 5 minutes without acknowledgment
+  WARNING: 15 * 60 * 1000, // 15 minutes without acknowledgment
 };
 
 class IncidentNotificationBus extends EventEmitter {
@@ -32,11 +41,13 @@ class IncidentNotificationBus extends EventEmitter {
   }
 }
 
+/** Shared singleton event bus bridging incident use cases to live SSE subscribers. */
 export const incidentNotificationBus = new IncidentNotificationBus();
 
 /**
- * Revisa incidentes abiertos sin confirmación (OPEN) que superaron su tiempo límite
- * y los escala automáticamente emitiendo el evento `incident:escalated`.
+ * Scans unacknowledged `OPEN` incidents whose acknowledgment SLA timeout has elapsed,
+ * escalates them to `CRITICAL` once (guarded by `metadata.escalatedAt`), and emits
+ * `incident:escalated` events.
  */
 export async function escalateOverdueIncidents(
   incidentRepo: IIncidentRepository,

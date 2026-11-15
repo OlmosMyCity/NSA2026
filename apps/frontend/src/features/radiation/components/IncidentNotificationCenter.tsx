@@ -12,6 +12,11 @@ interface LiveNotification {
   reason?: string;
 }
 
+/**
+ * Floating real-time incident notification toast center backed by Server-Sent Events (SSE).
+ * Subscribes to `/incidents/stream` with automatic reconnect backoff when authenticated,
+ * rendering up to 4 active alerts with one-click incident acknowledgement.
+ */
 export function IncidentNotificationCenter() {
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
 
