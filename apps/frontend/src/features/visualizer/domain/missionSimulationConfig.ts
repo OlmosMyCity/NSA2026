@@ -6,14 +6,19 @@ export interface VehicleOption {
 
 export const VEHICLE_OPTIONS: VehicleOption[] = [
   { id: 'auto', label: 'Auto-match by mission', category: 'Default' },
-  { id: 'sls', label: 'SLS Block 1B + Orion', category: 'Cislunar / Deep Space' },
+  { id: 'orion', label: 'Orion MPCV (Artemis II)', category: 'Cislunar / Deep Space' },
+  { id: 'sls', label: 'SLS Block 1 + Orion', category: 'Cislunar / Deep Space' },
+  { id: 'iss', label: 'ISS Orbital Station', category: 'LEO Station' },
   { id: 'dragon', label: 'Falcon 9 + Crew Dragon', category: 'LEO / ISS' },
   { id: 'soyuz', label: 'Soyuz MS', category: 'LEO / ISS' },
-  { id: 'iss', label: 'ISS Orbital Station', category: 'LEO Station' },
+  { id: 'lro', label: 'Lunar Reconnaissance Orbiter', category: 'Lunar Orbit' },
   { id: 'hls', label: 'Starship HLS', category: 'Lunar Descent' },
   { id: 'rover', label: 'Pressurized Lunar Rover', category: 'Lunar Surface' },
   { id: 'gateway', label: 'Lunar Gateway', category: 'NRHO Station' },
+  { id: 'mars2020', label: 'Mars 2020 Perseverance', category: 'Mars Interplanetary' },
   { id: 'ares', label: 'Ares I Mars Transit', category: 'Mars Interplanetary' },
+  { id: 'clipper', label: 'Europa Clipper', category: 'Outer System / Jupiter' },
+  { id: 'parker', label: 'Parker Solar Probe', category: 'Inner System / Sun' },
 ];
 
 export interface TrajectoryPresetOption {
@@ -23,12 +28,12 @@ export interface TrajectoryPresetOption {
 
 export const TRAJECTORY_PRESETS: TrajectoryPresetOption[] = [
   { id: 'auto', label: 'Auto-detect from mission environment' },
-  { id: 'data/mission_iss_leo.json', label: 'Low Earth Orbit (ISS · 420 km)' },
-  { id: 'data/mission.json', label: 'Cislunar Transfer & Gateway NRHO' },
-  { id: 'data/mission_lunar_base.json', label: 'Lunar South Pole & Rover Traverse' },
-  { id: 'data/mission_mars_transit.json', label: 'Mars Interplanetary Transit' },
-  { id: 'data/mission_jupiter_europa.json', label: 'Jupiter / Europa Outer-System Cruise' },
-  { id: 'data/mission_venus_flyby.json', label: 'Venus Inner-System Gravity Assist' },
+  { id: 'data/artemis_ii.json', label: 'Artemis II · Free-Return Lunar Flyby (NASA)' },
+  { id: 'data/iss.json', label: 'ISS Expedition 72 · LEO 418 km, 51.6° (NASA)' },
+  { id: 'data/lro.json', label: 'LRO · Lunar Polar Orbit 50 km (NASA)' },
+  { id: 'data/mars2020.json', label: 'Mars 2020 Perseverance · Heliocentric Transfer (NASA)' },
+  { id: 'data/europa_clipper.json', label: 'Europa Clipper · Earth-Mars-Jupiter Transfer (NASA)' },
+  { id: 'data/parker_solar_probe.json', label: 'Parker Solar Probe · Venus Gravity Assist & Perihelion (NASA)' },
 ];
 
 export interface MissionSimulationConfig {

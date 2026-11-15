@@ -4,7 +4,7 @@ import * as THREE from "three";
 const WHITE = "#f2f5fa";
 const ORANGE = "#e8702a";
 const GREY = "#aeb8c7";
-const MIN_SILHOUETTE = 0.02;
+const MIN_SILHOUETTE = 0.004;
 
 /** Cada dibujo apunta hacia arriba en un lienzo de 128×128. */
 const DRAW = {
@@ -109,6 +109,46 @@ const DRAW = {
     g.fillRect(50, 80, 28, 12);
     capsule(g, 44);
   },
+  lro(g) {
+    g.fillStyle = "#38bdf8";
+    g.fillRect(14, 58, 34, 14);
+    g.fillStyle = WHITE;
+    g.fillRect(48, 46, 32, 36);
+    g.fillStyle = "#ffd166";
+    g.beginPath();
+    g.arc(92, 64, 12, -Math.PI * 0.5, Math.PI * 0.5);
+    g.fill();
+  },
+  mars2020(g) {
+    g.fillStyle = GREY;
+    g.beginPath();
+    g.arc(64, 58, 28, Math.PI, 0);
+    g.fill();
+    g.fillStyle = WHITE;
+    g.fillRect(42, 58, 44, 24);
+    g.fillStyle = ORANGE;
+    g.fillRect(46, 82, 36, 10);
+  },
+  clipper(g) {
+    g.fillStyle = "#38bdf8";
+    g.fillRect(8, 58, 44, 14);
+    g.fillRect(76, 58, 44, 14);
+    g.fillStyle = WHITE;
+    g.fillRect(52, 46, 24, 38);
+    g.fillStyle = "#ffd166";
+    g.beginPath();
+    g.arc(64, 40, 12, 0, Math.PI * 2);
+    g.fill();
+  },
+  parker(g) {
+    g.fillStyle = "#475569";
+    g.fillRect(36, 30, 56, 12); // escudo térmico TPS
+    g.fillStyle = WHITE;
+    g.fillRect(52, 42, 24, 42);
+    g.fillStyle = "#ffd166";
+    g.fillRect(28, 56, 24, 8);
+    g.fillRect(76, 56, 24, 8);
+  },
 };
 
 function tri(g, ax, ay, bx, by, cx, cy) {
@@ -165,7 +205,8 @@ export function createShip(scene) {
    */
   function setLook(s, id, scale, detail = scale) {
     s.scale.setScalar(scale);
-    const map = textures[detail < MIN_SILHOUETTE ? "dot" : id];
+    const chosen = textures[id] || textures.orion || textures.dot;
+    const map = detail < MIN_SILHOUETTE ? textures.dot : chosen;
     if (s.material.map !== map) {
       s.material.map = map;
       s.material.needsUpdate = true;

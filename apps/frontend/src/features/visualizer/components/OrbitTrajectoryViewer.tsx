@@ -25,19 +25,19 @@ interface MissionTrajectoryPreset {
 
 const MISSION_PRESETS: MissionTrajectoryPreset[] = [
   {
-    id: 'artemis-iv',
-    label: 'Artemis IV · Spacecraft',
-    environment: 'SPACECRAFT · NRHO',
-    dataFile: 'data/mission.json',
-    subtitle: 'Cislunar Transfer & Gateway NRHO',
+    id: 'artemis-ii',
+    label: 'Artemis II · Free-Return',
+    environment: 'SPACECRAFT · CISLUNAR',
+    dataFile: 'data/artemis_ii.json',
+    subtitle: 'Free-Return Lunar Flyby (NASA)',
     cards: [
       {
         title: 'Trans-Lunar Injection (TLI)',
-        body: 'SLS Block 1B accelerates Orion to 39,000 km/h to enter the cislunar transfer arc toward the Moon.',
+        body: 'SLS Block 1 accelerates Orion to ~10.9 km/s on a 4-day free-return trajectory around the Moon.',
       },
       {
-        title: 'Gateway NRHO Orbit',
-        body: '7-day elliptical Near-Rectilinear Halo Orbit (3,200 km perilune to 71,000 km apolune) minimizing eclipses.',
+        title: 'Lunar Far-Side Flyby',
+        body: 'Orion passes ~7,400 km beyond the lunar far side before Earth gravity guides it back.',
       },
       {
         title: 'HRP Health Focus',
@@ -49,12 +49,12 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
     id: 'iss-leo',
     label: 'ISS Expedition 72 · Station',
     environment: 'SPACE STATION · LEO',
-    dataFile: 'data/mission_iss_leo.json',
-    subtitle: 'Low Earth Orbit (420 km, 51.6°)',
+    dataFile: 'data/iss.json',
+    subtitle: 'Low Earth Orbit (418 km, 51.6°)',
     cards: [
       {
         title: 'Orbital Mechanics (LEO)',
-        body: '92-minute circular orbit at 7.66 km/s (~420 km altitude), experiencing 16 sunrises and sunsets per day.',
+        body: '92.9-minute circular orbit at 7.66 km/s (~418 km altitude), experiencing 16 sunrises and sunsets per day.',
       },
       {
         title: 'Microgravity & Circadian',
@@ -67,32 +67,32 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
     ],
   },
   {
-    id: 'lunar-base',
-    label: 'Shackleton Base · Lunar Rover',
-    environment: 'LUNAR BASE & ROVER',
-    dataFile: 'data/mission_lunar_base.json',
-    subtitle: 'South Pole Descent & Rover Traverse',
+    id: 'lro-lunar',
+    label: 'LRO · Lunar Polar Orbit',
+    environment: 'LUNAR ORBITER · 50 KM',
+    dataFile: 'data/lro.json',
+    subtitle: 'Lunar Polar Orbit (50 km, 90°)',
     cards: [
       {
-        title: 'Powered Descent (HLS)',
-        body: 'De-orbit from Low Lunar Orbit to the Shackleton Crater rim (86.8° S) with near-continuous solar illumination.',
+        title: 'Lunar Orbit Insertion (LOI)',
+        body: '4.5-day cislunar transfer into a 50 km circular polar mapping orbit around the Moon.',
       },
       {
-        title: 'Pressurized Rover EVA',
-        body: '12 km surface traverse in 1/6 g gravity with lunar regolith dust mitigation and EVA suit radiation dosimetry.',
+        title: 'Polar Illumination & Shadow',
+        body: 'Continuous polar passes mapping permanently shadowed craters and Shackleton Crater rim.',
       },
       {
         title: 'HRP Health Focus',
-        body: 'Partial-gravity musculoskeletal loading, SpO2 monitoring during EVA, and rapid shelter ingress protocols.',
+        body: 'Partial-gravity & lunar radiation dosimetry baseline for future surface crews.',
       },
     ],
   },
   {
-    id: 'mars-transit',
-    label: 'Ares I · Mars Transit',
+    id: 'mars-2020',
+    label: 'Mars 2020 · Perseverance',
     environment: 'DEEP SPACE · MARS',
-    dataFile: 'data/mission_mars_transit.json',
-    subtitle: 'Trans-Mars Injection & Cruise',
+    dataFile: 'data/mars2020.json',
+    subtitle: 'Heliocentric Type-I Transfer (203 days)',
     cards: [
       {
         title: 'Trans-Mars Injection (TMI)',
