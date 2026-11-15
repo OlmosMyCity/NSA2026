@@ -60,7 +60,7 @@ export function nearestBody(shipEci, moonEci, extraBodiesAtT = []) {
 export const BODY_SHARE = 0.45;
 /** Dónde queda la nave: fracción de media pantalla por encima del centro del cuerpo. */
 export const SHIP_OFFSET = 0.4;
-const FOV_MIN = 3;
+const FOV_MIN = 1.5;
 const FOV_MAX = 40;
 
 /**

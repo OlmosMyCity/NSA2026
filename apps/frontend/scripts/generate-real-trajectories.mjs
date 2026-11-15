@@ -271,8 +271,8 @@ function packTrack(st) {
 
 const BODY_INFO = {
   sun: { name: "Sun", kind: "star", radius_km: 695700, chase_km: 695700 * 45, color: "#ffd27a" },
-  venus: { name: "Venus", kind: "planet", radius_km: 6051.8, chase_km: 6051.8 * 30, color: "#e8cf8f" },
-  mars: { name: "Mars", kind: "planet", radius_km: 3389.5, chase_km: 3389.5 * 30, color: "#e07a4f" },
+  venus: { name: "Venus", kind: "planet", radius_km: 6051.8, chase_km: 6051.8 * 60, color: "#e8cf8f" },
+  mars: { name: "Mars", kind: "planet", radius_km: 3389.5, chase_km: 3389.5 * 60, color: "#e07a4f" },
   jupiter: { name: "Jupiter", kind: "planet", radius_km: 69911, chase_km: 69911 * 30, color: "#d9b38c" },
 };
 

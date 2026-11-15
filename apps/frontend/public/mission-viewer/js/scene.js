@@ -14,10 +14,10 @@ function texture(renderer, file) {
   return tex;
 }
 
-/** Halo azul de la atmósfera: brilla en el limbo y se apaga hacia el centro del disco. */
-function atmosphere(radius) {
+/** Halo atmosférico: brilla en el limbo y se apaga hacia el centro del disco. */
+function atmosphere(radius, rgb = [0.32, 0.6, 1.0], scale = 1.025) {
   return new THREE.Mesh(
-    new THREE.SphereGeometry(radius * 1.025, 64, 32),
+    new THREE.SphereGeometry(radius * scale, 64, 32),
     new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -39,7 +39,7 @@ function atmosphere(radius) {
         void main() {
           #include <logdepthbuf_fragment>
           float rim = pow(clamp(-vNormal.z + 0.75, 0.0, 1.0), 5.0);
-          gl_FragColor = vec4(0.32, 0.6, 1.0, 1.0) * rim;
+          gl_FragColor = vec4(${rgb[0].toFixed(2)}, ${rgb[1].toFixed(2)}, ${rgb[2].toFixed(2)}, 1.0) * rim;
         }`,
     })
   );
@@ -237,10 +237,33 @@ export function createScene(container, bodies) {
     const rUnits = b.radius_km / KM_PER_UNIT;
     let mesh;
     if (b.id === "sun") {
-      mesh = new THREE.Mesh(
-        zUpSphere(rUnits, 64),
-        new THREE.MeshBasicMaterial({ color: b.color || "#ffd166" })
+      mesh = new THREE.Group();
+      mesh.add(
+        new THREE.Mesh(
+          zUpSphere(rUnits, 64),
+          new THREE.MeshBasicMaterial({ color: b.color || "#ffd166" })
+        )
       );
+      const coronaCanvas = document.createElement("canvas");
+      coronaCanvas.width = coronaCanvas.height = 128;
+      const cg = coronaCanvas.getContext("2d");
+      const grad = cg.createRadialGradient(64, 64, 8, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255, 244, 200, 0.95)");
+      grad.addColorStop(0.35, "rgba(255, 195, 85, 0.45)");
+      grad.addColorStop(1, "rgba(255, 140, 30, 0)");
+      cg.fillStyle = grad;
+      cg.fillRect(0, 0, 128, 128);
+      const coronaTex = new THREE.CanvasTexture(coronaCanvas);
+      const corona = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: coronaTex,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          transparent: true,
+        })
+      );
+      corona.scale.setScalar(rUnits * 4.5);
+      mesh.add(corona);
     } else {
       const style = EXTRA_PALETTES[b.id] || {
         palette: [[0, b.color || "#94a3b8"], [0.5, "#64748b"], [1, b.color || "#cbd5e1"]],
@@ -250,6 +273,7 @@ export function createScene(container, bodies) {
         zUpSphere(rUnits, 64),
         new THREE.MeshStandardMaterial({ map: planetTexture(style.palette, style.banded), roughness: 0.85 })
       );
+      if (b.id === "venus") mesh.add(atmosphere(rUnits, [0.96, 0.78, 0.42], 1.035));
     }
     scene.add(mesh);
     extraMeshes[b.id] = mesh;
