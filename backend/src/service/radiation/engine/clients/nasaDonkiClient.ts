@@ -23,6 +23,19 @@ export interface NasaCmeAnalysis {
 /**
  * HTTP client for retrieving NASA DONKI CME kinematic analyses and WSA-ENLIL forecasts.
  */
+/** Raw item of the NASA DONKI `CMEAnalysis` endpoint (only the fields consumed here). */
+interface RawDonkiCme {
+  associatedCMEID?: string;
+  time21_5: string;
+  catalog?: string;
+  sourceLocation?: string;
+  halfAngle?: number;
+  speed?: number;
+  type?: string;
+  isEarthGB?: boolean;
+  enlilList?: Array<{ estimatedShockArrivalTime?: string }> | null;
+}
+
 export class NasaDonkiClient {
   private readonly baseUrl = 'https://api.nasa.gov/DONKI';
   private readonly apiKey: string;
@@ -58,7 +71,7 @@ export class NasaDonkiClient {
       const data = await response.json();
       if (!Array.isArray(data)) return [];
 
-      return data.slice(-5).map((item: any) => ({
+      return (data as RawDonkiCme[]).slice(-5).map((item) => ({
         activityId: item.associatedCMEID || item.time21_5 || 'CME-DONKI',
         catalog: item.catalog || 'SWPC_ANNEX',
         startTime: item.time21_5,

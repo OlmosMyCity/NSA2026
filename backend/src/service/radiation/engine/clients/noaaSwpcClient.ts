@@ -10,6 +10,39 @@
 
 import { NOAASolarProbability, GOESXrayReading, GOESProtonReading, SolarWindReading } from '../types/index.js';
 
+/** Raw row of NOAA SWPC `solar_probabilities.json`. */
+interface RawSolarProbability {
+  date: string;
+  c_class_1_day?: number;
+  c_class_2_day?: number;
+  c_class_3_day?: number;
+  m_class_1_day?: number;
+  m_class_2_day?: number;
+  m_class_3_day?: number;
+  x_class_1_day?: number;
+  x_class_2_day?: number;
+  x_class_3_day?: number;
+  '10mev_protons_1_day'?: number;
+  '10mev_protons_2_day'?: number;
+  '10mev_protons_3_day'?: number;
+  polar_cap_absorption?: NOAASolarProbability['polarCapAbsorption'];
+}
+
+/** Raw row of NOAA SWPC GOES `xrays-6-hour.json`. */
+interface RawGoesXray {
+  time_tag: string;
+  satellite?: number;
+  flux: number;
+  energy: string;
+}
+
+/** Raw row of NOAA SWPC GOES `integral-protons-6-hour.json`. */
+interface RawGoesProton {
+  time_tag: string;
+  flux: number;
+  energy: string;
+}
+
 const AU_KM = 149597870.7;
 const OMEGA_SUN_RAD_S = 2.7e-6; // Solar equatorial synodic rotation rate (rad/s)
 const PROTON_MASS_PDYN_COEFF = 1.6726e-6; // Converts n (cm^-3) * v^2 (km/s)^2 to nPa
@@ -85,8 +118,8 @@ export class NoaaSwpcClient {
    */
   async getSolarProbabilities(options: NoaaFetchOptions = {}): Promise<NOAASolarProbability[]> {
     try {
-      const data: any = await this.fetchNoaaJson('/json/solar_probabilities.json');
-      return (data || []).map((item: any) => ({
+      const data = await this.fetchNoaaJson<RawSolarProbability[] | null>('/json/solar_probabilities.json');
+      return (data || []).map((item) => ({
         date: item.date,
         cClass1DayPct: item.c_class_1_day ?? 0,
         cClass2DayPct: item.c_class_2_day ?? 0,
@@ -120,12 +153,12 @@ export class NoaaSwpcClient {
    */
   async getLatestXrays(options: NoaaFetchOptions = {}): Promise<GOESXrayReading | null> {
     try {
-      const list = await this.fetchNoaaJson<any>('/json/goes/primary/xrays-6-hour.json');
+      const list = await this.fetchNoaaJson<RawGoesXray[]>('/json/goes/primary/xrays-6-hour.json');
       if (!Array.isArray(list) || list.length === 0) return null;
 
       // Filter the 0.1-0.8 nm long channel (standard reference band for A/B/C/M/X classification)
-      const longChannel = list.filter((x: any) => x.energy === '0.1-0.8nm');
-      const shortChannel = list.filter((x: any) => x.energy === '0.05-0.4nm');
+      const longChannel = list.filter((x) => x.energy === '0.1-0.8nm');
+      const shortChannel = list.filter((x) => x.energy === '0.05-0.4nm');
 
       if (longChannel.length === 0) return null;
 
@@ -168,13 +201,13 @@ export class NoaaSwpcClient {
    */
   async getLatestProtons(options: NoaaFetchOptions = {}): Promise<GOESProtonReading[]> {
     try {
-      const list = await this.fetchNoaaJson<any>('/json/goes/primary/integral-protons-6-hour.json');
+      const list = await this.fetchNoaaJson<RawGoesProton[]>('/json/goes/primary/integral-protons-6-hour.json');
       if (!Array.isArray(list) || list.length === 0) return [];
 
       const latestTime = list[list.length - 1].time_tag;
-      const latestReadings = list.filter((p: any) => p.time_tag === latestTime);
+      const latestReadings = list.filter((p) => p.time_tag === latestTime);
 
-      return latestReadings.map((p: any) => ({
+      return latestReadings.map((p) => ({
         timestamp: p.time_tag,
         energyChannel: p.energy,
         fluxPfu: p.flux

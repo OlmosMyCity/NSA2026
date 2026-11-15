@@ -24,7 +24,7 @@ Orbvital (NSA2026): crew health monitoring platform. Three services, each organi
 ## Commands
 
 ```bash
-cd backend && npm install && npx prisma generate && npx tsc --noEmit && npm test && npm run build
-cd frontend && npm install && npx tsc --noEmit && npm run build
+cd backend && npm install && npx prisma generate && npx tsc --noEmit && npm run lint && npm test && npm run build
+cd frontend && npm install && npx tsc --noEmit && npm run lint && npm run build
 cd vision && .venv/bin/pytest -v
 ```
