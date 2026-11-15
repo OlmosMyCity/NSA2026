@@ -178,6 +178,18 @@ export function VisionBiometricsPanel() {
 
     async function enableWebcam() {
       setWebcamError(null);
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        setWebcamError(
+          'Webcam blocked: the browser only allows cameras on https:// or http://localhost. Switched back to Simulator.'
+        );
+        setSource('simulator');
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setWebcamError('This browser does not support webcam capture. Switched back to Simulator.');
+        setSource('simulator');
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480, frameRate: { ideal: 30 } },
@@ -191,9 +203,20 @@ export function VisionBiometricsPanel() {
         if (webcamVideoRef.current) {
           webcamVideoRef.current.srcObject = stream;
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setWebcamError('Could not access local webcam. Switched back to Simulator.');
+          const name = err instanceof DOMException ? err.name : '';
+          const reason =
+            name === 'NotAllowedError' || name === 'SecurityError'
+              ? 'camera permission denied (check the lock icon in the address bar)'
+              : name === 'NotFoundError' || name === 'OverconstrainedError'
+              ? 'no camera found on this device'
+              : name === 'NotReadableError' || name === 'AbortError'
+              ? 'camera is in use by another app (Zoom, Teams, OBS, Python service...)'
+              : err instanceof Error
+              ? err.message
+              : 'unknown error';
+          setWebcamError(`Could not access local webcam: ${reason}. Switched back to Simulator.`);
           setSource('simulator');
         }
       }
