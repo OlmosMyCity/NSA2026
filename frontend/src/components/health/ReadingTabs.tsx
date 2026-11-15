@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * @module components/health/ReadingTabs
@@ -6,20 +6,22 @@
  * with a direct link to My Health.
  */
 
-import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 
 const TABS = [
-  { href: '/readings/new', label: 'Manual Vital Entry' },
-  { href: '/vision', label: 'Optical Scan (Camera)' },
+  { href: "/readings/new", label: "Manual Vital Entry" },
+  { href: "/vision", label: "Optical Scan (Camera)" },
 ];
 
 /** Route tabs for Log Reading and quick navigation to My Health. */
 export function ReadingTabs() {
   const pathname = usePathname();
-  const astronautId = useSearchParams().get('astronautId');
-  const query = astronautId ? `astronautId=${encodeURIComponent(astronautId)}` : '';
+  const astronautId = useSearchParams().get("astronautId");
+  const query = astronautId
+    ? `astronautId=${encodeURIComponent(astronautId)}`
+    : "";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line">
@@ -30,8 +32,8 @@ export function ReadingTabs() {
             <Link
               key={t.href}
               href={query ? `${t.href}?${query}` : t.href}
-              aria-current={active ? 'page' : undefined}
-              className={`ui-tab text-xs font-semibold ${active ? 'ui-tab-active' : ''}`}
+              aria-current={active ? "page" : undefined}
+              className={`ui-tab text-xs font-semibold ${active ? "ui-tab-active" : ""}`}
             >
               {t.label}
             </Link>
@@ -40,7 +42,7 @@ export function ReadingTabs() {
       </nav>
 
       <Link
-        href={query ? `/dashboard?${query}` : '/dashboard'}
+        href={query ? `/dashboard?${query}` : "/dashboard"}
         className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-stem transition-colors hover:text-blueberry"
       >
         <span>My Health</span>
