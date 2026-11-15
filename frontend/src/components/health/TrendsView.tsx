@@ -18,6 +18,7 @@ import { buildTrend, RANGE_PRESETS, summarizeTrend, type RangeDays } from '../..
 import type { IndicatorId } from '../../domain/health/types';
 import { useActiveAstronaut } from '../../hooks/useActiveAstronaut';
 import { NoMonitoredAstronaut } from './NoMonitoredAstronaut';
+import { SolarWindCorrelationCard } from './SolarWindCorrelationCard';
 import { useHealthReadings } from '../../hooks/useHealthReadings';
 import { StatusBadge } from './StatusBadge';
 import { TrendChart } from './TrendChart';
@@ -231,6 +232,9 @@ export function TrendsView() {
           </details>
         )}
       </section>
+
+      {/* Solar wind & vital sign statistical/visual correlation */}
+      {points.length > 1 && <SolarWindCorrelationCard indicator={indicator} points={points} />}
 
       {/* Small-multiples overview grid */}
       <section aria-labelledby="overview-title">

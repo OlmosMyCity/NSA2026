@@ -61,10 +61,48 @@ export interface RadiationIncident {
   acknowledgedAt: string | null;
 }
 
+export function buildFallbackRadiationStatus(): RadiationStatusResponse {
+  return {
+    timestamp: new Date().toISOString(),
+    isSimulated: true,
+    telemetryDegraded: true,
+    degradationReason: 'Backend offline — using local NOAA SWPC solar wind baseline',
+    currentTelemetry: {
+      stormScale: 'S1_MINOR',
+      latestXray: { currentClass: 'M1.4' },
+      latestProtons: [{ energyChannel: '>=10 MeV', fluxPfu: 14.2 }],
+    },
+    earlyWarning: {
+      isWarningActive: true,
+      triggerEvent: 'Solar wind stream ~585 km/s · Bz -6.2 nT (forecast window)',
+      estimatedProtonArrivalMinutes: 110,
+      predictedStormScale: 'S2_MODERATE',
+    },
+    mitigation: {
+      stormScale: 'S1_MINOR',
+      abortEvaImmediately: false,
+      evacuateToStormShelter: false,
+      powerDownExternalSensors: false,
+      medicalCountermeasures: [
+        'Increase hydration and prepare radioprotective protocol before arrival window.',
+        'Schedule follow-up vitals and mood check-in every 4–6 h during elevated flux.',
+      ],
+      actionChecklist: [
+        'Pause non-essential EVA scheduling during predicted solar wind peak.',
+        'Verify STORM_SHELTER readiness and passive spacecraft orientation.',
+      ],
+    },
+  };
+}
+
 class RadiationService {
   /** Fetches public NOAA solar radiation telemetry, proton flux (>10 MeV pfu), and mitigation protocols. */
   async getStatus(): Promise<RadiationStatusResponse> {
-    return httpClient.get<RadiationStatusResponse>('/radiation/status', { skipAuth: true });
+    try {
+      return await httpClient.get<RadiationStatusResponse>('/radiation/status', { skipAuth: true });
+    } catch {
+      return buildFallbackRadiationStatus();
+    }
   }
 
   /** Returns the currently OPEN or ACKNOWLEDGED solar radiation storm incident, if authenticated. */
