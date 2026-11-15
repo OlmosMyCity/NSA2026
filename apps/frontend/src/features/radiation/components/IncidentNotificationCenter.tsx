@@ -5,6 +5,8 @@ import { ENV } from '@/features/common/config/env';
 import { authStorage } from '@/features/common/services/storage';
 import { RadiationIncident, radiationService } from '../services/radiationService';
 
+const AUTO_DISMISS_MS = 8_000;
+
 interface LiveNotification {
   id: string;
   event: 'incident:opened' | 'incident:escalated';
@@ -103,7 +105,15 @@ export function IncidentNotificationCenter() {
     };
   }, []);
 
-  if (notifications.length === 0) return null;
+  // Auto-ocultar el aviso tras unos segundos; un nuevo evento reinicia el temporizador
+  const latest = notifications[0];
+  useEffect(() => {
+    if (!latest) return;
+    const timer = setTimeout(() => setNotifications([]), AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [latest?.id]);
+
+  if (!latest) return null;
 
   const handleAck = async (incidentId: string) => {
     try {
@@ -114,52 +124,42 @@ export function IncidentNotificationCenter() {
     }
   };
 
+  const escalated = latest.event === 'incident:escalated';
+  const critical = escalated || latest.incident.severity === 'CRITICAL';
+  const extra = notifications.length - 1;
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0">
-      {notifications.map((item) => (
-        <div
-          key={item.id}
-          className={`rounded-lg border p-3.5 shadow-lg backdrop-blur bg-white/95 text-xs ${
-            item.event === 'incident:escalated' || item.incident.severity === 'CRITICAL'
-              ? 'border-rose-500/60'
-              : 'border-amber-500/50'
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                item.event === 'incident:escalated'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-amber-500/20 text-amber-900'
-              }`}
-            >
-              {item.event === 'incident:escalated' ? 'ESCALADO · SIN CONFIRMAR' : 'NUEVO INCIDENTE'}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setNotifications((prev) => prev.filter((n) => n.incident.id !== item.incident.id))
-              }
-              className="text-blueberry/60 hover:text-blueberry"
-              aria-label="Cerrar notificación"
-            >
-              ✕
-            </button>
-          </div>
-          <p className="mt-1.5 font-bold text-blueberry">{item.incident.title}</p>
-          <p className="mt-0.5 text-blueberry/80 line-clamp-2">{item.incident.description}</p>
-          {item.reason && <p className="mt-1 text-rose-700 font-medium">{item.reason}</p>}
-          <div className="mt-2.5 flex justify-end">
-            <button
-              type="button"
-              onClick={() => handleAck(item.incident.id)}
-              className="px-2.5 py-1 rounded bg-blueberry text-white font-semibold hover:opacity-90"
-            >
-              Confirmar (Acknowledge)
-            </button>
-          </div>
-        </div>
-      ))}
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-4 right-4 z-50 w-[min(20rem,calc(100vw-2rem))] flex items-center gap-2.5 rounded-lg border border-line bg-[hsl(var(--hsl-surface-elevated)/0.92)] backdrop-blur px-3 py-2 shadow-lg text-xs"
+    >
+      <span
+        aria-hidden
+        className={`h-2 w-2 shrink-0 rounded-full ${critical ? 'bg-status-critical' : 'bg-status-caution'}`}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-blueberry">
+          {escalated ? 'Incidente sin confirmar' : 'Nuevo incidente'}
+          {extra > 0 && <span className="ml-1 font-normal text-stem">+{extra}</span>}
+        </p>
+        <p className="truncate text-stem">{latest.incident.title}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => handleAck(latest.incident.id)}
+        className="shrink-0 rounded px-2 py-1 font-semibold text-berry hover:bg-surface-hover"
+      >
+        Confirmar
+      </button>
+      <button
+        type="button"
+        onClick={() => setNotifications([])}
+        className="shrink-0 px-1 text-stem hover:text-blueberry"
+        aria-label="Cerrar aviso"
+      >
+        ✕
+      </button>
     </div>
   );
 }
