@@ -7,6 +7,8 @@
  *  - sleep_engine: PERCLOS, fatiga y etapas de sueño
  *  - rppg_engine: calibración del buffer (~10 s), BVP y espectro
  *  - pipeline._evaluate_mission_health: alertas e índice de salud global
+ *
+ * La imagen del sujeto la pinta SyntheticHead3D (modelo 3D), no este simulador.
  */
 import type {
   AstronautTelemetryFrame,
@@ -20,8 +22,6 @@ export interface MockTickParams {
   context: MonitoringContext;
   sim_bpm: number;
   sim_state: SimState;
-  /** Fuente de vídeo opcional (webcam local) para pintar el HUD. */
-  video?: HTMLVideoElement | null;
 }
 
 interface StateProfile {
@@ -110,7 +110,6 @@ export class MockVisionSimulator {
   private yawnCount = 0;
   private restlessEvents = 0;
   private blinkPhase = 0;
-  private hudCanvas: HTMLCanvasElement | null = null;
 
   reset(): void {
     this.startedAt = 0;
@@ -308,89 +307,6 @@ export class MockVisionSimulator {
       annotated_frame_jpeg_b64: null,
     };
 
-    frame.annotated_frame_jpeg_b64 = this.renderHud(frame, params);
     return frame;
-  }
-
-  /** Dibuja un HUD sencillo (cara sintética o webcam) y lo devuelve como JPEG base64. */
-  private renderHud(frame: AstronautTelemetryFrame, params: MockTickParams): string | null {
-    if (typeof document === 'undefined') return null;
-    if (!this.hudCanvas) {
-      this.hudCanvas = document.createElement('canvas');
-      this.hudCanvas.width = 384;
-      this.hudCanvas.height = 288;
-    }
-    const c = this.hudCanvas;
-    const ctx = c.getContext('2d');
-    if (!ctx) return null;
-    const W = c.width;
-    const H = c.height;
-    const nir = params.camera_mode === 'nir_ir';
-
-    const video = params.video;
-    if (video && video.readyState >= 2) {
-      ctx.save();
-      if (nir) ctx.filter = 'grayscale(1) contrast(1.2)';
-      ctx.drawImage(video, 0, 0, W, H);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = nir ? '#111' : '#0b1220';
-      ctx.fillRect(0, 0, W, H);
-      const cx = W / 2 + frame.sleep.head_yaw_deg;
-      const cy = H / 2 + frame.sleep.head_pitch_deg * 0.8;
-      ctx.fillStyle = nir ? '#8a8a8a' : '#c69c7d';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 62, 80, (frame.sleep.head_roll_deg * Math.PI) / 180, 0, Math.PI * 2);
-      ctx.fill();
-      const eyeOpen = clamp(frame.sleep.ear_mean / 0.3, 0.05, 1) * 9;
-      ctx.fillStyle = '#1b1b1b';
-      for (const dx of [-24, 24]) {
-        ctx.beginPath();
-        ctx.ellipse(cx + dx, cy - 14, 11, eyeOpen, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.strokeStyle = '#3a2420';
-      ctx.lineWidth = 3;
-      const furrow = frame.mood.brow_furrow_score * 8;
-      ctx.beginPath();
-      ctx.moveTo(cx - 36, cy - 32 + furrow * 0.3);
-      ctx.lineTo(cx - 12, cy - 32 + furrow);
-      ctx.moveTo(cx + 12, cy - 32 + furrow);
-      ctx.lineTo(cx + 36, cy - 32 + furrow * 0.3);
-      ctx.stroke();
-      const smile = (frame.mood.smile_score - 0.15) * 30;
-      ctx.beginPath();
-      ctx.moveTo(cx - 22, cy + 34);
-      ctx.quadraticCurveTo(cx, cy + 34 + smile, cx + 22, cy + 34);
-      ctx.stroke();
-    }
-
-    // Caja facial y ROI de rPPG
-    ctx.strokeStyle = frame.alerts.length ? '#f87171' : '#4ade80';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(W / 2 - 75, H / 2 - 95, 150, 190);
-    ctx.strokeStyle = '#38bdf8';
-    ctx.strokeRect(W / 2 - 30, H / 2 - 85, 60, 22);
-
-    // Texto
-    ctx.fillStyle = 'rgba(2,6,23,0.65)';
-    ctx.fillRect(0, 0, W, 22);
-    ctx.fillRect(0, H - 22, W, 22);
-    ctx.font = '11px monospace';
-    ctx.fillStyle = '#e2e8f0';
-    const hr = frame.heart_rate;
-    ctx.fillText(
-      `MOCK · ${params.camera_mode.toUpperCase()} · HR ${hr.bpm > 0 ? hr.bpm.toFixed(0) : '--'} BPM · SQI ${hr.signal_quality.toFixed(0)}`,
-      6,
-      15
-    );
-    ctx.fillText(
-      `${frame.mood.dominant_mood} · PERCLOS ${frame.sleep.perclos.toFixed(0)}% · ${frame.sleep.fatigue_level}`,
-      6,
-      H - 7
-    );
-
-    const dataUrl = c.toDataURL('image/jpeg', 0.7);
-    return dataUrl.slice(dataUrl.indexOf(',') + 1);
   }
 }

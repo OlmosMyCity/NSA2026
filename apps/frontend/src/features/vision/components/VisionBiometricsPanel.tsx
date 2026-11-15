@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Activity,
   AlertTriangle,
   Brain,
   Camera,
@@ -37,6 +36,16 @@ import {
   tickSimulatorHttp,
 } from '../services/visionService';
 import { MockVisionSimulator } from '../services/visionMock';
+import dynamic from 'next/dynamic';
+
+const SyntheticHead3D = dynamic(() => import('./SyntheticHead3D'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center font-mono text-[11px] text-slate-400">
+      Loading synthetic subject…
+    </div>
+  ),
+});
 import { ENV } from '@/features/common/config/env';
 
 const SYNC_INTERVAL_SEC = 30;
@@ -371,7 +380,6 @@ export function VisionBiometricsPanel() {
           context: contextRef.current,
           sim_bpm: simBpmRef.current,
           sim_state: simStateRef.current,
-          video: sourceRef.current === 'webcam' ? webcamVideoRef.current : null,
         });
         latestTelemetryRef.current = frame;
         setTelemetry(frame);
@@ -753,7 +761,13 @@ export function VisionBiometricsPanel() {
               muted
               className={`h-full w-full object-cover ${source === 'webcam' ? 'block' : 'hidden'}`}
             />
-            {source === 'webcam' ? (
+            {source !== 'webcam' && (
+              <div className="absolute inset-0">
+                <SyntheticHead3D telemetry={telemetry} />
+                <div className="hud-scanline pointer-events-none absolute inset-x-0 h-16" aria-hidden="true" />
+              </div>
+            )}
+            {(source === 'webcam' || telemetry) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span
@@ -763,7 +777,11 @@ export function VisionBiometricsPanel() {
                         : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
                     }`}
                   >
-                    {telemetry?.face_detected ? 'FACE LOCKED · LIVE 30+ FPS' : 'SCANNING FACE...'}
+                    {source !== 'webcam'
+                      ? 'SYNTHETIC SUBJECT · 3D'
+                      : telemetry?.face_detected
+                      ? 'FACE LOCKED · LIVE 30+ FPS'
+                      : 'SCANNING FACE...'}
                   </span>
                   {telemetry && (
                     <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
@@ -781,17 +799,6 @@ export function VisionBiometricsPanel() {
                     </span>
                   </div>
                 )}
-              </div>
-            ) : telemetry?.annotated_frame_jpeg_b64 ? (
-              <img
-                src={`data:image/jpeg;base64,${telemetry.annotated_frame_jpeg_b64}`}
-                alt="Vision AI Biometric HUD"
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-slate-400">
-                <Activity className="h-6 w-6 animate-pulse text-sky-400" aria-hidden="true" />
-                <span>Waiting for Vision AI telemetry stream...</span>
               </div>
             )}
             <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />

@@ -11,3 +11,9 @@ Cambios hechos al original:
 - Las piezas se agruparon por sistema: piel, corazón, pulmones, cerebro, esqueleto, arterias y venas.
 - El modelo se pasó a metros con el eje Y hacia arriba.
 - Se simplificó al 12 % de los triángulos y se comprimió con meshopt.
+
+# Cabeza anatómica (`head.glb`)
+
+Modelo generado con **Tripo AI** y aportado por el equipo para el HUD de `/vision`
+(sujeto sintético cuando no se usa la webcam). Malla única comprimida con meshopt
+(`gltfpack`); sin blendshapes ni esqueleto. En código se gira -90° en Y para que mire a la cámara.
