@@ -6,6 +6,7 @@ import {
   BASELINE_SHARE,
   createMissionScale,
   formatMET,
+  formatSafeDate,
   type MissionPhase,
   type TimelineReading,
 } from '../../domain/visualizer/missionClock';
@@ -56,16 +57,22 @@ export function MissionTimeline({
 
   useEffect(() => {
     const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width;
+      if (typeof w === 'number' && Number.isFinite(w)) setWidth(w);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  const baselineSeconds = useMemo(
-    () => Math.max(86400, -Math.min(0, ...items.map((i) => i.met))),
-    [items]
-  );
+  const baselineSeconds = useMemo(() => {
+    const earliest = items.reduce(
+      (min, i) => (Number.isFinite(i.met) && i.met < min ? i.met : min),
+      0,
+    );
+    return Math.max(86400, -earliest);
+  }, [items]);
   const scale = useMemo(
     () => createMissionScale(phases, baselineSeconds),
     [phases, baselineSeconds]
@@ -168,7 +175,7 @@ export function MissionTimeline({
           })}
 
           {/* Planned future trajectory */}
-          {phases.length > 0 && nowMet < phases.at(-1)!.t_end && (
+          {phases.length > 0 && nowMet < phases[phases.length - 1].t_end && (
             <rect
               x={x(nowMet)}
               y={bandTop}
@@ -225,6 +232,7 @@ export function MissionTimeline({
           {items.map((it) => {
             const cx = x(it.met);
             const isSel = selected?.reading.id === it.reading.id;
+            const theme = STATUS_THEME[it.status] ?? STATUS_THEME.unknown;
             return (
               <g
                 key={it.reading.id}
@@ -238,7 +246,7 @@ export function MissionTimeline({
                   cx={cx}
                   cy={dotY}
                   r={isSel ? 7 : 5}
-                  fill={STATUS_THEME[it.status].color}
+                  fill={theme.color}
                   stroke={isSel ? '#38bdf8' : SURFACE}
                   strokeWidth={2}
                 />
@@ -257,26 +265,29 @@ export function MissionTimeline({
         </svg>
       )}
 
-      {show && (
-        <div
-          className="surface-elevated pointer-events-none absolute z-10 w-48 border border-line px-3 py-2 text-xs"
-          style={{
-            left: Math.min(Math.max(0, x(show.met) - 96), Math.max(0, width - 192)),
-            top: bandTop + bandH + 8,
-          }}
-        >
-          <strong className="font-mono text-sm tabular-nums text-blueberry">
-            {formatMET(show.met)}
-          </strong>
-          <div className="text-stem">{dateFmt.format(Date.parse(show.reading.takenAt))}</div>
-          <div className="mt-1 font-medium text-blueberry">
-            <span aria-hidden="true" style={{ color: STATUS_THEME[show.status].color }}>
-              {STATUS_THEME[show.status].icon}
-            </span>{' '}
-            {show.status === 'red' ? 'Critical' : STATUS_THEME[show.status].label}
+      {show && (() => {
+        const showTheme = STATUS_THEME[show.status] ?? STATUS_THEME.unknown;
+        return (
+          <div
+            className="surface-elevated pointer-events-none absolute z-10 w-48 border border-line px-3 py-2 text-xs"
+            style={{
+              left: Math.min(Math.max(0, x(show.met) - 96), Math.max(0, width - 192)),
+              top: bandTop + bandH + 8,
+            }}
+          >
+            <strong className="font-mono text-sm tabular-nums text-blueberry">
+              {formatMET(show.met)}
+            </strong>
+            <div className="text-stem">{formatSafeDate(dateFmt, show.reading.takenAt)}</div>
+            <div className="mt-1 font-medium text-blueberry">
+              <span aria-hidden="true" style={{ color: showTheme.color }}>
+                {showTheme.icon}
+              </span>{' '}
+              {show.status === 'red' ? 'Critical' : showTheme.label}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

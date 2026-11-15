@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { INDICATORS } from '../../../domain/health/indicators';
 import { nominalLabel } from '../../../domain/health/evaluate';
 import type { IndicatorId } from '../../../domain/health/types';
@@ -10,17 +11,21 @@ interface VitalFieldProps {
   indicator: IndicatorId;
   value: number;
   onChange: (value: number) => void;
+  badge?: ReactNode;
 }
 
 /** Campo de un signo vital con límites, paso y rango nominal tomados del catálogo. */
-export function VitalField({ indicator, value, onChange }: VitalFieldProps) {
+export function VitalField({ indicator, value, onChange, badge }: VitalFieldProps) {
   const def = INDICATORS[indicator];
   const id = `vital-${indicator}`;
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-semibold text-blueberry">
-        {def.label} ({def.unit}) *
-      </label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label htmlFor={id} className="block text-xs font-semibold text-blueberry">
+          {def.label} ({def.unit}) *
+        </label>
+        {badge}
+      </div>
       {indicator === 'mood' ? (
         <select
           id={id}
@@ -42,7 +47,7 @@ export function VitalField({ indicator, value, onChange }: VitalFieldProps) {
           min={def.input.min}
           max={def.input.max}
           step={def.input.step}
-          value={value}
+          value={Number.isFinite(value) ? value : ''}
           onChange={(e) => onChange(Number(e.target.value))}
           className={FIELD_CLASS}
         />

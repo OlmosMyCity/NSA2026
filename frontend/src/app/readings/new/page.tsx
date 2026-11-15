@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { AppLayout } from '@/components/common/AppLayout';
 import { RouteGuard } from '@/components/auth/RouteGuard';
-import { ReadingTabs } from '@/components/health/ReadingTabs';
 import { ReadingFormWizard } from '@/components/health/ReadingFormWizard';
 
 function ReadingPageContent({ searchParams }: { searchParams: { astronautId?: string } }) {
@@ -22,10 +21,7 @@ export default function NewReadingPage({
               <div className="surface-tinted mx-auto h-96 max-w-2xl animate-pulse rounded-lg" />
             }
           >
-            <div className="space-y-6">
-              <ReadingTabs />
-              <ReadingPageContent searchParams={searchParams} />
-            </div>
+            <ReadingPageContent searchParams={searchParams} />
           </Suspense>
         </div>
       </RouteGuard>

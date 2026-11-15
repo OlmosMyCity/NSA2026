@@ -37,7 +37,7 @@ export function FreshnessReminder() {
     healthService
       .listReadings(astronautId)
       .then((rows) => {
-        if (active) setTakenAt(rows.at(-1)?.takenAt ?? null);
+        if (active) setTakenAt(Array.isArray(rows) && rows.length ? rows[rows.length - 1]?.takenAt ?? null : null);
       })
       .catch(() => {
         // Sin conexión se conserva la última lectura conocida.

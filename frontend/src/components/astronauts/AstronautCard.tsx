@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Astronaut } from '../../domain/astronauts/types';
 import { AstronautFallbackAvatar } from './AstronautFallbackAvatar';
@@ -21,6 +21,7 @@ interface AstronautCardProps {
 
 export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps) {
   const { user, isAdmin } = useAuth();
+  const [imgError, setImgError] = useState(false);
   const isOwnProfile = !!user?.astronautId && astronaut.id === user.astronautId;
   const canEditBiometrics = isAdmin || isOwnProfile;
   const canLogReading = isAdmin || isOwnProfile;
@@ -30,13 +31,14 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
     <article className="surface-card group flex flex-col justify-between p-5 transition-colors hover:border-line-strong">
       <div>
         <div className="flex items-start gap-4">
-          {astronaut.photoUrl ? (
+          {astronaut.photoUrl && !imgError ? (
             <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-sm">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={astronaut.photoUrl}
                 alt={`Official portrait of ${astronaut.name}`}
-                fill
-                className="object-cover"
+                onError={() => setImgError(true)}
+                className="h-full w-full object-cover"
               />
             </div>
           ) : (

@@ -86,11 +86,11 @@ export default function BiometricProfilePage() {
             </div>
 
             <Link
-              href="/vision"
+              href="/readings/new"
               className="tactile-press inline-flex items-center gap-2 rounded-sm bg-blueberry px-4 py-2 text-xs font-semibold text-plate hover:bg-berry self-start sm:self-auto"
             >
               <Video className="h-4 w-4" />
-              <span>Open Live Vision AI</span>
+              <span>Open Optical Scan &amp; Log</span>
             </Link>
           </header>
 

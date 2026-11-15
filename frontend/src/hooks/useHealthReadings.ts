@@ -18,10 +18,13 @@ export function useHealthReadings(astronautId: string | undefined) {
     'Unable to load biomedical telemetry.',
   );
 
-  const rows = useMemo(() => (data && data.astronautId === astronautId ? data.rows : []), [data, astronautId]);
+  const rows = useMemo(
+    () => (data && data.astronautId === astronautId && Array.isArray(data.rows) ? data.rows : []),
+    [data, astronautId],
+  );
   const readings = useMemo(() => rows.flatMap(toIndicatorReadings), [rows]);
   const zones = useMemo(() => summarizeZones(readings), [readings]);
-  const latest = rows.at(-1) ?? null;
+  const latest = rows.length ? rows[rows.length - 1] : null;
 
   return { rows, readings, zones, latest, isLoading, error, refetch };
 }

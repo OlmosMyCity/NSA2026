@@ -6,7 +6,12 @@ import { getPhaseRegime } from '@/domain/health/phaseNorms';
 import { summarizeZones } from '@/domain/health/summary';
 import type { BodyZoneId } from '@/domain/health/types';
 import { StatusBadge } from '@/components/health/StatusBadge';
-import { formatMET, type MissionPhase, type TimelineReading } from '../../domain/visualizer/missionClock';
+import {
+  formatMET,
+  formatSafeDate,
+  type MissionPhase,
+  type TimelineReading,
+} from '../../domain/visualizer/missionClock';
 import { PHASE_WATCH } from '../../domain/visualizer/phaseHazards';
 
 const ZONE_ORDER: BodyZoneId[] = ['heart', 'blood', 'brain', 'sleep', 'bones'];
@@ -65,7 +70,7 @@ export function MissionMomentPanel({ met, nowMet, phase, reading }: MissionMomen
               Your Health
             </h3>
             <span className="text-[11px] tabular-nums text-stem">
-              {dateFmt.format(Date.parse(reading.reading.takenAt))}
+              {formatSafeDate(dateFmt, reading.reading.takenAt)}
             </span>
           </div>
           {gapDays > 1 && (

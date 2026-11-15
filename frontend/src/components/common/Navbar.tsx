@@ -94,9 +94,6 @@ export function Navbar() {
     if (href === '/dashboard' && pathname === '/trends') {
       return true;
     }
-    if (href === '/readings/new' && pathname === '/vision') {
-      return true;
-    }
     if (href === '/missions') {
       if (pathname.startsWith('/missions/')) return true;
       if (
