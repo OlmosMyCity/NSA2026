@@ -24,7 +24,32 @@ const CAMERA_MOVE_S = 1.4;
 const SHIP_TO_BODY = 0.28;
 const SHIP_MIN = 0.005;
 const SHIP_MAX = 0.05;
-const SHIP_LABEL = { sls: "SLS", core: "SLS", eus: "EUS + Orion", orion: "Orion", hls: "HLS" };
+const SHIP_LABEL = {
+  sls: "SLS",
+  core: "SLS",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "HLS",
+  dragon: "Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Station",
+  rover: "Lunar Rover",
+  ares: "Ares I Transit",
+  gateway: "Gateway",
+};
+const VEHICLE_FULL_LABEL = {
+  sls: "SLS Block 1B + Orion",
+  core: "SLS Core + Orion",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "Starship HLS",
+  dragon: "Falcon 9 + Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Orbital Station",
+  rover: "Pressurized Lunar Rover",
+  ares: "Ares I Mars Transit",
+  gateway: "Lunar Gateway",
+};
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */
 const FOCUS_DISTANCE = { earth: 30, moon: 9, ship: 3, system: 620 };
@@ -39,6 +64,8 @@ const norm = (v) => {
 async function main() {
   const params = new URLSearchParams(location.search);
   const rawData = params.get("data");
+  const rawVehicle = params.get("vehicle");
+  const vehicleOverride = rawVehicle && VEHICLE_FULL_LABEL[rawVehicle] ? rawVehicle : null;
   const dataUrl =
     rawData && (/^data\/[a-zA-Z0-9_.-]+\.json$/.test(rawData) || rawData.startsWith("blob:"))
       ? rawData
@@ -409,7 +436,17 @@ async function main() {
     view.moon.matrixWorldNeedsUpdate = true;
     ship.position.copy(rel(shipF));
 
-    const vehicle = vehicleAt(t, events);
+    const vehicle = vehicleOverride
+      ? { id: vehicleOverride, name: VEHICLE_FULL_LABEL[vehicleOverride] }
+      : events.some((e) => /SRB|MECO|TLI/.test(e.label))
+        ? vehicleAt(t, events)
+        : /iss_leo/i.test(dataUrl)
+          ? { id: "dragon", name: VEHICLE_FULL_LABEL.dragon }
+          : /mars/i.test(dataUrl)
+            ? { id: "ares", name: VEHICLE_FULL_LABEL.ares }
+            : /lunar_base/i.test(dataUrl)
+              ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
+              : vehicleAt(t, events);
     const shipName = landed ? "HLS · sitio de alunizaje, 86,8° S" : SHIP_LABEL[vehicle.id];
     if (shipName !== vehicleName) {
       vehicleName = shipName;

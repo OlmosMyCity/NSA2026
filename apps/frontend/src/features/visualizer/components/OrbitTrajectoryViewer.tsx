@@ -12,6 +12,7 @@ import {
   Satellite,
   Compass,
 } from 'lucide-react';
+import { VEHICLE_OPTIONS } from '../domain/missionSimulationConfig';
 
 interface MissionTrajectoryPreset {
   id: string;
@@ -112,6 +113,7 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
 export function OrbitTrajectoryViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>('artemis-iv');
+  const [vehicleId, setVehicleId] = useState<string>('auto');
   const [customBlobUrl, setCustomBlobUrl] = useState<string | null>(null);
   const [customName, setCustomName] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -124,9 +126,10 @@ export function OrbitTrajectoryViewer() {
   }, [customBlobUrl]);
 
   const activePreset = MISSION_PRESETS.find((m) => m.id === selectedId) ?? MISSION_PRESETS[0];
-  const iframeSrc = customBlobUrl
-    ? `/visualizer/index.html?data=${encodeURIComponent(customBlobUrl)}`
-    : `/visualizer/index.html?data=${encodeURIComponent(activePreset.dataFile)}`;
+  const dataParam = customBlobUrl ?? activePreset.dataFile;
+  const iframeQuery = new URLSearchParams({ data: dataParam });
+  if (vehicleId !== 'auto') iframeQuery.set('vehicle', vehicleId);
+  const iframeSrc = `/visualizer/index.html?${iframeQuery.toString()}`;
 
   const handleUploadJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,7 +188,20 @@ export function OrbitTrajectoryViewer() {
           })}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Launch or spacecraft vehicle"
+            value={vehicleId}
+            onChange={(e) => setVehicleId(e.target.value)}
+            className="rounded-pill border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry"
+          >
+            {VEHICLE_OPTIONS.map((v) => (
+              <option key={v.id} value={v.id}>
+                Vehicle: {v.label}
+              </option>
+            ))}
+          </select>
+
           <input
             ref={fileInputRef}
             type="file"

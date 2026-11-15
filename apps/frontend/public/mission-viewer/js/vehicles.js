@@ -57,6 +57,58 @@ const DRAW = {
     g.fillRect(50, 36, 28, 56);
     g.fillRect(44, 44, 40, 10);
   },
+  dragon(g) {
+    g.fillStyle = WHITE;
+    g.fillRect(46, 54, 36, 42);
+    capsule(g, 54);
+    g.fillStyle = GREY;
+    g.fillRect(46, 86, 36, 10);
+    g.fillStyle = "#38bdf8";
+    g.fillRect(46, 62, 6, 24);
+    g.fillRect(76, 62, 6, 24);
+  },
+  soyuz(g) {
+    g.fillStyle = "#38bdf8";
+    g.fillRect(18, 60, 92, 10);
+    g.fillStyle = WHITE;
+    g.beginPath();
+    g.arc(64, 44, 14, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = GREY;
+    g.fillRect(52, 56, 24, 34);
+  },
+  iss(g) {
+    g.fillStyle = "#38bdf8";
+    for (const x of [16, 28, 90, 102]) {
+      g.fillRect(x, 26, 8, 76);
+    }
+    g.fillStyle = GREY;
+    g.fillRect(14, 60, 100, 8);
+    g.fillStyle = WHITE;
+    g.fillRect(54, 40, 20, 48);
+    g.fillRect(44, 54, 40, 18);
+  },
+  rover(g) {
+    g.fillStyle = WHITE;
+    g.fillRect(36, 46, 56, 28);
+    g.fillStyle = "#38bdf8";
+    g.fillRect(74, 50, 14, 12);
+    g.fillStyle = GREY;
+    for (const x of [40, 60, 80]) {
+      g.beginPath();
+      g.arc(x, 82, 8, 0, Math.PI * 2);
+      g.fill();
+    }
+  },
+  ares(g) {
+    g.fillStyle = "#38bdf8";
+    g.fillRect(20, 66, 88, 8);
+    g.fillStyle = WHITE;
+    g.fillRect(50, 44, 28, 50);
+    g.fillStyle = ORANGE;
+    g.fillRect(50, 80, 28, 12);
+    capsule(g, 44);
+  },
 };
 
 function tri(g, ax, ay, bx, by, cx, cy) {
