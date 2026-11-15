@@ -331,7 +331,7 @@ export function VisionBiometricsPanel() {
                   timestamp: performance.now() / 1000.0,
                   camera_mode: cameraModeRef.current,
                   context: contextRef.current,
-                  include_hud: true,
+                  include_hud: false,
                 })
               );
             }
@@ -379,6 +379,7 @@ export function VisionBiometricsPanel() {
                   blob,
                   camera_mode: cameraModeRef.current,
                   context: contextRef.current,
+                  include_hud: false,
                 })
                   .then((frame) => {
                     if (unmounted) return;
@@ -662,7 +663,43 @@ export function VisionBiometricsPanel() {
 
           {/* HUD Frame */}
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line bg-slate-950">
-            {telemetry?.annotated_frame_jpeg_b64 ? (
+            <video
+              ref={webcamVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`h-full w-full object-cover ${source === 'webcam' ? 'block' : 'hidden'}`}
+            />
+            {source === 'webcam' ? (
+              <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`rounded-pill border px-2.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-md ${
+                      telemetry?.face_detected
+                        ? 'border-[var(--status-nominal-border)] bg-slate-950/75 text-status-nominal'
+                        : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
+                    }`}
+                  >
+                    {telemetry?.face_detected ? 'FACE LOCKED · LIVE 30+ FPS' : 'SCANNING FACE...'}
+                  </span>
+                  {telemetry && (
+                    <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
+                      {telemetry.heart_rate.bpm > 0 ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM` : 'rPPG CALIBRATING'} · {telemetry.mood.dominant_mood}
+                    </span>
+                  )}
+                </div>
+                {telemetry && (
+                  <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-blueberry">
+                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
+                      STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS {telemetry.sleep.perclos.toFixed(1)}%
+                    </span>
+                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
+                      {telemetry.camera_mode.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : telemetry?.annotated_frame_jpeg_b64 ? (
               <img
                 src={`data:image/jpeg;base64,${telemetry.annotated_frame_jpeg_b64}`}
                 alt="Vision AI Biometric HUD"
@@ -674,7 +711,6 @@ export function VisionBiometricsPanel() {
                 <span>Waiting for Vision AI telemetry stream...</span>
               </div>
             )}
-            <video ref={webcamVideoRef} autoPlay playsInline muted className="hidden" />
             <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />
           </div>
 
