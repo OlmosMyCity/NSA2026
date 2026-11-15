@@ -1,7 +1,7 @@
 # Supervisión desde Tierra y vigencia de datos (15 min)
 
 > Propuesta de diseño. Organiza la idea del rol "empresario" y del recordatorio de 15 minutos, la aterriza sobre el código real del repositorio y lista las correcciones que necesita `ZeroG_Vitals_Arquitectura_y_Reglas.md`.
-> Estado: decisiones D1–D7 **resueltas según la recomendación** de la sección 9. Bloques 0 a 3 implementados (base, vigencia, aptitud y rol operador). Pendiente: aplicar el cambio de esquema en la base de datos, la pantalla para crear operadores y el bloque 4 (pulido).
+> Estado: decisiones D1–D7 **resueltas según la recomendación** de la sección 9. Bloques 0 a 3 implementados (base, vigencia, aptitud, rol operador y alta de operadores desde la consola del cirujano). Pendiente: aplicar el cambio de esquema en la base de datos y el bloque 4 (pulido).
 
 ## Índice
 

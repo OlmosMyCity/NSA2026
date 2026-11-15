@@ -1,6 +1,7 @@
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
+import { authStorage } from '@/features/common/services/storage';
 import { toIndicatorReadings, type ApiHealthReading } from '@/features/health/domain/api-adapter';
 import { evaluateFreshness } from '@/features/health/domain/freshness';
 import { summarizeZones } from '@/features/health/domain/summary';
@@ -13,8 +14,14 @@ const STATUS_PRIORITY: Record<OperatorCrewStatus, number> = { CRITICAL: 0, WARNI
 function buildMockOverview(): OperatorCrewOverview {
   const now = Date.now();
 
+  // Igual que el backend: solo la tripulación de las misiones asignadas a este operador.
+  const operatorId = authStorage.getUser()?.id;
+  const ownMissionIds = new Set(
+    mockDb.missions.filter((m) => !m.deletedAt && m.operatorId === operatorId).map((m) => m.id)
+  );
+
   const crew: OperatorCrewMember[] = mockDb.astronauts
-    .filter((astro) => !astro.deletedAt)
+    .filter((astro) => !astro.deletedAt && ownMissionIds.has(astro.missionId))
     .map((astro): OperatorCrewMember => {
       const mission = mockDb.missions.find((m) => m.id === astro.missionId);
       const latest = mockDb.readings

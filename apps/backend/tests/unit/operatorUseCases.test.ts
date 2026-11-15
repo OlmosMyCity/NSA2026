@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { CrewLocation, Environment, HealthReading, HealthStatus, Role } from "@prisma/client";
 import { GetOperatorCrewOverviewUseCase } from "../../src/application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
-import { UpdateCrewLocationUseCase } from "../../src/application/use-cases/operator/UpdateCrewLocationUseCase.js";
+import {
+  GetCrewLocationUseCase,
+  UpdateCrewLocationUseCase,
+} from "../../src/application/use-cases/operator/UpdateCrewLocationUseCase.js";
 import { AssignMissionOperatorUseCase } from "../../src/application/use-cases/admin/AssignMissionOperatorUseCase.js";
 import { IOperatorCrewRepository, OperatorCrewRecord } from "../../src/domain/repository/IOperatorCrewRepository.js";
 import { IAstronautRepository } from "../../src/domain/repository/IAstronautRepository.js";
@@ -54,6 +57,8 @@ function record(id: string, recentReadings: HealthReading[]): OperatorCrewRecord
 function crewRepo(overrides: Partial<IOperatorCrewRepository> = {}): IOperatorCrewRepository {
   return {
     listCrewForOperator: vi.fn().mockResolvedValue([]),
+    listOperatorAccess: vi.fn().mockResolvedValue({ operators: [], missions: [] }),
+    findLocation: vi.fn().mockResolvedValue(null),
     setMissionOperator: vi.fn().mockResolvedValue(true),
     updateLocation: vi.fn().mockResolvedValue(null),
     ...overrides,
@@ -230,6 +235,28 @@ describe("UpdateCrewLocationUseCase", () => {
     await expect(
       missing.execute({ astronautId: "nope", location: CrewLocation.ROVER, requester: { id: "admin", role: Role.ADMIN } })
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("GetCrewLocationUseCase", () => {
+  const astronautRepo = (ownId: string | null) =>
+    ({ findByUserId: vi.fn().mockResolvedValue(ownId ? { id: ownId } : null) }) as unknown as IAstronautRepository;
+  const state = { currentLocation: CrewLocation.HABITAT, locationUpdatedAt: TAKEN_AT };
+
+  it("el tripulante consulta su propia ubicación", async () => {
+    const useCase = new GetCrewLocationUseCase(astronautRepo("astro-1"), crewRepo({ findLocation: vi.fn().mockResolvedValue(state) }));
+    await expect(useCase.execute("astro-1", { id: "user-1", role: Role.USER })).resolves.toEqual({
+      currentLocation: "HABITAT",
+      locationUpdatedAt: "2026-11-14T10:00:00.000Z",
+    });
+  });
+
+  it("ni otro tripulante ni el operador pueden consultarla por esta ruta", async () => {
+    const findLocation = vi.fn().mockResolvedValue(state);
+    const useCase = new GetCrewLocationUseCase(astronautRepo("astro-1"), crewRepo({ findLocation }));
+    await expect(useCase.execute("astro-2", { id: "user-1", role: Role.USER })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(useCase.execute("astro-1", { id: "op-1", role: Role.OPERATOR })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(findLocation).not.toHaveBeenCalled();
   });
 });
 

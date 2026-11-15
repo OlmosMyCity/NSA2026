@@ -37,6 +37,7 @@ astronautRouter.post("/digital-twin/evaluate", authenticate, digitalTwinControll
 astronautRouter.use("/", astronautSummaryRouter); // GET /:id/summary
 astronautRouter.get("/:id/digital-twin", authenticate, digitalTwinController.getDigitalTwin);
 astronautRouter.post("/:id/simulate", authenticate, digitalTwinController.simulate);
+astronautRouter.get("/:id/location", authenticate, operatorController.getLocation);
 astronautRouter.patch("/:id/location", authenticate, operatorController.updateLocation);
 astronautRouter.get("/:id", controller.getById);
 // Imagen opcional: multipart con el campo "photo" o JSON con "photoUrl" ya resuelta.

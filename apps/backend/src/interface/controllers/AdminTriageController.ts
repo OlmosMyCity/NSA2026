@@ -3,6 +3,7 @@ import { GetTriageOverviewUseCase } from "../../application/use-cases/admin/GetT
 import { SendClinicalDirectiveUseCase } from "../../application/use-cases/admin/SendClinicalDirectiveUseCase.js";
 import { CreateUserByAdminUseCase } from "../../application/use-cases/admin/CreateUserByAdminUseCase.js";
 import { AssignMissionOperatorUseCase } from "../../application/use-cases/admin/AssignMissionOperatorUseCase.js";
+import { IOperatorCrewRepository } from "../../domain/repository/IOperatorCrewRepository.js";
 import {
   assignMissionOperatorSchema,
   createUserByAdminSchema,
@@ -15,8 +16,17 @@ export class AdminTriageController {
     private readonly getTriageOverviewUseCase: GetTriageOverviewUseCase,
     private readonly sendClinicalDirectiveUseCase: SendClinicalDirectiveUseCase,
     private readonly createUserByAdminUseCase: CreateUserByAdminUseCase,
-    private readonly assignMissionOperatorUseCase: AssignMissionOperatorUseCase
+    private readonly assignMissionOperatorUseCase: AssignMissionOperatorUseCase,
+    private readonly operatorCrewRepo: IOperatorCrewRepository
   ) {}
+
+  listOperatorAccess = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json(await this.operatorCrewRepo.listOperatorAccess());
+    } catch (error) {
+      next(error);
+    }
+  };
 
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

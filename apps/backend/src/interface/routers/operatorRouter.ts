@@ -6,13 +6,18 @@ import { authorizeRoles } from "../middlewares/authorizeRoles.js";
 import { PrismaOperatorCrewRepository } from "../../infrastructure/repository/PrismaOperatorCrewRepository.js";
 import { PrismaAstronautRepository } from "../../infrastructure/repository/PrismaAstronautRepository.js";
 import { GetOperatorCrewOverviewUseCase } from "../../application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
-import { UpdateCrewLocationUseCase } from "../../application/use-cases/operator/UpdateCrewLocationUseCase.js";
+import {
+  GetCrewLocationUseCase,
+  UpdateCrewLocationUseCase,
+} from "../../application/use-cases/operator/UpdateCrewLocationUseCase.js";
 
 const crewRepo = new PrismaOperatorCrewRepository();
+const astronautRepo = new PrismaAstronautRepository();
 
 export const operatorController = new OperatorController(
   new GetOperatorCrewOverviewUseCase(crewRepo),
-  new UpdateCrewLocationUseCase(new PrismaAstronautRepository(), crewRepo)
+  new UpdateCrewLocationUseCase(astronautRepo, crewRepo),
+  new GetCrewLocationUseCase(astronautRepo, crewRepo)
 );
 
 /** Supervisión desde Tierra: solo lectura y solo para el rol OPERATOR. */

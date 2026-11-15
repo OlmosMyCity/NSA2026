@@ -3,7 +3,8 @@ import { PaginatedResult } from "./Mission.js";
 
 export type { PaginatedResult };
 
-export type AstronautWithMission = Astronaut & {
+/** Sin ubicación: se consulta aparte, con sesión (ver IOperatorCrewRepository). */
+export type AstronautWithMission = Omit<Astronaut, "currentLocation" | "locationUpdatedAt"> & {
   mission?: {
     id: string;
     name: string;

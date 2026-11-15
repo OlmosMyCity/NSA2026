@@ -14,9 +14,9 @@ export function LocationControl({ astronautId }: { astronautId: string }) {
     let active = true;
     setError(false);
     astronautService
-      .getById(astronautId)
-      .then((astro) => {
-        if (active) setLocation(astro.currentLocation ?? '');
+      .getLocation(astronautId)
+      .then((current) => {
+        if (active) setLocation(current ?? '');
       })
       .catch(() => {
         // Sin conexión el selector queda sin valor; se puede declarar igual.

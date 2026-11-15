@@ -14,11 +14,13 @@ import { passwordHasher } from "../../infrastructure/services/PasswordHasher.js"
 
 const crewRepo = new PrismaCrewTriageRepository();
 const userRepo = new PrismaUserRepository();
+const operatorCrewRepo = new PrismaOperatorCrewRepository();
 const controller = new AdminTriageController(
   new GetTriageOverviewUseCase(crewRepo),
   new SendClinicalDirectiveUseCase(crewRepo),
   new CreateUserByAdminUseCase(userRepo, passwordHasher),
-  new AssignMissionOperatorUseCase(userRepo, new PrismaOperatorCrewRepository())
+  new AssignMissionOperatorUseCase(userRepo, operatorCrewRepo),
+  operatorCrewRepo
 );
 
 export const adminRouter = Router();
@@ -27,6 +29,7 @@ adminRouter.use(authenticate, authorizeRoles(Role.ADMIN));
 
 adminRouter.get("/triage", controller.getTriageOverview);
 adminRouter.post("/astronauts/:id/directives", controller.sendClinicalDirectives);
+adminRouter.get("/operators", controller.listOperatorAccess);
 adminRouter.post("/users", controller.createUser);
 adminRouter.put("/missions/:id/operator", controller.assignMissionOperator);
 

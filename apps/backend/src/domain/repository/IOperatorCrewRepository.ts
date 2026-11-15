@@ -15,7 +15,21 @@ export interface OperatorCrewRecord {
   recentReadings: HealthReading[];
 }
 
+export interface CrewLocationState {
+  currentLocation: CrewLocation | null;
+  locationUpdatedAt: Date | null;
+}
+
+/** Operadores existentes y a quién está asignada cada misión. */
+export interface OperatorAccess {
+  operators: { id: string; name: string; email: string }[];
+  missions: { id: string; name: string; operatorId: string | null }[];
+}
+
 export interface IOperatorCrewRepository {
+  listOperatorAccess(): Promise<OperatorAccess>;
+  /** Devuelve `null` si el astronauta no existe. */
+  findLocation(astronautId: string): Promise<CrewLocationState | null>;
   /** Solo devuelve tripulantes de misiones cuyo operador es `operatorId`. */
   listCrewForOperator(operatorId: string): Promise<OperatorCrewRecord[]>;
   /** Devuelve `false` si la misión no existe. */

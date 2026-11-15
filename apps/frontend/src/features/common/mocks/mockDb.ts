@@ -22,6 +22,7 @@ export interface MockMission {
   endDate?: string | null;
   patchUrl?: string | null;
   createdById: string;
+  operatorId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -109,6 +110,7 @@ const INITIAL_MISSIONS: MockMission[] = [
     startDate: new Date(Date.now() - 14 * 86400000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
+    operatorId: 'user-operator-01',
     createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
     updatedAt: new Date().toISOString(),
   },

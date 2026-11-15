@@ -3,13 +3,53 @@ import { IAstronautRepository } from "../../../domain/repository/IAstronautRepos
 import { IOperatorCrewRepository } from "../../../domain/repository/IOperatorCrewRepository.js";
 import { ForbiddenError, NotFoundError } from "../../../domain/errors/AppError.js";
 
+export interface LocationRequester {
+  id: string;
+  role: Role;
+}
+
+/** La ubicación es del propio tripulante o del cirujano de vuelo; el operador la ve solo en su resumen. */
+async function assertOwnOrSurgeon(
+  astronautRepo: IAstronautRepository,
+  requester: LocationRequester,
+  astronautId: string
+): Promise<void> {
+  if (requester.role === Role.ADMIN) return;
+
+  const own = requester.role === Role.USER ? await astronautRepo.findByUserId?.(requester.id) : null;
+  if (!own || own.id !== astronautId) {
+    throw new ForbiddenError("Solo puedes consultar o actualizar tu propia ubicación.");
+  }
+}
+
+export class GetCrewLocationUseCase {
+  constructor(
+    private readonly astronautRepo: IAstronautRepository,
+    private readonly crewRepo: IOperatorCrewRepository
+  ) {}
+
+  async execute(
+    astronautId: string,
+    requester: LocationRequester
+  ): Promise<{ currentLocation: CrewLocation | null; locationUpdatedAt: string | null }> {
+    await assertOwnOrSurgeon(this.astronautRepo, requester, astronautId);
+
+    const found = await this.crewRepo.findLocation(astronautId);
+    if (!found) throw new NotFoundError("Astronauta", astronautId);
+
+    return {
+      currentLocation: found.currentLocation,
+      locationUpdatedAt: found.locationUpdatedAt?.toISOString() ?? null,
+    };
+  }
+}
+
 export interface UpdateCrewLocationInput {
   astronautId: string;
   location: CrewLocation;
-  requester: { id: string; role: Role };
+  requester: LocationRequester;
 }
 
-/** La ubicación la declara el propio tripulante o el cirujano de vuelo; el operador solo la lee. */
 export class UpdateCrewLocationUseCase {
   constructor(
     private readonly astronautRepo: IAstronautRepository,
@@ -18,13 +58,7 @@ export class UpdateCrewLocationUseCase {
   ) {}
 
   async execute(input: UpdateCrewLocationInput): Promise<{ currentLocation: CrewLocation; locationUpdatedAt: string }> {
-    if (input.requester.role !== Role.ADMIN) {
-      const own =
-        input.requester.role === Role.USER ? await this.astronautRepo.findByUserId?.(input.requester.id) : null;
-      if (!own || own.id !== input.astronautId) {
-        throw new ForbiddenError("Solo puedes actualizar tu propia ubicación.");
-      }
-    }
+    await assertOwnOrSurgeon(this.astronautRepo, input.requester, input.astronautId);
 
     const updated = await this.crewRepo.updateLocation(input.astronautId, input.location, this.now());
     if (!updated) throw new NotFoundError("Astronauta", input.astronautId);
