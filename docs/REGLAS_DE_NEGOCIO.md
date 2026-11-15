@@ -1,6 +1,6 @@
 # Health Data Business & Integrity Rules (`P1–P8`)
 
-Architectural and database integrity principles governing the Orbvital backend and PostgreSQL schema across Clean Architecture layers (`domain` -> `application/use-cases` -> `infrastructure` -> `interface`).
+Architectural and database integrity principles governing the Orbvital backend and PostgreSQL schema across the backend layers (`controller` -> `service` -> `repository` -> `entity`).
 
 | # | Principle | Status | Enforcement Layer |
 |---|---|---|---|
@@ -52,12 +52,12 @@ Use cases: `InvalidateHealthReadingUseCase`, `CorrectHealthReadingUseCase`.
 
 ### Fresh Database
 ```bash
-cd apps/backend && npm run prisma:deploy
+cd backend && npm run prisma:deploy
 ```
 
 ### Existing Database (Baseline Stamp + Deploy)
 ```bash
-cd apps/backend
+cd backend
 npx prisma migrate resolve --applied 20261101000000_baseline
 npx prisma migrate resolve --applied 20261114_directives_and_cleanup
 npm run prisma:deploy

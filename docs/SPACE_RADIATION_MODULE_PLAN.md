@@ -1,7 +1,7 @@
-# Technical Specification: Deep Space Radiation Early Warning Engine (`packages/radiation-engine`)
+# Technical Specification: Deep Space Radiation Early Warning Engine (`backend/src/service/radiation/engine`)
 
-**Package:** `@nsa2026/radiation-engine`  
-**Status:** Implemented & integrated into `apps/backend`
+**Package:** `backend/src/service/radiation/engine`  
+**Status:** Implemented & integrated into `backend`
 
 ---
 

@@ -18,4 +18,4 @@ skills/
 skills-lock.json
 .vercel
 .env*
-lighthouse.json
+lighthouse.json*.tsbuildinfo

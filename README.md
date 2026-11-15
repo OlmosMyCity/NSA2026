@@ -17,7 +17,7 @@ Human spaceflight is crossing a structural boundary. In Low Earth Orbit (ISS), a
 2. **Proactive Environmental & Phase Coupling, Not Passive Charts:**  
    Astronaut vitals do not exist in a vacuum. Heart rate of 125 bpm during launch `+Gx/+Gz` acceleration or 48 bpm in 0-G orbital cruise can be physiologically expected, whereas mild hypoxia during an **S4 Solar Particle Event (SPE)** outside a Storm Shelter is an acute emergency. Orbvital correlates active mission phase (`phaseNorms.ts`), habitat environment (`SPACECRAFT`, `STATION`, `ROVER`, `LUNAR_BASE`, `MARS_BASE`), and real-time **NOAA SWPC / GOES / NASA DONKI** solar storm scales directly into cross-domain triage priorities (such as automatic `P0_STORM_CRITICAL` shelter-in-place protocols).
 3. **Zero-Friction Capture, Immutable Medical Integrity & Instant Scenario Rehearsal:**  
-   Crew members with high workload and low attention budget can log vitals through a 4-step intake wizard featuring a **3-question behavioral mood check-in** (`/readings/new`) or stream cabin video to **Orbvital Vision (`ai/vision`)** for contactless **rPPG heart rate / HRV**, **NASA-standard PERCLOS fatigue**, and **affect/stress estimation**—with an animated **3D anatomical synthetic head (`SyntheticHead3D`)** and browser simulator fallback when running serverless demos. All persisted health records enforce **append-only clinical integrity** (no edits or deletes; invalidations and linked corrections only, guarded by PostgreSQL triggers). Inside the `/dashboard` **3D Digital Twin**, crew and Flight Surgeons can run instant zero-token **What-If scenario simulations** seeded from live crew vitals before committing an explicit AI triage call.
+   Crew members with high workload and low attention budget can log vitals through a 4-step intake wizard featuring a **3-question behavioral mood check-in** (`/readings/new`) or stream cabin video to **Orbvital Vision (`vision`)** for contactless **rPPG heart rate / HRV**, **NASA-standard PERCLOS fatigue**, and **affect/stress estimation**—with an animated **3D anatomical synthetic head (`SyntheticHead3D`)** and browser simulator fallback when running serverless demos. All persisted health records enforce **append-only clinical integrity** (no edits or deletes; invalidations and linked corrections only, guarded by PostgreSQL triggers). Inside the `/dashboard` **3D Digital Twin**, crew and Flight Surgeons can run instant zero-token **What-If scenario simulations** seeded from live crew vitals before committing an explicit AI triage call.
 
 ---
 
@@ -38,7 +38,7 @@ Human spaceflight is crossing a structural boundary. In Low Earth Orbit (ISS), a
 - **What-If Scenario Dock (`ScenarioDock`):** Real-time simulation across mission habitats, NOAA solar storm scales (`S0`–`S5`), shielding tiers, and physiological slider perturbations without spending LLM tokens.
 - **Gemini Decision 1 Clinical Triage (`decisionService.ts`):** Server-side evaluation using `@google/genai` with deterministic caching, offline fallback (`DEMO_OFFLINE`), quota guard (`DECISION_API_MAX_CALLS`), and multimodal free-text mood & instrument photo estimation.
 
-### 2. Deep Space Radiation Early Warning & Dosimetry Engine (`packages/radiation-engine`)
+### 2. Deep Space Radiation Early Warning & Dosimetry Engine (`backend/src/service/radiation/engine`)
 - **Live Heliophysics Ingestion:** Streams operational 1/2/3-day solar flare & SPE probabilities from **NOAA SWPC**, 1-minute GOES X-ray (`0.1–0.8 nm`) and $>10\text{ MeV}$ proton telemetry, DSCOVR/ACE solar wind plasma & IMF $B_z$, and **NASA DONKI WSA-ENLIL** CME shock analyses with offline fallback resilience.
 - **Relativistic Parker Spiral Early Warning (`sepPrediction.ts`):** Tracks GOES X-ray flux rise rate ($dF/dt$) to catch X-class / steep M-class flare onsets and computes proton transit times along the curved Parker Spiral ($1.25\text{ AU}$ with pitch-angle scattering) via:
   $$v(E) = c \sqrt{1 - \left(\frac{m_p c^2}{E + m_p c^2}\right)^2}$$
@@ -49,11 +49,11 @@ Human spaceflight is crossing a structural boundary. In Low Earth Orbit (ISS), a
   - `STORM_SHELTER` ($25.0\text{ g/cm}^2$, $4\%$ transmission / $96\%$ attenuation)
 - **Interactive Storm Simulator:** Supports `NOMINAL`, `FLARE_EARLY_WARNING` (X4.5 trigger with 48 min countdown), `PEAK_STORM_S4`, `SIDE_MISS_CME`, and parametric custom CME events (`POST /api/radiation/predict-impact`).
 
-### 3. Contactless AI Computer Vision Biometrics (`ai/vision` & `/vision`)
+### 3. Contactless AI Computer Vision Biometrics (`vision` & `/vision`)
 - **CPU-First, Open-Source Stack:** Runs on standard CPU (`FastAPI` + `WebSockets` + `MediaPipe Face Landmarker` 478 landmarks + `ONNX Runtime FERPlus` + `SciPy`) without GPU bloat.
 - **Multi-Camera rPPG (`rppg_engine.py`):** Extracts Blood Volume Pulse from forehead (glabella) and cheek ROIs using **POS** (*Plane-Orthogonal-to-Skin*) and **CHROM** for RGB cameras plus single-channel spatial-temporal **NIR-rPPG** for low-light/sleep-pod infrared feeds—delivering BPM, HRV (`RMSSD`, `SDNN`), respiration rate (RPM), PSD spectrum, and Signal Quality Index (SQI).
 - **Fatigue & Sleep-Pod Actigraphy (`sleep_engine.py`):** Computes **EAR** (*Eye Aspect Ratio*), NASA-standard **PERCLOS**, **MAR** (*Mouth Aspect Ratio* yawn counter), 3D head-pose pitch/yaw/roll nodding, microsleep events, and frame-difference actigraphy for sleep staging (`Deep Rest`, `Light/Restless Sleep`, `Awake`).
-- **Mood, Stress & 3D Synthetic Fallback (`mood_engine.py`, `SyntheticHead3D.tsx`, `visionMock.ts`):** Fuses `emotion-ferplus-8.onnx` probabilities with geometric facial Action Units into stress index ($0\text{–}100$), valence ($-1\text{ to }+1$), and cognitive alertness. In browser-only/serverless demos where `:8000` is offline, `/vision` renders a live 3D anatomical head animated by real-time respiration, pulse, head pose, and stress color modulation alongside browser mock telemetry—and swaps automatically to live `ai/vision` when available.
+- **Mood, Stress & 3D Synthetic Fallback (`mood_engine.py`, `SyntheticHead3D.tsx`, `visionMock.ts`):** Fuses `emotion-ferplus-8.onnx` probabilities with geometric facial Action Units into stress index ($0\text{–}100$), valence ($-1\text{ to }+1$), and cognitive alertness. In browser-only/serverless demos where `:8000` is offline, `/vision` renders a live 3D anatomical head animated by real-time respiration, pulse, head pose, and stress color modulation alongside browser mock telemetry—and swaps automatically to live `vision` when available.
 - **Automated Clinical Sync:** `/vision` batches live biometric frames every **30 seconds** into `POST /api/readings/vision-ingest`, deriving NASA HRP mood ($1\text{–}5$) and sleep-equivalent hours alongside persisted vitals.
 
 ### 4. 3D Multi-Mission Trajectory & Live Moment Visualizer (`/visualizer`)
@@ -71,50 +71,60 @@ Human spaceflight is crossing a structural boundary. In Low Earth Orbit (ISS), a
 
 ```mermaid
 flowchart LR
-    Cam["Cabin RGB / NIR Camera\n(WebRTC / Upload / 3D Simulator)"] --> Vision["ai/vision\nFastAPI + WS\nMediaPipe · ONNX · rPPG · PERCLOS"]
-    NOAA["NOAA SWPC · GOES-18\nNASA DONKI WSA-ENLIL"] --> Rad["packages/radiation-engine\nRelativistic SEP · Dose · GCR/SPE"]
+    Cam["Cabin RGB / NIR Camera\n(WebRTC / Upload / 3D Simulator)"] --> Vision["vision\nFastAPI + WS\nMediaPipe · ONNX · rPPG · PERCLOS"]
+    NOAA["NOAA SWPC · GOES-18\nNASA DONKI WSA-ENLIL"] --> Rad["backend/src/service/radiation/engine\nRelativistic SEP · Dose · GCR/SPE"]
     Vision -->|"30s Auto-Sync (POST /api/readings/vision-ingest)"| API
-    Rad -->|"Embedded TS SDK"| API["apps/backend\nExpress Clean Architecture + Prisma\nRules Engine · Gemini Decision 1 · SSE"]
+    Rad -->|"Embedded TS SDK"| API["backend\nExpress Layered Architecture + Prisma\nRules Engine · Gemini Decision 1 · SSE"]
     API <--> DB[("PostgreSQL (Supabase / Neon)\nAppend-Only Health Readings\nUsers · Missions · Crew · Incidents · Directives")]
     API -->|"DECISIONS API"| Gemini["Google Gemini\ngemini-decision-1"]
-    API <-->|"REST + SSE (/api/incidents/stream)"| Web["apps/frontend\nNext.js 14 · Tailwind\nThree.js 3D Twin & Orbit Visualizer"]
+    API <-->|"REST + SSE (/api/incidents/stream)"| Web["frontend\nNext.js 14 · Tailwind\nThree.js 3D Twin & Orbit Visualizer"]
     Web <-->|"Live WS / HTTP Frames"| Vision
 ```
 
-### Monorepo Structure
+### Project Structure (Layered Architecture)
 
 ```text
 NSA2026/
-├── apps/
-│   ├── backend/                     # Express 4 + TypeScript Clean Architecture API & Clinical Decision Core
-│   │   ├── prisma/                  # PostgreSQL schema, Prisma Migrate migrations & idempotent seed/seed.sql
-│   │   ├── src/
-│   │   │   ├── domain/              # Core entities, custom AppErrors, repository interfaces
-│   │   │   ├── application/         # Digital twin, HRP hazards, decisionService, incident bus & use cases
-│   │   │   ├── infrastructure/      # Prisma repositories, JWT, bcrypt, Blob/Supabase storage, radiation wiring
-│   │   │   └── interface/           # Express controllers, middlewares, Zod validation & routers
-│   │   └── tests/unit/              # 19 Vitest suites (unit & HTTP integration tests)
-│   └── frontend/                    # Next.js 14 App Router + React 18 + Three.js UI
-│       ├── public/                  # 3D anatomical assets (/anatomy/body.glb, head.glb) & trajectory JSONs
-│       └── src/
-│           ├── app/                 # Routes: /dashboard, /visualizer, /vision, /trends, /routine, /missions, /astronauts, /admin
-│           └── features/            # Feature-sliced modules (health, visualizer, vision, radiation, admin, missions, astronauts, routine, auth, common)
-├── packages/
-│   └── radiation-engine/            # @nsa2026/radiation-engine TypeScript space-weather physics & simulation package
-│       ├── src/                     # Clients, physics (sepPrediction, doseCalculator, solarWindImpact), mitigation rules, simulator
-│       └── tests/                   # Physics & early-warning unit suite (16 tests)
-├── ai/
-│   └── vision/                      # Python 3.11 FastAPI contactless biometric subsystem (rPPG, PERCLOS, Mood/Stress)
-│       ├── src/                     # MediaPipe tracker, rPPG/Sleep/Mood engines, pipeline & static telemetry HUD
-│       └── tests/                   # Pytest suites for rPPG, sleep, mood & API
+├── backend/                         # Express 4 + TypeScript REST API & Clinical Decision Core
+│   ├── prisma/                      # PostgreSQL schema, Prisma Migrate migrations & idempotent seed/seed.sql
+│   ├── src/
+│   │   ├── config/                  # Prisma client singleton, multipart image-upload configuration
+│   │   ├── controller/              # Express controllers (HTTP in/out)
+│   │   │   └── routes/              # Express routers: endpoint mapping + middleware chain per resource
+│   │   ├── dto/                     # Zod request schemas (input contracts)
+│   │   ├── entity/                  # Domain entities & DTO types (Astronaut, Mission, HealthReading, Incident, Directive, User)
+│   │   ├── exception/               # AppError hierarchy + global error handler
+│   │   ├── repository/              # Repository contracts (I*Repository) + Prisma implementations
+│   │   ├── security/                # JWT auth, role guard, rate limiter, security headers, bcrypt, token service
+│   │   ├── service/                 # Business logic grouped by domain
+│   │   │   ├── astronaut/  auth/  mission/  incident/  health/  storage/
+│   │   │   └── radiation/engine/    # Space-weather physics engine (NOAA/NASA clients, SEP, dose, simulator)
+│   │   ├── app.ts                   # Express application factory
+│   │   └── index.ts                 # HTTP entrypoint
+│   └── tests/unit/                  # Vitest suites (unit & HTTP integration tests, incl. radiation engine)
+├── frontend/                        # Next.js 14 App Router + React 18 + Three.js UI
+│   ├── public/                      # 3D anatomical assets (/anatomy/body.glb, head.glb) & trajectory JSONs
+│   └── src/
+│       ├── app/                     # Pages / routes: /dashboard, /visualizer, /vision, /trends, /routine, /missions, /astronauts, /admin
+│       ├── components/<feature>/    # Presentation layer (UI components grouped by feature)
+│       ├── hooks/                   # React state hooks
+│       ├── context/                 # React context providers (AuthContext)
+│       ├── services/                # API clients & HTTP access layer
+│       ├── domain/<feature>/        # Pure types & client-side evaluation logic
+│       ├── config/                  # Environment configuration
+│       └── mocks/                   # Offline/demo data
+├── vision/                          # Python 3.11 FastAPI contactless biometric service (rPPG, PERCLOS, Mood/Stress)
+│   ├── src/                         # api/ · engines/ · vision/ · schemas.py · config.py · pipeline.py
+│   └── tests/                       # Pytest suites for rPPG, sleep, mood & API
 ├── docs/                            # Challenge alignment, deployment architecture, integrity rules & radiation specs
-├── package.json                     # npm workspaces configuration (apps/backend, packages/radiation-engine)
 └── vercel.json                      # Unified Vercel Services deployment routing (/api/* & /health -> backend, /* -> frontend)
 ```
 
+Request flow (backend): `controller/routes` → `security` → `controller` → `service` → `repository` → PostgreSQL.
+
 ---
 
-## Core API Surface (`apps/backend`)
+## Core API Surface (`backend`)
 
 All primary API routes are mounted under `/api/*` (with health checks at `/health` and `/api/health`):
 
@@ -136,23 +146,23 @@ All primary API routes are mounted under `/api/*` (with health checks at `/healt
 ### Prerequisites
 - **Node.js 22+** & **npm 10+**
 - **PostgreSQL** instance (e.g., Supabase or Neon free tier)
-- **Python 3.11+** (optional, required only for running native `ai/vision`)
+- **Python 3.11+** (optional, required only for running native `vision`)
 
-### 1. Install Dependencies & Build Shared Radiation Engine
+### 1. Install Dependencies
 ```bash
-npm install
-npm --workspace=@nsa2026/radiation-engine run build
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
 ### 2. Configure Environment Variables
 Copy the provided templates and populate your credentials:
-- `apps/backend/.env` (from `apps/backend/.env.example`):
+- `backend/.env` (from `backend/.env.example`):
   - `DATABASE_URL` / `DIRECT_URL`: PostgreSQL pooled & direct connection strings
   - `JWT_SECRET`: Signing secret for bearer tokens (required in runtime)
   - `GEMINI_API_KEY`: Optional server-side key for `gemini-decision-1` (set `DEMO_OFFLINE="true"` to run 100% deterministically without API calls)
   - `ALLOWED_ORIGINS`: Comma-separated allowed CORS origins (`http://localhost:3000,...`)
   - `BLOB_READ_WRITE_TOKEN` or `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`: Image upload storage
-- `apps/frontend/.env.local` (from `apps/frontend/.env.example`):
+- `frontend/.env.local` (from `frontend/.env.example`):
   - `NEXT_PUBLIC_API_HOST=http://localhost:4000/api`
   - `NEXT_PUBLIC_API_URL=http://localhost:4000`
   - `NEXT_PUBLIC_VISION_URL=http://localhost:8000`
@@ -161,19 +171,19 @@ Copy the provided templates and populate your credentials:
 ### 3. Apply Migrations, Seed & Run Services
 ```bash
 # Terminal 1 — Backend API (port 4000)
-cd apps/backend
+cd backend
 npx prisma generate
 npm run prisma:deploy
 npx prisma db seed
 npm run dev
 
 # Terminal 2 — Next.js Frontend (port 3000)
-cd apps/frontend
+cd frontend
 npm install
 npm run dev
 
 # Terminal 3 — Optional AI Vision Biometrics Server (port 8000)
-cd ai/vision
+cd vision
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python download_models.py
@@ -188,10 +198,9 @@ Open `http://localhost:3000` in your browser.
 
 | Component | Command | Coverage |
 | :--- | :--- | :--- |
-| **Radiation Engine** | `cd packages/radiation-engine && npm test && npm run build` | Relativistic beta/transit kinematics, shielding attenuation, NOAA scale & offline storm simulation |
-| **Backend API & Clinical Core** | `cd apps/backend && npx tsc --noEmit && npm test` | Digital Twin rules, Decision Service fallback, append-only health integrity, auth, uploads, incidents & triage correlation |
-| **Frontend Typecheck & Build** | `cd apps/frontend && npx tsc --noEmit && npm run build` | Next.js App Router, Three.js scenes, phase-adjusted evaluator, feature modules & API clients |
-| **AI Vision Biometrics** | `cd ai/vision && .venv/bin/pytest -v` | rPPG heart rate extraction, EAR/PERCLOS fatigue & actigraphy, Mood engine & FastAPI/WebSocket endpoints |
+| **Backend API & Clinical Core** | `cd backend && npx tsc --noEmit && npm test` | Digital Twin rules, Decision Service fallback, radiation engine physics, append-only health integrity, auth, uploads, incidents & triage correlation |
+| **Frontend Typecheck & Build** | `cd frontend && npx tsc --noEmit && npm run build` | Next.js App Router, Three.js scenes, phase-adjusted evaluator, feature modules & API clients |
+| **AI Vision Biometrics** | `cd vision && .venv/bin/pytest -v` | rPPG heart rate extraction, EAR/PERCLOS fatigue & actigraphy, Mood engine & FastAPI/WebSocket endpoints |
 
 ---
 
@@ -208,10 +217,10 @@ Open `http://localhost:3000` in your browser.
 
 ## Module Documentation Index
 
-- [Backend API Documentation](./apps/backend/README.md)
-- [Frontend Web Platform Documentation](./apps/frontend/README.md)
-- [Deep Space Radiation Engine Package](./packages/radiation-engine/README.md)
-- [AI Contactless Vision Biometrics](./ai/vision/README.md)
+- [Backend API Documentation](./backend/README.md)
+- [Frontend Web Platform Documentation](./frontend/README.md)
+- [Deep Space Radiation Engine Package](./backend/src/service/radiation/engine/README.md)
+- [AI Contactless Vision Biometrics](./vision/README.md)
 - [Health Data Integrity & Business Rules (P1–P8)](./docs/REGLAS_DE_NEGOCIO.md)
 - [Architecture & Free-Tier Deployment Guide](./docs/ARCHITECTURE_AND_DEPLOY_GUIDE.md)
 - [NASA Space Apps 2026 Challenge Mapping](./docs/NASA_SPACE_APPS_CHALLENGE.md)
