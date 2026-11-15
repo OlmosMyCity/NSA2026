@@ -1,0 +1,95 @@
+import { Incident, IncidentCategory, IncidentSeverity } from "@prisma/client";
+import { RadiationEngineState } from "@nsa2026/radiation-engine";
+import { HealthAlert, HealthEvaluationResult } from "../../health/evaluateReading.js";
+import { OpenIncidentUseCase } from "./OpenIncidentUseCase.js";
+
+const INDICATOR_LABELS: Record<string, string> = {
+  heartRate: "Frecuencia cardiaca",
+  bloodPressure: "Presión arterial",
+  glucose: "Glucosa en sangre",
+  temperature: "Temperatura corporal",
+  spo2: "Saturación de O2 (SpO2)",
+  sleep: "Horas de sueño",
+  mood: "Estado de ánimo",
+};
+
+function mapAlertSeverity(level: HealthAlert["level"]): IncidentSeverity {
+  return level === "CRITICAL" ? IncidentSeverity.CRITICAL : IncidentSeverity.WARNING;
+}
+
+export async function openMedicalIncidentsFromReading(
+  openIncidentUseCase: OpenIncidentUseCase,
+  astronautId: string,
+  readingId: string,
+  evaluation: HealthEvaluationResult
+): Promise<Incident[]> {
+  if (evaluation.alerts.length === 0) {
+    return [];
+  }
+
+  const results: Incident[] = [];
+  for (const alert of evaluation.alerts) {
+    const label = INDICATOR_LABELS[alert.indicator] ?? alert.indicator;
+    const { incident } = await openIncidentUseCase.execute({
+      category: IncidentCategory.MEDICAL,
+      type: alert.indicator,
+      severity: mapAlertSeverity(alert.level),
+      title: `Alerta médica (${alert.level}): ${label}`,
+      description: alert.message,
+      astronautId,
+      source: "HEALTH_READING",
+      readingId,
+      protocolId: alert.protocolId,
+      metadata: {
+        indicator: alert.indicator,
+        protocolId: alert.protocolId,
+        value: alert.value,
+        readingStatus: evaluation.status,
+      },
+    });
+    results.push(incident);
+  }
+
+  return results;
+}
+
+export async function openRadiationIncidentFromState(
+  openIncidentUseCase: OpenIncidentUseCase,
+  state: RadiationEngineState
+): Promise<Incident | null> {
+  const stormScale = state.currentTelemetry.stormScale;
+  if (stormScale === "S0_NOMINAL") {
+    return null;
+  }
+
+  const severity =
+    stormScale === "S1_MINOR" ? IncidentSeverity.WARNING : IncidentSeverity.CRITICAL;
+
+  const descriptionParts = [
+    state.earlyWarning.triggerEvent,
+    state.mitigation.abortEvaImmediately ? "Abortar EVA de inmediato." : null,
+    state.mitigation.evacuateToStormShelter ? "Evacuar a refugio antitormenta." : null,
+  ].filter(Boolean);
+
+  const { incident } = await openIncidentUseCase.execute({
+    category: IncidentCategory.RADIATION,
+    type: "SOLAR_RADIATION_STORM",
+    severity,
+    title: `Tormenta de radiación solar (${stormScale})`,
+    description:
+      descriptionParts.length > 0
+        ? descriptionParts.join(" ")
+        : `Nivel de tormenta solar ${stormScale} detectado por el motor de radiación.`,
+    astronautId: null,
+    source: "RADIATION_ENGINE",
+    metadata: {
+      stormScale,
+      isSimulated: state.isSimulated,
+      abortEvaImmediately: state.mitigation.abortEvaImmediately,
+      evacuateToStormShelter: state.mitigation.evacuateToStormShelter,
+      powerDownExternalSensors: state.mitigation.powerDownExternalSensors,
+    },
+  });
+
+  return incident;
+}

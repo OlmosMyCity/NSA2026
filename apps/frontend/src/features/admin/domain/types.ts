@@ -19,11 +19,24 @@ export interface CrewMemberTriage {
   mood: number | null;
   alerts: string[];
   recommendation?: string | null;
+  priorityBoosted?: boolean;
+  triagePriorityLabel?: string;
+  adaptedProtocol?: string | null;
   lastReadingAt: string | null;
   /** Los signos vivos de la última lectura siguen dentro de la ventana de vigencia. */
   isFresh: boolean;
   expiresAt: string | null;
   photoUrl?: string | null;
+}
+
+export interface ActiveRadiationIncidentSummary {
+  id: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  stormScale: string;
+  openedAt: string;
 }
 
 export interface FlightSurgeonMetrics {

@@ -21,7 +21,11 @@ html, body {
   background: var(--bg);
 }
 
-#viewport { position: fixed; inset: 0; }
+#viewport {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, #0a1428 0%, #02040a 70%);
+}
 #viewport canvas { display: block; }
 
 .panel {

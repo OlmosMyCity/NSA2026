@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from src.config import FERPLUS_ONNX_PATH, MEDIAPIPE_FACE_LANDMARKER_PATH
 from src.pipeline import AstronautBiometricsPipeline
@@ -31,6 +32,8 @@ DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://orbvital-nsa2026.vercel.app",
+    "https://www.orbvital.health",
+    "https://orbvital.health",
 ]
 
 
@@ -145,6 +148,37 @@ async def get_latest_telemetry() -> AstronautTelemetryFrame:
         frame = global_simulator.next_frame(_global_sim_time)
         return global_pipeline.process_frame(frame, timestamp=_global_sim_time, include_annotated_frame=False)
     return global_pipeline.latest_telemetry
+
+
+class SimulatorTickRequest(BaseModel):
+    camera_mode: CameraMode = CameraMode.RGB_POS
+    context: MonitoringContext = MonitoringContext.CABIN_ACTIVE
+    sim_bpm: float = Field(72.0, ge=40.0, le=180.0)
+    sim_state: str = "nominal"
+    include_hud: bool = True
+
+
+@app.post(
+    "/api/telemetry/tick",
+    response_model=AstronautTelemetryFrame,
+    dependencies=[Depends(_require_service_token)],
+)
+async def step_simulator_telemetry(body: SimulatorTickRequest) -> AstronautTelemetryFrame:
+    global _global_sim_time
+    global_simulator.update_config(
+        target_bpm=body.sim_bpm,
+        state=body.sim_state,
+        nir_mode=(body.camera_mode == CameraMode.NIR_IR),
+    )
+    _global_sim_time += 1.0 / 15.0
+    frame = global_simulator.next_frame(_global_sim_time)
+    return global_pipeline.process_frame(
+        frame_bgr=frame,
+        timestamp=_global_sim_time,
+        camera_mode=body.camera_mode,
+        context=body.context,
+        include_annotated_frame=body.include_hud,
+    )
 
 
 @app.post(

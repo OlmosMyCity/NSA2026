@@ -93,16 +93,35 @@ export function createTrajectory(scene, path, phases, frames) {
   }
 
   /** focus: posición (km, en el marco) que queda en el origen de la escena. */
+  let lastFx = NaN, lastFy = NaN, lastFz = NaN, lastT = NaN;
   function update(frame, focus, t, shipPos) {
-    if (frame !== cachedFrame) computeFrame(frame);
-    for (let i = 0; i < n; i++) {
+    const frameChanged = frame !== cachedFrame;
+    if (frameChanged) computeFrame(frame);
+    const focusChanged = frameChanged || focus[0] !== lastFx || focus[1] !== lastFy || focus[2] !== lastFz;
+    if (!focusChanged && t === lastT) return;
+
+    if (focusChanged) {
+      for (let i = 0; i < n; i++) {
+        fat.setPoint(
+          i,
+          (frameCoords[3 * i] - focus[0]) / KM_PER_UNIT,
+          (frameCoords[3 * i + 1] - focus[1]) / KM_PER_UNIT,
+          (frameCoords[3 * i + 2] - focus[2]) / KM_PER_UNIT
+        );
+      }
+      lastFx = focus[0];
+      lastFy = focus[1];
+      lastFz = focus[2];
+    } else if (drawnSegment >= 0 && drawnSegment + 1 < n) {
+      const prev = drawnSegment + 1;
       fat.setPoint(
-        i,
-        (frameCoords[3 * i] - focus[0]) / KM_PER_UNIT,
-        (frameCoords[3 * i + 1] - focus[1]) / KM_PER_UNIT,
-        (frameCoords[3 * i + 2] - focus[2]) / KM_PER_UNIT
+        prev,
+        (frameCoords[3 * prev] - focus[0]) / KM_PER_UNIT,
+        (frameCoords[3 * prev + 1] - focus[1]) / KM_PER_UNIT,
+        (frameCoords[3 * prev + 2] - focus[2]) / KM_PER_UNIT
       );
     }
+
     // La nave reemplaza a la muestra k+1: el tramo volado termina justo en ella
     const k = findSegment(path.t, t);
     fat.setPoint(
@@ -115,6 +134,7 @@ export function createTrajectory(scene, path, phases, frames) {
     if (k > drawnSegment) paint(Math.max(drawnSegment, 0), k + 1, true);
     else if (k < drawnSegment) paint(k + 1, drawnSegment + 1, false);
     drawnSegment = k;
+    lastT = t;
   }
 
   return { update, setVisible: (v) => (fat.line.visible = v) };
@@ -128,13 +148,16 @@ export function createMoonOrbit(scene, frames, segments = 256) {
     eci.push(frames.moonPosition(t));
   }
   const fat = fatPath(scene, eci.length, { width: 1, color: 0x8892a6, opacity: 0.4 });
+  let lastFrame = null, lastT = NaN, lastFx = NaN, lastFy = NaN, lastFz = NaN;
 
   function update(frame, t, focus) {
+    if (frame === lastFrame && t === lastT && focus[0] === lastFx && focus[1] === lastFy && focus[2] === lastFz) return;
     for (let i = 0; i < eci.length; i++) {
       const r = frames.toFrame(frame, eci[i], t);
       fat.setPoint(i, (r[0] - focus[0]) / KM_PER_UNIT, (r[1] - focus[1]) / KM_PER_UNIT, (r[2] - focus[2]) / KM_PER_UNIT);
     }
     fat.commit();
+    lastFrame = frame; lastT = t; lastFx = focus[0]; lastFy = focus[1]; lastFz = focus[2];
   }
   return { line: fat.line, update };
 }
@@ -145,13 +168,16 @@ export function createNrho(scene, frames, nrho) {
   // Las muestras son uniformes en tiempo y quedan muy separadas en el perilunio: se suaviza
   const smooth = new THREE.CatmullRomCurve3(points, true, "centripetal").getPoints(4 * points.length);
   const fat = fatPath(scene, smooth.length, { width: 1.5, color: 0x7cf29a, opacity: 0.5 });
+  let lastFrame = null, lastT = NaN, lastFx = NaN, lastFy = NaN, lastFz = NaN;
 
   function update(frame, t, focus) {
+    if (frame === lastFrame && t === lastT && focus[0] === lastFx && focus[1] === lastFy && focus[2] === lastFz) return;
     smooth.forEach((p, i) => {
       const r = frames.toFrame(frame, frames.fromRotating([p.x, p.y, p.z], t), t);
       fat.setPoint(i, (r[0] - focus[0]) / KM_PER_UNIT, (r[1] - focus[1]) / KM_PER_UNIT, (r[2] - focus[2]) / KM_PER_UNIT);
     });
     fat.commit();
+    lastFrame = frame; lastT = t; lastFx = focus[0]; lastFy = focus[1]; lastFz = focus[2];
   }
   return { line: fat.line, update };
 }

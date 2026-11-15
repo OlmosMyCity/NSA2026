@@ -19,6 +19,7 @@ export function useHealthReadings(astronautId: string | undefined) {
     try {
       setIsLoading(true);
       setError(null);
+      setRows([]);
       setRows(await healthService.listReadings(astronautId));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to load biomedical telemetry.');

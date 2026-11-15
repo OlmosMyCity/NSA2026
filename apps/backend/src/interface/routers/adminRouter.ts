@@ -5,7 +5,12 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorizeRoles } from "../middlewares/authorizeRoles.js";
 import { PrismaCrewTriageRepository } from "../../infrastructure/repository/PrismaCrewTriageRepository.js";
 import { GetTriageOverviewUseCase } from "../../application/use-cases/admin/GetTriageOverviewUseCase.js";
-import { SendClinicalDirectiveUseCase } from "../../application/use-cases/admin/SendClinicalDirectiveUseCase.js";
+import {
+  ListAstronautDirectivesUseCase,
+  SendClinicalDirectiveUseCase,
+} from "../../application/use-cases/admin/SendClinicalDirectiveUseCase.js";
+import { PrismaDirectiveRepository } from "../../infrastructure/repository/PrismaDirectiveRepository.js";
+import { radiationEngine } from "../../infrastructure/services/radiationEngine.js";
 import { CreateUserByAdminUseCase } from "../../application/use-cases/admin/CreateUserByAdminUseCase.js";
 import { AssignMissionOperatorUseCase } from "../../application/use-cases/admin/AssignMissionOperatorUseCase.js";
 import { PrismaUserRepository } from "../../infrastructure/repository/PrismaUserRepository.js";
@@ -15,9 +20,12 @@ import { passwordHasher } from "../../infrastructure/services/PasswordHasher.js"
 const crewRepo = new PrismaCrewTriageRepository();
 const userRepo = new PrismaUserRepository();
 const operatorCrewRepo = new PrismaOperatorCrewRepository();
+const directiveRepo = new PrismaDirectiveRepository();
 const controller = new AdminTriageController(
-  new GetTriageOverviewUseCase(crewRepo),
-  new SendClinicalDirectiveUseCase(crewRepo),
+  // Si el motor de radiación no responde, el triaje sigue sin correlación de tormenta.
+  new GetTriageOverviewUseCase(crewRepo, () => radiationEngine.getCurrentState().catch(() => null)),
+  new SendClinicalDirectiveUseCase(crewRepo, directiveRepo),
+  new ListAstronautDirectivesUseCase(crewRepo, directiveRepo),
   new CreateUserByAdminUseCase(userRepo, passwordHasher),
   new AssignMissionOperatorUseCase(userRepo, operatorCrewRepo),
   operatorCrewRepo
@@ -28,6 +36,7 @@ export const adminRouter = Router();
 adminRouter.use(authenticate, authorizeRoles(Role.ADMIN));
 
 adminRouter.get("/triage", controller.getTriageOverview);
+adminRouter.get("/astronauts/:id/directives", controller.listAstronautDirectives);
 adminRouter.post("/astronauts/:id/directives", controller.sendClinicalDirectives);
 adminRouter.get("/operators", controller.listOperatorAccess);
 adminRouter.post("/users", controller.createUser);

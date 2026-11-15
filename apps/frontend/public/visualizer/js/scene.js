@@ -7,8 +7,10 @@ import { setLineResolution } from "./trajectory.js";
 
 export const KM_PER_UNIT = 1000;
 
-function texture(renderer, file) {
-  const tex = new THREE.TextureLoader().load(`assets/${file}`);
+function texture(renderer, file, onLoad) {
+  const tex = new THREE.TextureLoader().load(`assets/${file}`, () => {
+    if (onLoad) onLoad();
+  });
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   return tex;
@@ -114,8 +116,8 @@ function starField(count, radius) {
   return new THREE.Points(geo, mat);
 }
 
-export function createScene(container, bodies) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+export function createScene(container, bodies, onTextureLoad) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
@@ -138,25 +140,25 @@ export function createScene(container, bodies) {
 
   const earthRadius = bodies.earth.radius_km / KM_PER_UNIT;
   const earth = new THREE.Mesh(
-    zUpSphere(earthRadius, 128),
-    new THREE.MeshStandardMaterial({ map: texture(renderer, "earth_blue_marble.jpg"), roughness: 0.85 })
+    zUpSphere(earthRadius, 64),
+    new THREE.MeshStandardMaterial({ map: texture(renderer, "earth_blue_marble.jpg", onTextureLoad), roughness: 0.85 })
   );
   earth.matrixAutoUpdate = false;
   scene.add(earth);
 
   const clouds = new THREE.Mesh(
-    zUpSphere(earthRadius * 1.006, 96),
+    zUpSphere(earthRadius * 1.006, 48),
     new THREE.MeshStandardMaterial({
-      map: texture(renderer, "earth_clouds_1024.png"), transparent: true, opacity: 0.75, depthWrite: false,
+      map: texture(renderer, "earth_clouds_1024.png", onTextureLoad), transparent: true, opacity: 0.75, depthWrite: false,
     })
   );
   earth.add(clouds);
   earth.add(atmosphere(earthRadius));
 
-  // 256 segmentos: la flecha de cada faceta queda por debajo de 0,2 km, y el descenso es visible
+  // 128 segmentos mantienen precisión sub-kilométrica durante el descenso con 4× menos vértices
   const moon = new THREE.Mesh(
-    zUpSphere(bodies.moon.radius_km / KM_PER_UNIT, 256),
-    new THREE.MeshStandardMaterial({ map: texture(renderer, "moon_lroc_4k.jpg"), roughness: 1 })
+    zUpSphere(bodies.moon.radius_km / KM_PER_UNIT, 128),
+    new THREE.MeshStandardMaterial({ map: texture(renderer, "moon_lroc_4k.jpg", onTextureLoad), roughness: 1 })
   );
   addSurfaceDetail(moon.material);
   moon.matrixAutoUpdate = false;

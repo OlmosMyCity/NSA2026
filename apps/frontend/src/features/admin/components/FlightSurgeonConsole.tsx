@@ -15,7 +15,12 @@ import {
   X,
 } from 'lucide-react';
 import { adminTriageService } from '../services/adminTriageService';
-import { CrewMemberTriage, FlightSurgeonMetrics, TriageStatus } from '../domain/types';
+import {
+  ActiveRadiationIncidentSummary,
+  CrewMemberTriage,
+  FlightSurgeonMetrics,
+  TriageStatus,
+} from '../domain/types';
 import { AstronautFallbackAvatar } from '@/features/astronauts/components/AstronautFallbackAvatar';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
 
@@ -34,6 +39,8 @@ export function FlightSurgeonConsole() {
     nominalCount: 0,
     noDataCount: 0,
   });
+  const [activeRadiationIncident, setActiveRadiationIncident] =
+    useState<ActiveRadiationIncidentSummary | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'ALL' | TriageStatus>('ALL');
@@ -49,6 +56,7 @@ export function FlightSurgeonConsole() {
       const res = await adminTriageService.getTriageOverview();
       setCrew(res.crew);
       setMetrics(res.metrics);
+      setActiveRadiationIncident(res.activeRadiationIncident ?? null);
     } catch (err) {
       console.error('Error fetching flight surgeon triage:', err);
     } finally {
@@ -94,6 +102,30 @@ export function FlightSurgeonConsole() {
 
   return (
     <div className="space-y-8">
+      {activeRadiationIncident && (
+        <div className="rounded-lg border border-rose-500/50 bg-rose-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white">
+                {activeRadiationIncident.stormScale} · INCIDENTE ACTIVO
+              </span>
+              <span className="text-xs font-mono text-rose-900">
+                Estado: {activeRadiationIncident.status}
+              </span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-blueberry">
+              {activeRadiationIncident.title}
+            </p>
+            <p className="text-xs text-blueberry/80">
+              {activeRadiationIncident.description}
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-rose-900 bg-white/70 px-3 py-1.5 rounded border border-rose-500/30 self-start sm:self-auto">
+            Protocolo adaptado: atención en refugio
+          </span>
+        </div>
+      )}
+
       {/* Clinical metrics row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
@@ -299,10 +331,20 @@ export function FlightSurgeonConsole() {
                         <span className="mt-0.5 block font-mono text-[11px] text-stem">
                           Habitat: {astronaut.environment ?? '—'}
                         </span>
+                        {astronaut.adaptedProtocol && (
+                          <p className="mt-1.5 text-[11px] font-semibold text-rose-800 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1">
+                            {astronaut.adaptedProtocol}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                      {astronaut.priorityBoosted && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white tracking-wide">
+                          P0 · PRIORIDAD TORMENTA
+                        </span>
+                      )}
                       {isCritical && (
                         <span className="ui-badge text-status-critical">
                           <span className="h-2 w-2 rounded-full bg-status-critical" aria-hidden="true" />
@@ -469,15 +511,13 @@ export function FlightSurgeonConsole() {
 
                   <button
                     type="button"
-                    disabled={hasNoData}
-                    title={hasNoData ? 'A directive needs at least one health reading' : undefined}
                     onClick={() => {
                       setSelectedCrew(astronaut);
                       setDirectiveText('');
                       setFeedbackMessage(null);
                       setDirectiveError(null);
                     }}
-                    className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry hover:bg-surface-tinted disabled:cursor-not-allowed disabled:opacity-50"
+                    className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry hover:bg-surface-tinted"
                   >
                     <Send className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
                     <span>Issue Medical Directive</span>

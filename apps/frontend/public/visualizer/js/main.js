@@ -22,7 +22,32 @@ const CAMERA_MOVE_S = 1.4;
 const SHIP_TO_BODY = 0.28;
 const SHIP_MIN = 0.005;
 const SHIP_MAX = 0.05;
-const SHIP_LABEL = { sls: "SLS", core: "SLS", eus: "EUS + Orion", orion: "Orion", hls: "HLS" };
+const SHIP_LABEL = {
+  sls: "SLS",
+  core: "SLS",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "HLS",
+  dragon: "Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Station",
+  rover: "Lunar Rover",
+  ares: "Ares I Transit",
+  gateway: "Gateway",
+};
+const VEHICLE_FULL_LABEL = {
+  sls: "SLS Block 1B + Orion",
+  core: "SLS Core + Orion",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "Starship HLS",
+  dragon: "Falcon 9 + Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Orbital Station",
+  rover: "Pressurized Lunar Rover",
+  ares: "Ares I Mars Transit",
+  gateway: "Lunar Gateway",
+};
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */
 const FOCUS_DISTANCE = { earth: 30, moon: 9, ship: 3, system: 620 };
@@ -34,9 +59,17 @@ const norm = (v) => {
   return v.map((x) => x / d);
 };
 
+let pendingStart = false;
+$("intro-start")?.addEventListener("click", () => {
+  pendingStart = true;
+}, { once: true });
+
 async function main() {
+  let requestRender = () => {};
   const params = new URLSearchParams(location.search);
   const rawData = params.get("data");
+  const rawVehicle = params.get("vehicle");
+  const vehicleOverride = rawVehicle && VEHICLE_FULL_LABEL[rawVehicle] ? rawVehicle : null;
   const dataUrl =
     rawData && (/^data\/[a-zA-Z0-9_.-]+\.json$/.test(rawData) || rawData.startsWith("blob:"))
       ? rawData
@@ -53,7 +86,7 @@ async function main() {
   const tLast = phases[phases.length - 1].t_end;
   const positionAt = (t) => hermiteState(samples, t).r;
 
-  const view = createScene($("viewport"), bodies);
+  const view = createScene($("viewport"), bodies, () => requestRender());
   const { scene, camera, controls, renderer } = view;
 
   // La textura tiene el meridiano 0 en +x; el simulador pone LC-39B donde cae en ECI a t = 0
@@ -305,13 +338,41 @@ async function main() {
   camera.position.set(...OVERVIEW.dir).normalize().multiplyScalar(fit(OVERVIEW.focus, OVERVIEW.distance));
   $("intro").hidden = false;
   document.body.classList.add("intro");
-  $("loading").remove();
+  $("loading")?.remove();
 
   let last = performance.now();
   let vehicleName = "";
   let finished = false;
+  let rafId = 0;
+  let controlsInteracting = false;
+
+  requestRender = () => {
+    if (!rafId) {
+      last = performance.now();
+      rafId = requestAnimationFrame(frameLoop);
+    }
+  };
+
+  controls.addEventListener("change", requestRender);
+  controls.addEventListener("start", () => {
+    controlsInteracting = true;
+    requestRender();
+  });
+  controls.addEventListener("end", () => {
+    controlsInteracting = false;
+    requestRender();
+  });
+  window.addEventListener("resize", requestRender);
+  $("slider")?.addEventListener("input", requestRender);
+  $("play")?.addEventListener("click", requestRender);
+  $("track")?.addEventListener("click", requestRender);
+  $("tags")?.addEventListener("click", requestRender);
+  $("intro-start")?.addEventListener("click", requestRender);
+  $("finale-replay")?.addEventListener("click", requestRender);
+  window.addEventListener("keydown", requestRender);
 
   function frameLoop(now) {
+    rafId = 0;
     const elapsed = (now - last) / 1000;
     const dt = Math.min(elapsed, 0.1);
     last = now;
@@ -353,7 +414,17 @@ async function main() {
     view.moon.matrixWorldNeedsUpdate = true;
     ship.position.copy(rel(shipF));
 
-    const vehicle = vehicleAt(t, events);
+    const vehicle = vehicleOverride
+      ? { id: vehicleOverride, name: VEHICLE_FULL_LABEL[vehicleOverride] }
+      : events.some((e) => /SRB|MECO|TLI/.test(e.label))
+        ? vehicleAt(t, events)
+        : /iss_leo/i.test(dataUrl)
+          ? { id: "dragon", name: VEHICLE_FULL_LABEL.dragon }
+          : /mars/i.test(dataUrl)
+            ? { id: "ares", name: VEHICLE_FULL_LABEL.ares }
+            : /lunar_base/i.test(dataUrl)
+              ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
+              : vehicleAt(t, events);
     const shipName = landed ? "HLS · sitio de alunizaje, 86,8° S" : SHIP_LABEL[vehicle.id];
     if (shipName !== vehicleName) {
       vehicleName = shipName;
@@ -375,7 +446,7 @@ async function main() {
     const phase = phases[phaseIndexAt(phases, t)];
     hud.update(t, st, phase, moonEci, FRAMES[frame], vehicle, landed);
 
-    controls.update();
+    const dampingChanged = controls.update();
     camera.updateMatrixWorld();
 
     // La silueta apunta a donde va la nave; el HLS en descenso final se mantiene vertical
@@ -435,15 +506,21 @@ async function main() {
     labels.update(showLabels, occluders);
 
     renderer.render(scene, camera);
-    requestAnimationFrame(frameLoop);
+    if (state.playing || move !== null || controlsInteracting || dampingChanged) {
+      rafId = requestAnimationFrame(frameLoop);
+    }
   }
-  requestAnimationFrame(frameLoop);
+  if (pendingStart) {
+    startMission();
+  }
+  requestRender();
 }
 
 main().catch((err) => {
   console.error(err);
   const box = $("loading");
   if (box) {
+    box.hidden = false;
     box.textContent = `Error: ${err.message}. Sirve la carpeta frontend/ con un servidor local (ver README).`;
     box.classList.add("error");
   }

@@ -19,9 +19,14 @@ export interface ViewerTime {
   playing: boolean;
 }
 
-export function useViewerBridge(frameRef: RefObject<HTMLIFrameElement>) {
+export function useViewerBridge(frameRef: RefObject<HTMLIFrameElement>, src?: string | null) {
   const [ready, setReady] = useState<ViewerReady | null>(null);
   const [time, setTime] = useState<ViewerTime | null>(null);
+
+  useEffect(() => {
+    setReady(null);
+    setTime(null);
+  }, [src]);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {

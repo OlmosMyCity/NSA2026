@@ -12,6 +12,11 @@ import { missionService } from '@/features/missions/services/missionService';
 import type { Mission } from '@/features/missions/domain/types';
 import { useHealthReadings } from '@/features/health/hooks/useHealthReadings';
 import { metOf, phaseAt, readingAt, readingsOnTimeline } from '../domain/missionClock';
+import {
+  TRAJECTORY_PRESETS,
+  VEHICLE_OPTIONS,
+  getMissionSimConfig,
+} from '../domain/missionSimulationConfig';
 import { trajectoryUrl } from '../domain/trajectories';
 import { useViewerBridge } from '../hooks/useViewerBridge';
 import { MissionMomentPanel } from './MissionMomentPanel';
@@ -32,6 +37,8 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
   useEffect(() => {
     let alive = true;
+    setCrew([]);
+    setAstronautId(undefined);
     Promise.all([missionService.getById(missionId), astronautService.list({ missionId, limit: 50 })])
       .then(([m, c]) => {
         if (!alive) return;
@@ -56,9 +63,23 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
   const { rows, isLoading: readingsLoading } = useHealthReadings(canView ? astronautId : undefined);
 
+  const [vehicleOverride, setVehicleOverride] = useState<string>('auto');
+  const [trajectoryOverride, setTrajectoryOverride] = useState<string>('auto');
+
+  useEffect(() => {
+    const saved = getMissionSimConfig(missionId);
+    setVehicleOverride(saved?.vehicleId ?? 'auto');
+    setTrajectoryOverride(saved?.trajectoryPreset ?? 'auto');
+  }, [missionId]);
+
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const viewerSrc = trajectoryUrl(missionId);
-  const { ready, time, seek, play, pause } = useViewerBridge(frameRef);
+  const viewerSrc = mission
+    ? trajectoryUrl(mission, {
+        vehicleId: vehicleOverride,
+        dataFile: trajectoryOverride !== 'auto' ? trajectoryOverride : undefined,
+      })
+    : null;
+  const { ready, time, seek, play, pause } = useViewerBridge(frameRef, viewerSrc);
 
   const now = Date.now();
   const nowMetRaw = mission ? metOf(new Date(now).toISOString(), mission.startDate) : 0;
@@ -77,6 +98,15 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   }, [time]);
 
   const startedRef = useRef(false);
+  useEffect(() => {
+    setAstronautId(undefined);
+  }, [missionId]);
+
+  useEffect(() => {
+    startedRef.current = false;
+    setPinnedMet(null);
+  }, [viewerSrc]);
+
   useEffect(() => {
     if (ready && mission && !startedRef.current) {
       startedRef.current = true;
@@ -150,6 +180,40 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
       {viewerSrc ? (
         <>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-2.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
+                <span className="text-stem">Vehicle:</span>
+                <select
+                  value={vehicleOverride}
+                  onChange={(e) => setVehicleOverride(e.target.value)}
+                  className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+                >
+                  {VEHICLE_OPTIONS.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
+                <span className="text-stem">Trajectory:</span>
+                <select
+                  value={trajectoryOverride}
+                  onChange={(e) => setTrajectoryOverride(e.target.value)}
+                  className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+                >
+                  {TRAJECTORY_PRESETS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="relative overflow-hidden rounded-lg border border-line bg-[#060911] shadow-sm">
               {!ready && (
@@ -158,6 +222,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
                 </div>
               )}
               <iframe
+                key={viewerSrc}
                 ref={frameRef}
                 src={viewerSrc}
                 title={`3D Trajectory of ${mission.name}`}

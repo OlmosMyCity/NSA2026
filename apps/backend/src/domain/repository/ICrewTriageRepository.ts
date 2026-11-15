@@ -1,6 +1,6 @@
-import { HealthReading } from "@prisma/client";
+import { Directive, HealthReading, Incident } from "@prisma/client";
 
-/** Tripulante con su última lectura registrada (o `null` si nunca ha medido). */
+/** Tripulante con su última lectura (o `null` si nunca ha medido) y su última directiva. */
 export interface CrewTriageRecord {
   astronautId: string;
   astronautName: string;
@@ -10,11 +10,12 @@ export interface CrewTriageRecord {
   missionName: string | null;
   environment: string | null;
   latestReading: HealthReading | null;
+  latestDirective: Directive | null;
 }
 
 export interface ICrewTriageRepository {
   listCrewWithLatestReading(): Promise<CrewTriageRecord[]>;
   findAstronautName(astronautId: string): Promise<string | null>;
-  /** Devuelve `false` si el tripulante no tiene ninguna lectura donde anotar la directiva. */
-  setLatestReadingRecommendation(astronautId: string, recommendation: string): Promise<boolean>;
+  /** Incidente de radiación abierto o reconocido más reciente, si lo hay. */
+  findActiveRadiationIncident(): Promise<Incident | null>;
 }

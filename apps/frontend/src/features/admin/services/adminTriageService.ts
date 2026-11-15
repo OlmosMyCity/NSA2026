@@ -2,12 +2,19 @@ import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
 import { evaluateFreshness } from '@/features/health/domain/freshness';
-import { CrewMemberTriage, FlightSurgeonMetrics, TriageStatus } from '../domain/types';
+import {
+  ActiveRadiationIncidentSummary,
+  CrewMemberTriage,
+  FlightSurgeonMetrics,
+  TriageStatus,
+} from '../domain/types';
 
 class AdminTriageService {
   async getTriageOverview(): Promise<{
     crew: CrewMemberTriage[];
     metrics: FlightSurgeonMetrics;
+    stormScale?: string;
+    activeRadiationIncident?: ActiveRadiationIncidentSummary | null;
   }> {
     if (ENV.USE_MOCKS) {
       const astronauts = mockDb.astronauts;
@@ -77,12 +84,10 @@ class AdminTriageService {
         .filter((r) => r.astronautId === astronautId)
         .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())[0];
 
-      if (!reading) {
-        throw new Error('This crew member has no health readings yet. Request a measurement first.');
+      if (reading) {
+        reading.recommendation = `[FLIGHT SURGEON]: ${directives}`;
+        mockDb.save();
       }
-
-      reading.recommendation = `[FLIGHT SURGEON]: ${directives}`;
-      mockDb.save();
 
       return {
         success: true,

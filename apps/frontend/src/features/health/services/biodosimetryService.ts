@@ -59,8 +59,8 @@ export const SIMULATION_PRESETS: Record<
   { label: string; description: string; payload: BiodosimetryPayload }
 > = {
   SLEEP_DEPRIVATION_FALSE_POSITIVE: {
-    label: 'Privación de Sueño (S0 Nominal)',
-    description: '8-OHdG elevado por falta de sueño y estrés en día S0 sin radiación.',
+    label: 'Sleep Deprivation (S0 Nominal)',
+    description: 'Elevated 8-OHdG driven by sleep loss and stress on a nominal S0 day.',
     payload: {
       doseRateMicroSvPerHour: 18.0,
       stormScaleLevel: 0,
@@ -79,8 +79,8 @@ export const SIMULATION_PRESETS: Record<
     },
   },
   MICROGRAVITY_FLUID_SHIFT: {
-    label: 'Microgravedad / Fluido (S0)',
-    description: 'Estrés cardiovascular y oxidativo por adaptación a microgravedad.',
+    label: 'Microgravity / Fluid Shift (S0)',
+    description: 'Cardiovascular and oxidative stress from microgravity fluid-shift adaptation.',
     payload: {
       doseRateMicroSvPerHour: 20.0,
       stormScaleLevel: 0,
@@ -99,8 +99,8 @@ export const SIMULATION_PRESETS: Record<
     },
   },
   EVA_PEAK_STORM_S4: {
-    label: 'Tormenta Solar S4 en EVA',
-    description: 'Exposición aguda en traje EVA con DSB (γ-H2AX) y respuesta FDXR.',
+    label: 'S4 Solar Storm in EVA',
+    description: 'Acute EVA exposure with DSBs (γ-H2AX) and p53/FDXR transcriptional response.',
     payload: {
       doseRateMicroSvPerHour: 14500.0,
       stormScaleLevel: 4,
@@ -173,13 +173,13 @@ function computeLocalFallback(payload: BiodosimetryPayload): BiodosimetryRespons
         sleepPsychStressPct: 3.0,
       },
       clinicalGuidance: [
-        'Evacuar inmediatamente a STORM_SHELTER si está en EVA_SUIT o módulo sin blindaje.',
-        'Iniciar protocolo radioprotector oral (N-acetilcisteína, Vitaminas C y E).',
-        'Programar ensayo de γ-H2AX en linfocitos y 8-OHdG urinario en 2–4 horas.',
+        'Evacuate immediately to STORM_SHELTER if currently in EVA_SUIT or an unshielded module.',
+        'Initiate oral radioprotector protocol (N-acetylcysteine, Vitamins C & E).',
+        'Schedule follow-up lymphocyte γ-H2AX and urinary 8-OHdG assay in 2–4 hours.',
       ],
-      explanation: `Firma genotóxica de radiación confirmada (γ-H2AX=${payload.gammaH2axFociPerCell.toFixed(
+      explanation: `Genotoxic radiation signature confirmed (γ-H2AX=${payload.gammaH2axFociPerCell.toFixed(
         1
-      )} foci/célula, FDXR=${payload.fdxrFoldChange.toFixed(1)}x, dosis=${payload.doseRateMicroSvPerHour.toFixed(
+      )} foci/cell, FDXR=${payload.fdxrFoldChange.toFixed(1)}x, dose=${payload.doseRateMicroSvPerHour.toFixed(
         1
       )} µSv/h).`,
     };
@@ -198,17 +198,17 @@ function computeLocalFallback(payload: BiodosimetryPayload): BiodosimetryRespons
         sleepPsychStressPct: 83.0,
       },
       clinicalGuidance: [
-        'No se requiere evacuación a refugio de radiación según dosimetría física actual.',
-        'Priorizar recuperación circadiana de 7–8h de sueño y fototerapia.',
-        'Reevaluar estado de ánimo y repetir 8-OHdG urinario en 12 horas.',
+        'No acute radiation shelter evacuation required based on current physical dosimetry.',
+        'Prioritize 7–8h circadian sleep recovery and light-therapy schedule.',
+        'Re-evaluate mood and repeat urinary 8-OHdG assay in 12 hours.',
       ],
       explanation: oxidative
-        ? `Falsa alarma filtrada: estrés oxidativo elevado (8-OHdG=${payload.urine8OhdgNgMg.toFixed(
+        ? `False positive filtered: elevated oxidative stress (8-OHdG=${payload.urine8OhdgNgMg.toFixed(
             1
-          )} ng/mg) coincide con privación de sueño (${payload.sleepHours.toFixed(
+          )} ng/mg) aligns with sleep deprivation (${payload.sleepHours.toFixed(
             1
-          )}h) y ánimo bajo (${payload.mood}/5), sin marcadores de DSB/FDXR.`
-        : `Patrón de estrés fisiológico por sueño/ánimo (${payload.sleepHours.toFixed(1)}h) con radiación basal.`,
+          )}h) and low mood (${payload.mood}/5), without DSB/FDXR radiation markers.`
+        : `Physiological stress pattern detected (sleep=${payload.sleepHours.toFixed(1)}h) with baseline radiation.`,
     };
   }
 
@@ -225,15 +225,15 @@ function computeLocalFallback(payload: BiodosimetryPayload): BiodosimetryRespons
         sleepPsychStressPct: 8.0,
       },
       clinicalGuidance: [
-        'No se requiere protocolo agudo de radiación; el estrés oxidativo corresponde a adaptación a microgravedad.',
-        'Ejecutar sesión de contramedidas cardiovasculares/ARED y mantener hidratación.',
-        'Monitorear presión arterial en reposo y tolerancia ortostática en el próximo control.',
+        'No acute radiation protocol needed; oxidative stress is consistent with microgravity fluid shift.',
+        'Execute ARED / cardiovascular countermeasure session and maintain hydration.',
+        'Monitor resting blood pressure and orthostatic tolerance on next routine check.',
       ],
       explanation: oxidative
-        ? `Falsa alarma filtrada: 8-OHdG elevado (${payload.urine8OhdgNgMg.toFixed(
+        ? `False positive filtered: elevated 8-OHdG (${payload.urine8OhdgNgMg.toFixed(
             1
-          )} ng/mg) y carga cardiovascular (${payload.systolicMmHg}/${payload.diastolicMmHg} mmHg) reflejan adaptación a microgravedad.`
-        : 'Marcadores cardiovasculares reflejan adaptación de fluidos en microgravedad.',
+          )} ng/mg) and cardiovascular load (${payload.systolicMmHg}/${payload.diastolicMmHg} mmHg) reflect microgravity adaptation.`
+        : 'Cardiovascular markers reflect microgravity fluid-shift adaptation.',
     };
   }
 
@@ -249,10 +249,10 @@ function computeLocalFallback(payload: BiodosimetryPayload): BiodosimetryRespons
       sleepPsychStressPct: 3.0,
     },
     clinicalGuidance: [
-      'Todos los signos vitales, dosimetría física y biomarcadores están dentro de límites nominales.',
-      'Continuar con la rutina estándar de salud de la misión.',
+      'All vitals, physical dosimetry, and molecular biomarkers remain within nominal limits.',
+      'Continue standard mission health routine.',
     ],
-    explanation: 'Estado fisiológico y radiobiológico nominal.',
+    explanation: 'Nominal physiological and radiobiological status.',
   };
 }
 

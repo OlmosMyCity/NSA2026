@@ -1,31 +1,47 @@
+import { Directive } from "@prisma/client";
 import { ICrewTriageRepository } from "../../../domain/repository/ICrewTriageRepository.js";
-import { ConflictError, NotFoundError } from "../../../domain/errors/AppError.js";
+import { IDirectiveRepository } from "../../../domain/repository/IDirectiveRepository.js";
+import { NotFoundError } from "../../../domain/errors/AppError.js";
 
-export interface SendClinicalDirectiveResult {
-  astronautName: string;
+export interface SendClinicalDirectiveInput {
+  astronautId: string;
+  content: string;
+  issuedById?: string | null;
+  incidentId?: string | null;
 }
 
+/** La directiva vive en su propia tabla: nunca se anota sobre una lectura ni se fabrica una. */
 export class SendClinicalDirectiveUseCase {
-  constructor(private readonly crewRepo: ICrewTriageRepository) {}
+  constructor(
+    private readonly crewRepo: ICrewTriageRepository,
+    private readonly directiveRepo: IDirectiveRepository
+  ) {}
 
-  async execute(astronautId: string, directives: string): Promise<SendClinicalDirectiveResult> {
-    const astronautName = await this.crewRepo.findAstronautName(astronautId);
-    if (!astronautName) {
+  async execute(input: SendClinicalDirectiveInput): Promise<{ astronautName: string; directive: Directive }> {
+    const astronautName = await this.crewRepo.findAstronautName(input.astronautId);
+    if (!astronautName) throw new NotFoundError("Astronauta", input.astronautId);
+
+    const directive = await this.directiveRepo.create({
+      astronautId: input.astronautId,
+      issuedById: input.issuedById ?? null,
+      incidentId: input.incidentId ?? null,
+      content: input.content,
+    });
+
+    return { astronautName, directive };
+  }
+}
+
+export class ListAstronautDirectivesUseCase {
+  constructor(
+    private readonly crewRepo: ICrewTriageRepository,
+    private readonly directiveRepo: IDirectiveRepository
+  ) {}
+
+  async execute(astronautId: string): Promise<Directive[]> {
+    if (!(await this.crewRepo.findAstronautName(astronautId))) {
       throw new NotFoundError("Astronauta", astronautId);
     }
-
-    // La directiva se anota sobre la última lectura real. Nunca se fabrica una lectura
-    // con valores supuestos para poder adjuntarla.
-    const saved = await this.crewRepo.setLatestReadingRecommendation(
-      astronautId,
-      `[DIRECTIVA MÉDICA EN VIGOR]: ${directives}`
-    );
-    if (!saved) {
-      throw new ConflictError(
-        `${astronautName} aún no tiene lecturas de salud. Solicita una medición antes de enviar la directiva.`
-      );
-    }
-
-    return { astronautName };
+    return this.directiveRepo.findByAstronautId(astronautId);
   }
 }

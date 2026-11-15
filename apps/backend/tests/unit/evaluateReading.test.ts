@@ -144,8 +144,18 @@ describe("evaluateReading - Motor Clínico de Salud NASA Artemis", () => {
 
     const result = evaluateReading(mixedReading);
     expect(result.status).toBe("CRITICAL");
+    expect(result.protocolId).toBe("PROTO_HYPOXIA");
     expect(result.alerts).toHaveLength(3);
     expect(result.recommendation).toContain("ALERTA CRÍTICA");
+    expect(result.recommendation).toContain("PROTO_HYPOXIA");
+  });
+
+  it("asigna protocolId específico por indicador crítico (hipoglucemia, fiebre, crisis hipertensiva)", () => {
+    expect(evaluateReading({ ...nominalReading, glucoseMgDl: 60 }).protocolId).toBe("PROTO_HYPOGLYCEMIA");
+    expect(evaluateReading({ ...nominalReading, temperatureC: 38.6 }).protocolId).toBe("PROTO_FEVER");
+    expect(evaluateReading({ ...nominalReading, systolicMmHg: 150 }).protocolId).toBe("PROTO_HYPERTENSIVE_CRISIS");
+    expect(evaluateReading({ ...nominalReading, spo2Pct: 88 }).protocolId).toBe("PROTO_HYPOXIA");
+    expect(evaluateReading(nominalReading).protocolId).toBe("PROTO_NOMINAL");
   });
 });
 

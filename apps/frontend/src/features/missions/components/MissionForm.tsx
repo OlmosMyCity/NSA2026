@@ -9,11 +9,19 @@ import { storageService } from '@/features/common/services/storageService';
 import { Mission, Environment, MissionStatus } from '../domain/types';
 import { MissionFallbackPatch } from './MissionFallbackPatch';
 import {
+  TRAJECTORY_PRESETS,
+  VEHICLE_OPTIONS,
+  getMissionSimConfig,
+  saveMissionSimConfig,
+  validateTrajectoryJson,
+} from '@/features/visualizer/domain/missionSimulationConfig';
+import {
   UploadCloud,
   X,
   AlertCircle,
   CheckCircle2,
   ArrowLeft,
+  Orbit,
 } from 'lucide-react';
 
 interface MissionFormProps {
@@ -41,6 +49,11 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.patchUrl || null);
+  const [vehicleId, setVehicleId] = useState<string>('auto');
+  const [trajectoryPreset, setTrajectoryPreset] = useState<string>('auto');
+  const [customTrajectoryJson, setCustomTrajectoryJson] = useState<string | null>(null);
+  const [customTrajectoryName, setCustomTrajectoryName] = useState<string | null>(null);
+  const [trajectoryError, setTrajectoryError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +69,13 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
         setEndDate(new Date(initialData.endDate).toISOString().split('T')[0]);
       }
       setPreviewUrl(initialData.patchUrl || null);
+      const savedSim = getMissionSimConfig(initialData.id);
+      if (savedSim) {
+        setVehicleId(savedSim.vehicleId || 'auto');
+        setTrajectoryPreset(savedSim.trajectoryPreset || 'auto');
+        setCustomTrajectoryJson(savedSim.customTrajectoryJson ?? null);
+        setCustomTrajectoryName(savedSim.customFileName ?? null);
+      }
     }
   }, [initialData]);
 
@@ -71,6 +91,22 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
+  };
+
+  const handleTrajectoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTrajectoryError(null);
+    try {
+      const text = await file.text();
+      validateTrajectoryJson(text);
+      setCustomTrajectoryJson(text);
+      setCustomTrajectoryName(file.name);
+    } catch (err) {
+      setTrajectoryError(err instanceof Error ? err.message : 'Invalid trajectory JSON file.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,8 +128,9 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
         setIsUploading(false);
       }
 
+      let savedMission: Mission;
       if (isEditing && initialData) {
-        await missionService.update(initialData.id, {
+        savedMission = await missionService.update(initialData.id, {
           name: name.trim(),
           description: description.trim(),
           environment,
@@ -103,7 +140,7 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
           patchUrl: finalPatchUrl,
         });
       } else {
-        await missionService.create({
+        savedMission = await missionService.create({
           name: name.trim(),
           description: description.trim(),
           environment,
@@ -113,6 +150,13 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
           patchUrl: finalPatchUrl,
         });
       }
+
+      saveMissionSimConfig(savedMission.id, {
+        vehicleId,
+        trajectoryPreset,
+        customTrajectoryJson,
+        customFileName: customTrajectoryName,
+      });
 
       router.push('/missions');
     } catch (err: unknown) {
@@ -244,6 +288,93 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
               className="ui-input mt-1.5 text-sm"
             />
           </div>
+        </div>
+
+        <div className="rounded-lg border border-line bg-surface-tinted/40 p-4 space-y-4">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blueberry">
+            <Orbit className="h-4 w-4 text-berry" aria-hidden="true" />
+            <span>3D Simulation, Vehicle &amp; Trajectory</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="mission-vehicle" className="block text-xs font-semibold text-blueberry">
+                Launch / Spacecraft Vehicle
+              </label>
+              <select
+                id="mission-vehicle"
+                value={vehicleId}
+                onChange={(e) => setVehicleId(e.target.value)}
+                className="ui-input mt-1.5 text-sm"
+              >
+                {VEHICLE_OPTIONS.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label} ({v.category})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="mission-trajectory" className="block text-xs font-semibold text-blueberry">
+                Orbital Trajectory Preset
+              </label>
+              <select
+                id="mission-trajectory"
+                value={trajectoryPreset}
+                onChange={(e) => setTrajectoryPreset(e.target.value)}
+                disabled={Boolean(customTrajectoryJson)}
+                className="ui-input mt-1.5 text-sm disabled:opacity-50"
+              >
+                {TRAJECTORY_PRESETS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <label
+              htmlFor="mission-trajectory-file"
+              className="tactile-press inline-flex cursor-pointer items-center gap-2 rounded-pill border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+            >
+              <UploadCloud className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+              <span>
+                {customTrajectoryName
+                  ? `Custom JSON: ${customTrajectoryName}`
+                  : 'Upload Custom Trajectory (.json)'}
+              </span>
+              <input
+                id="mission-trajectory-file"
+                type="file"
+                accept=".json,application/json"
+                onChange={handleTrajectoryUpload}
+                className="sr-only"
+              />
+            </label>
+
+            {customTrajectoryJson && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomTrajectoryJson(null);
+                  setCustomTrajectoryName(null);
+                  setTrajectoryError(null);
+                }}
+                className="text-xs font-semibold text-status-critical hover:underline"
+              >
+                Remove custom JSON
+              </button>
+            )}
+          </div>
+
+          {trajectoryError && (
+            <p role="alert" className="text-xs text-status-critical">
+              {trajectoryError}
+            </p>
+          )}
         </div>
 
         <div className="pt-2">

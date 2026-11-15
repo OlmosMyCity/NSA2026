@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { GetTriageOverviewUseCase } from "../../application/use-cases/admin/GetTriageOverviewUseCase.js";
-import { SendClinicalDirectiveUseCase } from "../../application/use-cases/admin/SendClinicalDirectiveUseCase.js";
+import {
+  ListAstronautDirectivesUseCase,
+  SendClinicalDirectiveUseCase,
+} from "../../application/use-cases/admin/SendClinicalDirectiveUseCase.js";
 import { CreateUserByAdminUseCase } from "../../application/use-cases/admin/CreateUserByAdminUseCase.js";
 import { AssignMissionOperatorUseCase } from "../../application/use-cases/admin/AssignMissionOperatorUseCase.js";
 import { IOperatorCrewRepository } from "../../domain/repository/IOperatorCrewRepository.js";
@@ -15,18 +18,11 @@ export class AdminTriageController {
   constructor(
     private readonly getTriageOverviewUseCase: GetTriageOverviewUseCase,
     private readonly sendClinicalDirectiveUseCase: SendClinicalDirectiveUseCase,
+    private readonly listAstronautDirectivesUseCase: ListAstronautDirectivesUseCase,
     private readonly createUserByAdminUseCase: CreateUserByAdminUseCase,
     private readonly assignMissionOperatorUseCase: AssignMissionOperatorUseCase,
     private readonly operatorCrewRepo: IOperatorCrewRepository
   ) {}
-
-  listOperatorAccess = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      res.status(200).json(await this.operatorCrewRepo.listOperatorAccess());
-    } catch (error) {
-      next(error);
-    }
-  };
 
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -36,15 +32,37 @@ export class AdminTriageController {
     }
   };
 
+  listAstronautDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json({ data: await this.listAstronautDirectivesUseCase.execute(req.params.id) });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   sendClinicalDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { directives } = parseWithValidation(directivesSchema, req.body ?? {});
-      const { astronautName } = await this.sendClinicalDirectiveUseCase.execute(req.params.id, directives);
+      const { directives, incidentId } = parseWithValidation(directivesSchema, req.body ?? {});
+      const { astronautName, directive } = await this.sendClinicalDirectiveUseCase.execute({
+        astronautId: req.params.id,
+        content: directives,
+        issuedById: req.user?.id ?? null,
+        incidentId: incidentId ?? null,
+      });
 
-      res.status(200).json({
+      res.status(201).json({
         success: true,
+        directive,
         message: `Directiva clínica transmitida exitosamente a la consola de ${astronautName}.`,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listOperatorAccess = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      res.status(200).json(await this.operatorCrewRepo.listOperatorAccess());
     } catch (error) {
       next(error);
     }

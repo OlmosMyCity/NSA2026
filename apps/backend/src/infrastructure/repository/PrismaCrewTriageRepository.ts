@@ -1,3 +1,4 @@
+import { Incident, IncidentCategory, IncidentStatus } from "@prisma/client";
 import { prisma } from "../database/prismaClient.js";
 import { CrewTriageRecord, ICrewTriageRepository } from "../../domain/repository/ICrewTriageRepository.js";
 
@@ -10,6 +11,10 @@ export class PrismaCrewTriageRepository implements ICrewTriageRepository {
         readings: {
           where: { deletedAt: null },
           orderBy: { takenAt: "desc" },
+          take: 1,
+        },
+        directives: {
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
       },
@@ -25,6 +30,7 @@ export class PrismaCrewTriageRepository implements ICrewTriageRepository {
       missionName: astro.mission?.name ?? null,
       environment: astro.mission?.environment ?? null,
       latestReading: astro.readings[0] ?? null,
+      latestDirective: astro.directives[0] ?? null,
     }));
   }
 
@@ -36,18 +42,13 @@ export class PrismaCrewTriageRepository implements ICrewTriageRepository {
     return astronaut?.name ?? null;
   }
 
-  async setLatestReadingRecommendation(astronautId: string, recommendation: string): Promise<boolean> {
-    const latest = await prisma.healthReading.findFirst({
-      where: { astronautId, deletedAt: null },
-      orderBy: { takenAt: "desc" },
-      select: { id: true },
+  async findActiveRadiationIncident(): Promise<Incident | null> {
+    return prisma.incident.findFirst({
+      where: {
+        category: IncidentCategory.RADIATION,
+        status: { in: [IncidentStatus.OPEN, IncidentStatus.ACKNOWLEDGED] },
+      },
+      orderBy: { openedAt: "desc" },
     });
-    if (!latest) return false;
-
-    await prisma.healthReading.update({
-      where: { id: latest.id },
-      data: { recommendation },
-    });
-    return true;
   }
 }

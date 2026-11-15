@@ -7,8 +7,11 @@
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" /></noscript>
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="modulepreload" href="js/main.js" />
     <script type="importmap">
       {
         "imports": {
@@ -18,10 +21,10 @@
       }
     </script>
   </head>
-  <body>
+  <body class="intro">
     <main id="viewport" aria-label="Escena 3D de la misión"></main>
     <div id="labels" aria-hidden="true"></div>
-    <div id="loading">Cargando la misión…</div>
+    <div id="loading" hidden></div>
 
     <section class="panel" id="hud">
       <div class="brand">ARTEMIS IV</div>
@@ -76,7 +79,7 @@
       </div>
     </footer>
 
-    <section class="overlay" id="intro" hidden>
+    <section class="overlay" id="intro">
       <div class="overlay-box">
         <div class="kicker">Universidad de Medellín · Computación Científica</div>
         <h1>Artemis IV</h1>

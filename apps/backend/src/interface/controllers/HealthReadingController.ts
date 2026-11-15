@@ -5,6 +5,7 @@ import { CreateHealthReadingUseCase } from "../../application/use-cases/health/C
 import { UpdateHealthReadingUseCase } from "../../application/use-cases/health/UpdateHealthReadingUseCase.js";
 import { DeleteHealthReadingUseCase } from "../../application/use-cases/health/DeleteHealthReadingUseCase.js";
 import { GetAstronautHealthSummaryUseCase } from "../../application/use-cases/health/GetAstronautHealthSummaryUseCase.js";
+import { IngestVisionTelemetryUseCase } from "../../application/use-cases/health/IngestVisionTelemetryUseCase.js";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
 import { HealthStatus, Role } from "@prisma/client";
@@ -12,6 +13,7 @@ import {
   createHealthReadingSchema,
   parseWithValidation,
   updateHealthReadingSchema,
+  visionIngestSchema,
 } from "../validation/schemas.js";
 
 export class HealthReadingController {
@@ -22,7 +24,8 @@ export class HealthReadingController {
     private readonly deleteHealthReadingUseCase: DeleteHealthReadingUseCase,
     private readonly getAstronautHealthSummaryUseCase: GetAstronautHealthSummaryUseCase,
     private readonly updateHealthReadingUseCase?: UpdateHealthReadingUseCase,
-    private readonly astronautRepo?: IAstronautRepository
+    private readonly astronautRepo?: IAstronautRepository,
+    private readonly ingestVisionTelemetryUseCase?: IngestVisionTelemetryUseCase
   ) {}
 
   private async resolveOwnAstronautId(req: Request): Promise<string | null> {
@@ -198,6 +201,33 @@ export class HealthReadingController {
 
       const summary = await this.getAstronautHealthSummaryUseCase.execute(id);
       res.status(200).json(summary);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  ingestVision = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.ingestVisionTelemetryUseCase) {
+        res.status(501).json({ error: "Ingesta de visión no disponible." });
+        return;
+      }
+
+      const payload = parseWithValidation(visionIngestSchema, req.body ?? {});
+
+      if (req.user && req.user.role !== Role.ADMIN) {
+        const ownAstronautId = await this.resolveOwnAstronautId(req);
+        if (!ownAstronautId || payload.astronautId !== ownAstronautId) {
+          throw new ForbiddenError("No tienes permiso para registrar telemetría de otro tripulante.");
+        }
+      }
+
+      const result = await this.ingestVisionTelemetryUseCase.execute({
+        ...payload,
+        takenAt: payload.takenAt ?? undefined,
+      });
+
+      res.status(201).json(result);
     } catch (error) {
       next(error);
     }

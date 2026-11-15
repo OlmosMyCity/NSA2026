@@ -24,7 +24,32 @@ const CAMERA_MOVE_S = 1.4;
 const SHIP_TO_BODY = 0.28;
 const SHIP_MIN = 0.005;
 const SHIP_MAX = 0.05;
-const SHIP_LABEL = { sls: "SLS", core: "SLS", eus: "EUS + Orion", orion: "Orion", hls: "HLS" };
+const SHIP_LABEL = {
+  sls: "SLS",
+  core: "SLS",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "HLS",
+  dragon: "Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Station",
+  rover: "Lunar Rover",
+  ares: "Ares I Transit",
+  gateway: "Gateway",
+};
+const VEHICLE_FULL_LABEL = {
+  sls: "SLS Block 1B + Orion",
+  core: "SLS Core + Orion",
+  eus: "EUS + Orion",
+  orion: "Orion",
+  hls: "Starship HLS",
+  dragon: "Falcon 9 + Crew Dragon",
+  soyuz: "Soyuz MS",
+  iss: "ISS Orbital Station",
+  rover: "Pressurized Lunar Rover",
+  ares: "Ares I Mars Transit",
+  gateway: "Lunar Gateway",
+};
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */
 const FOCUS_DISTANCE = { earth: 30, moon: 9, ship: 3, system: 620 };
@@ -39,6 +64,8 @@ const norm = (v) => {
 async function main() {
   const params = new URLSearchParams(location.search);
   const rawData = params.get("data");
+  const rawVehicle = params.get("vehicle");
+  const vehicleOverride = rawVehicle && VEHICLE_FULL_LABEL[rawVehicle] ? rawVehicle : null;
   const dataUrl =
     rawData && (/^data\/[a-zA-Z0-9_.-]+\.json$/.test(rawData) || rawData.startsWith("blob:"))
       ? rawData
@@ -72,9 +99,14 @@ async function main() {
   // Etiquetas
   const labels = createLabels($("labels"), camera);
   const label = {
-    earth: labels.add("Tierra", { priority: 9, kind: "body" }),
-    moon: labels.add("Luna", { priority: 9, kind: "body" }),
-    site: mission.landing_site ? labels.add("Sitio de alunizaje · 86,8° S", { priority: 8, kind: "site" }) : null,
+    earth: labels.add("Earth", { priority: 9, kind: "body" }),
+    moon: labels.add("Moon", { priority: 9, kind: "body" }),
+    mercury: labels.add("Mercury", { priority: 5, kind: "body" }),
+    venus: labels.add("Venus", { priority: 6, kind: "body" }),
+    mars: labels.add("Mars", { priority: 7, kind: "body" }),
+    jupiter: labels.add("Jupiter", { priority: 6, kind: "body" }),
+    saturn: labels.add("Saturn", { priority: 5, kind: "body" }),
+    site: mission.landing_site ? labels.add("Landing Site · 86.8° S", { priority: 8, kind: "site" }) : null,
     gateway: nrho ? labels.add("Gateway", { priority: 7 }) : null,
     ship: labels.add("", { priority: 10, kind: "ship" }),
     pad: labels.add("LC-39B", { priority: 6 }),
@@ -409,8 +441,21 @@ async function main() {
     view.moon.matrixWorldNeedsUpdate = true;
     ship.position.copy(rel(shipF));
 
-    const vehicle = vehicleAt(t, events);
-    const shipName = landed ? "HLS · sitio de alunizaje, 86,8° S" : SHIP_LABEL[vehicle.id];
+    const vehicle = vehicleOverride
+      ? { id: vehicleOverride, name: VEHICLE_FULL_LABEL[vehicleOverride] }
+      : events.some((e) => /SRB|MECO|TLI/.test(e.label))
+        ? vehicleAt(t, events)
+        : /iss_leo/i.test(dataUrl)
+          ? { id: "dragon", name: VEHICLE_FULL_LABEL.dragon }
+          : /mars/i.test(dataUrl)
+            ? { id: "ares", name: VEHICLE_FULL_LABEL.ares }
+            : /lunar_base/i.test(dataUrl)
+              ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
+              : vehicleAt(t, events);
+    const shipName =
+      landed && mission.landing_site && !vehicleOverride
+        ? "HLS · Landing Site, 86.8° S"
+        : SHIP_LABEL[vehicle.id];
     if (shipName !== vehicleName) {
       vehicleName = shipName;
       label.ship.el.textContent = shipName;
@@ -476,6 +521,21 @@ async function main() {
         look(gateway, "gateway", scaleNear(gateway.position));
         if (occluders.some((o) => labels.hidden(gateway.position, o))) gateway.visible = false;
         label.gateway.pos.copy(gateway.position);
+      }
+    }
+
+    // Position deep-space Solar System planets relative to focus
+    if (view.solarPlanets) {
+      const fx = focus[0] / KM_PER_UNIT;
+      const fy = focus[1] / KM_PER_UNIT;
+      const fz = focus[2] / KM_PER_UNIT;
+      for (const [key, planet] of Object.entries(view.solarPlanets)) {
+        const [bx, by, bz] = planet.userData.basePos;
+        planet.position.set(bx - fx, by - fy, bz - fz);
+        if (label[key]) {
+          label[key].pos.copy(planet.position);
+          label[key].active = true;
+        }
       }
     }
 

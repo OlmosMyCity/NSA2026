@@ -130,7 +130,7 @@ export function createScene(container, bodies) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.minDistance = 1e-3;
-  controls.maxDistance = 5e3;
+  controls.maxDistance = 8e3;
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.3));
   const sun = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -162,8 +162,68 @@ export function createScene(container, bodies) {
   moon.matrixAutoUpdate = false;
   scene.add(moon);
 
-  const stars = starField(3000, 4e3);
+  const stars = starField(3500, 8e3);
   scene.add(stars);
+
+  // Solar System planets (positioned in deep space outside Earth-Moon orbit for interplanetary context)
+  function planetTexture(palette, banded = false) {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 128;
+    const g = c.getContext("2d");
+    const grad = g.createLinearGradient(0, 0, 0, 128);
+    palette.forEach(([stop, color]) => grad.addColorStop(stop, color));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 128);
+    let s = palette.length * 131 + 17;
+    const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < (banded ? 40 : 120); i++) {
+      g.fillStyle = `rgba(255,255,255,${(rnd() * 0.12).toFixed(3)})`;
+      if (banded) {
+        g.fillRect(0, rnd() * 128, 256, 2 + rnd() * 8);
+      } else {
+        g.beginPath();
+        g.arc(rnd() * 256, rnd() * 128, 2 + rnd() * 14, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  function makePlanet(radiusUnits, palette, posUnits, banded = false, hasRing = false) {
+    const group = new THREE.Group();
+    const mesh = new THREE.Mesh(
+      zUpSphere(radiusUnits, 48),
+      new THREE.MeshStandardMaterial({ map: planetTexture(palette, banded), roughness: 0.88 })
+    );
+    group.add(mesh);
+    if (hasRing) {
+      const ringGeo = new THREE.RingGeometry(radiusUnits * 1.35, radiusUnits * 2.25, 64);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xd8c7a0,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.55,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = 0.42;
+      group.add(ring);
+    }
+    group.userData.basePos = posUnits;
+    group.position.set(...posUnits);
+    scene.add(group);
+    return group;
+  }
+
+  const solarPlanets = {
+    mercury: makePlanet(14, [[0, "#9c958d"], [0.5, "#7d776f"], [1, "#a79f96"]], [1150, -680, -140]),
+    venus: makePlanet(24, [[0, "#e8c888"], [0.5, "#d4a962"], [1, "#f0d9a8"]], [1420, -1180, -220], true),
+    mars: makePlanet(22, [[0, "#d87c52"], [0.45, "#b34d2e"], [0.85, "#8f371e"], [1, "#e8ddd4"]], [-1280, 1460, 260]),
+    jupiter: makePlanet(68, [[0, "#d9c2a3"], [0.25, "#c68e5c"], [0.5, "#e6d6be"], [0.75, "#b56942"], [1, "#cbb192"]], [-2150, 2450, 480], true),
+    saturn: makePlanet(56, [[0, "#e6d4a3"], [0.5, "#cdb47a"], [1, "#e9dcb8"]], [-3100, 1850, -520], true, true),
+  };
 
   function resize() {
     camera.aspect = container.clientWidth / container.clientHeight;
@@ -174,7 +234,7 @@ export function createScene(container, bodies) {
   setLineResolution(container.clientWidth, container.clientHeight);
   window.addEventListener("resize", resize);
 
-  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars };
+  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars, solarPlanets };
 }
 
 /** Matrix4 de Three.js a partir de una 3×3 por filas y una traslación. */

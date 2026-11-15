@@ -1,4 +1,11 @@
-import { CrewLocation, Environment, MissionStatus, Role } from "@prisma/client";
+import {
+  CrewLocation,
+  Environment,
+  IncidentCategory,
+  IncidentSeverity,
+  MissionStatus,
+  Role,
+} from "@prisma/client";
 import { z } from "zod";
 import { ValidationError } from "../../domain/errors/AppError.js";
 
@@ -190,6 +197,7 @@ export const updateAstronautSchema = z.object({
 
 export const directivesSchema = z.object({
   directives: requiredNonEmptyString("directives", 2000),
+  incidentId: z.string().trim().min(1).max(128).nullable().optional(),
 });
 
 export const crewLocationSchema = z.object({
@@ -235,6 +243,45 @@ export const biodosimetryTriageSchema = z.object({
       fdxrFoldChange: finiteNumber("fdxrFoldChange", 0.1, 30).optional(),
     })
     .optional(),
+});
+
+export const openIncidentSchema = z.object({
+  category: z.nativeEnum(IncidentCategory).optional(),
+  type: requiredNonEmptyString("type", 100),
+  severity: z.nativeEnum(IncidentSeverity).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().min(1).max(2000).optional(),
+  astronautId: z.string().trim().min(1).max(128).nullable().optional(),
+  missionId: z.string().trim().min(1).max(128).nullable().optional(),
+  source: z.string().trim().min(1).max(100).default("MANUAL"),
+  protocolId: z.string().trim().min(1).max(100).nullable().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const closeIncidentSchema = z.object({
+  resolutionNotes: z.string().trim().max(2000).nullable().optional(),
+});
+
+export const visionIngestSchema = z.object({
+  astronautId: requiredNonEmptyString("astronautId", 128),
+  heartRateBpm: finiteNumber("heartRateBpm", 0, 260),
+  mood: finiteNumber("mood", 1, 5, { int: true }).optional(),
+  moodValence: finiteNumber("moodValence", -1, 1).optional(),
+  stressIndex: finiteNumber("stressIndex", 0, 100).optional(),
+  alertnessScore: finiteNumber("alertnessScore", 0, 100).optional(),
+  dominantMood: z.string().trim().max(120).optional(),
+  sleepHours: finiteNumber("sleepHours", 0, 24).optional(),
+  sleepQualityScore: finiteNumber("sleepQualityScore", 0, 100).optional(),
+  perclos: finiteNumber("perclos", 0, 100).optional(),
+  hrvRmssdMs: finiteNumber("hrvRmssdMs", 0, 1000).optional(),
+  respirationRpm: finiteNumber("respirationRpm", 0, 100).optional(),
+  signalQuality: finiteNumber("signalQuality", 0, 100).optional(),
+  overallHealthIndex: finiteNumber("overallHealthIndex", 0, 100).optional(),
+  cameraMode: z.string().trim().max(40).optional(),
+  context: z.string().trim().max(40).optional(),
+  fatigueLevel: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+  takenAt: optionalDateSchema,
 });
 
 /**
