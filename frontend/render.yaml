@@ -1,0 +1,21 @@
+# Render Blueprint: Frontend Next.js (plan gratuito).
+# Render → New → Blueprint → seleccionar este repositorio.
+services:
+  - type: web
+    name: orbvital-frontend
+    runtime: node
+    rootDir: frontend
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: BACKEND_URL
+        value: https://orbvital-nsa2026.vercel.app
+      - key: NEXT_PUBLIC_USE_MOCKS
+        value: "false"
+      - key: NEXT_PUBLIC_FRESHNESS_WINDOW_MIN
+        value: "15"

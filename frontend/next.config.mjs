@@ -20,6 +20,22 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const backendUrl = (process.env.BACKEND_URL || process.env.API_PROXY_TARGET || '')
+      .trim()
+      .replace(/\/+$/, '');
+    if (!backendUrl) return [];
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/health',
+        destination: `${backendUrl}/health`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

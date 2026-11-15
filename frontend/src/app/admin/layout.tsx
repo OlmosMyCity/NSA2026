@@ -52,12 +52,17 @@ function resolveServerApiBase(): string | null {
     return cleanHost;
   }
 
+  const backendUrl = process.env.BACKEND_URL?.trim().replace(/\/+$/, '');
+  const path = cleanHost.startsWith('/') ? cleanHost : `/${cleanHost}`;
+  if (backendUrl) {
+    return `${backendUrl}${path}`;
+  }
+
   const headerList = headers();
   const host = headerList.get('x-forwarded-host') || headerList.get('host');
   if (!host) return null;
 
   const proto = headerList.get('x-forwarded-proto') || 'https';
-  const path = cleanHost.startsWith('/') ? cleanHost : `/${cleanHost}`;
   return `${proto}://${host}${path}`;
 }
 
