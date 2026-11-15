@@ -169,8 +169,8 @@ export function indicatorSolarNote(indicator: IndicatorId): string {
       return 'High Kp / storm alerts and shelter transitions can fragment circadian sleep architecture.';
     case 'mood':
       return 'Confinement in storm shelters and operational alerts commonly correlate with dips in crew mood.';
-    case 'systolicBp':
-    case 'diastolicBp':
+    case 'systolic':
+    case 'diastolic':
       return 'Autonomic stress during solar particle alerts can transiently elevate blood pressure.';
     case 'temperature':
       return 'Helps distinguish infectious fever from radiation-shelter thermal or metabolic stress.';
@@ -178,6 +178,8 @@ export function indicatorSolarNote(indicator: IndicatorId): string {
       return 'Monitors cabin/shelter CO₂ scrubbing and oxygenation stability when crew concentrates in sheltered modules.';
     case 'glucose':
       return 'Stress-hormone shifts during high-alert windows can mildly elevate fasting glucose.';
+    case 'resistanceExercise':
+      return 'EVA cancellations or storm-shelter confinement can reduce daily resistance countermeasure load.';
   }
 }
 
