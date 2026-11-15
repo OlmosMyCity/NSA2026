@@ -241,29 +241,29 @@ export function HealthDashboard() {
   const activeCrewName = crew.find((m) => m.id === astronautId)?.name;
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4 pb-1">
+    <div className="space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-blueberry sm:text-[1.75rem]">
             Digital twin
           </h1>
-          <p className="mt-1.5 text-[13px] text-stem tabular-nums">
+          <p className="mt-1 text-[13px] text-stem tabular-nums">
             {latest
-              ? `${activeCrewName ? `${activeCrewName} · ` : ''}${dateFmt.format(new Date(latest.takenAt))}`
-              : 'Simulated baseline'}
+              ? `${activeCrewName ? `${activeCrewName} · ` : ''}Last reading ${dateFmt.format(new Date(latest.takenAt))}`
+              : 'Simulated baseline, no real readings yet'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           {crewSelector}
-          <span className="twin-panel inline-flex items-center gap-2 px-3.5 py-2">
-            <span className="twin-label">{whatIf.active ? 'Simulated' : 'Status'}</span>
+          <span className="twin-panel inline-flex items-center gap-2 px-3 py-1.5">
+            <span className="twin-label">{whatIf.active ? 'Simulated status' : 'Status'}</span>
             <StatusBadge status={overall} compact />
           </span>
         </div>
       </header>
 
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(340px,410px)]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]">
+        <div className="min-w-0 space-y-4">
           <div ref={viewerRef} className="twin-panel relative scroll-mt-24 overflow-hidden">
             <Body3D
               zones={zones}
@@ -272,12 +272,12 @@ export function HealthDashboard() {
               onHover={setHovered}
               heartRate={evaluations.heartRate?.value}
             />
-            <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between gap-2">
+            <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between gap-2">
               {selected ? (
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
-                  className="twin-btn twin-btn-ghost pointer-events-auto h-8 bg-canvas/60 px-3 text-xs backdrop-blur-md"
+                  className="twin-btn twin-btn-ghost pointer-events-auto h-8 bg-canvas/60 px-2.5 text-xs backdrop-blur-md"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   Full body
@@ -285,7 +285,7 @@ export function HealthDashboard() {
               ) : (
                 <span />
               )}
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-canvas/60 px-3 text-xs text-stem backdrop-blur-md">
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-canvas/60 px-2.5 text-xs text-stem backdrop-blur-md">
                 {hovered ? (
                   <>
                     <span
@@ -298,7 +298,7 @@ export function HealthDashboard() {
                 ) : (
                   <>
                     <Rotate3d className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
-                    Rotate · Click organ
+                    Drag to rotate · click an organ
                   </>
                 )}
               </span>
@@ -318,7 +318,7 @@ export function HealthDashboard() {
 
         <aside
           aria-label="Twin inspector"
-          className="twin-panel space-y-6 p-6 sm:p-7 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+          className="twin-panel space-y-5 p-4 sm:p-5 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
         >
           <ZoneSelector zones={zones} selected={selected} onSelect={setSelected} />
           {selected ? (
@@ -341,7 +341,7 @@ export function HealthDashboard() {
         </aside>
       </div>
 
-      <section aria-labelledby="vitals-title" className="space-y-4">
+      <section aria-labelledby="vitals-title" className="space-y-2.5">
         <h2 id="vitals-title" className="text-sm font-semibold text-blueberry">
           All vitals
         </h2>
@@ -357,7 +357,7 @@ export function HealthDashboard() {
                 type="button"
                 onClick={() => focusZone(def.zone)}
                 aria-pressed={active}
-                className={`flex min-h-[6rem] flex-col justify-between gap-2.5 p-4 text-left transition-colors duration-ui ${
+                className={`flex min-h-[5.5rem] flex-col justify-between gap-2 p-3 text-left transition-colors duration-ui ${
                   active ? 'bg-[hsl(var(--hsl-surface-hover))]' : 'bg-[hsl(var(--hsl-surface-elevated)/0.92)] hover:bg-[hsl(var(--hsl-surface-subtle))]'
                 }`}
               >

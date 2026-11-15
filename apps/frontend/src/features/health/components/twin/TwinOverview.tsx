@@ -74,8 +74,8 @@ function Verdict({ decision, isStale, isLoading }: { decision: DecisionResult; i
   const Icon = escalar ? PhoneCall : ShieldCheck;
 
   return (
-    <div className={`space-y-4 transition-opacity duration-ui ${isStale || isLoading ? 'opacity-60' : ''}`}>
-      <div className="twin-well flex items-start gap-3.5 px-4 py-4">
+    <div className={`space-y-3 transition-opacity duration-ui ${isStale || isLoading ? 'opacity-60' : ''}`}>
+      <div className="twin-well flex items-start gap-3 px-3.5 py-3.5">
         <span
           className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: escalar ? 'var(--status-critical-bg)' : 'var(--status-nominal-bg)' }}
@@ -84,7 +84,7 @@ function Verdict({ decision, isStale, isLoading }: { decision: DecisionResult; i
         </span>
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-[15px] font-semibold leading-snug" style={{ color: tone }}>
-            {escalar ? 'Escalate to surgeon' : 'Monitor on board'}
+            {escalar ? 'Escalate to flight surgeon' : 'Monitor on board'}
           </p>
           <p className="text-[13px] text-blueberry">{ACTION_LABELS[accion]}</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-[11px] text-stem">
@@ -93,7 +93,7 @@ function Verdict({ decision, isStale, isLoading }: { decision: DecisionResult; i
             </span>
             {freeTextMoodEstimate && (
               <span>
-                Mood Note{' '}
+                Crew note mood{' '}
                 <strong className="twin-value text-blueberry">{freeTextMoodEstimate.moodScore}/5</strong>
               </span>
             )}

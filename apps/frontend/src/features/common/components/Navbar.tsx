@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { authStorage, StoredUser } from '../services/storage';
 import {
+  Activity,
   HeartPulse,
   CalendarCheck2,
   Rocket,
+  Users,
   ShieldAlert,
   LogIn,
   LogOut,
@@ -46,10 +48,13 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { href: '/dashboard', label: 'Health', icon: Gauge },
+    { href: '/', label: 'Home', icon: Activity },
+    { href: '/dashboard', label: 'My Health', icon: Gauge },
+    { href: '/readings/new', label: 'Log Reading', icon: HeartPulse },
     { href: '/routine', label: 'Routine', icon: CalendarCheck2 },
     { href: '/missions', label: 'Missions', icon: Rocket },
     { href: '/visualizer', label: '3D Orbit', icon: Orbit },
+    { href: '/astronauts', label: 'Crew', icon: Users },
   ];
 
   if (user?.role === 'ADMIN') {
@@ -101,20 +106,8 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Primary CTA + User session */}
+        {/* User session */}
         <div className="hidden lg:flex items-center gap-3">
-          <Link
-            href="/readings/new"
-            className={`tactile-press inline-flex items-center gap-1.5 rounded-pill px-4 py-1.5 text-xs font-semibold shadow-sm transition-colors ${
-              pathname === '/readings/new'
-                ? 'bg-berry text-white'
-                : 'bg-blueberry text-plate hover:bg-berry'
-            }`}
-          >
-            <HeartPulse className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Log Vitals</span>
-          </Link>
-
           {user ? (
             <div className="flex items-center gap-3 border-l border-line pl-3">
               <div className="flex flex-col text-right">
@@ -172,15 +165,6 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-b border-line bg-surface/95 backdrop-blur-xl px-4 pt-3 pb-5 lg:hidden animate-materialize">
           <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
-            <Link
-              href="/readings/new"
-              onClick={() => setMobileMenuOpen(false)}
-              className="tactile-press mb-2 flex items-center justify-center gap-2 rounded-pill bg-blueberry px-4 py-2.5 text-sm font-semibold text-plate shadow-sm hover:bg-berry"
-            >
-              <HeartPulse className="h-4 w-4" aria-hidden="true" />
-              <span>Log Vitals</span>
-            </Link>
-
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive =

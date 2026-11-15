@@ -30,19 +30,20 @@ export function ZoneInspector({ zone, summary, twinZone, isStale }: ZoneInspecto
     twinZone && !isStale ? twinZone.riskLevel : RISK_FROM_STATUS[summary.status];
 
   return (
-    <div key={zone} className="animate-swap space-y-6" aria-live="polite">
-      <header className="space-y-2.5">
+    <div key={zone} className="animate-swap space-y-5" aria-live="polite">
+      <header className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight text-blueberry">{info.label}</h2>
           <StatusBadge status={summary.status} />
         </div>
+        <p className="text-[13px] leading-relaxed text-stem">{info.function}</p>
         {twinZone && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <TrendChip trend={twinZone.trend} />
             {twinZone.isOverdue && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-status-caution/15 px-2.5 py-0.5 text-[11px] font-medium text-status-caution">
+              <span className="inline-flex items-center gap-1 rounded-full bg-status-caution/15 px-2 py-0.5 text-[11px] font-medium text-status-caution">
                 <Clock className="h-3 w-3" aria-hidden="true" />
-                Overdue
+                Measurement overdue
               </span>
             )}
           </div>
@@ -51,17 +52,17 @@ export function ZoneInspector({ zone, summary, twinZone, isStale }: ZoneInspecto
 
       <ZoneRiskCard riskLevel={riskLevel} />
 
-      <section aria-label="Vitals in this zone" className="space-y-3.5">
+      <section aria-label="Vitals in this zone" className="space-y-3">
         {summary.evaluations.length === 0 ? (
-          <p className="twin-well px-4 py-3.5 text-[13px] text-stem">
-            No readings yet.
+          <p className="twin-well px-3 py-3 text-[13px] text-stem">
+            No readings yet for this zone. Log a reading to bring it to life on the twin.
           </p>
         ) : (
           summary.evaluations.map((e) => <VitalRow key={e.indicator} evaluation={e} />)
         )}
         {missing.length > 0 && summary.evaluations.length > 0 && (
           <p className="text-[11px] text-stem">
-            Pending: {missing.map((id) => INDICATORS[id].label).join(', ')}
+            Not measured recently: {missing.map((id) => INDICATORS[id].label).join(', ')}
           </p>
         )}
       </section>
@@ -90,7 +91,7 @@ function TrendChip({ trend }: { trend: TrendDirection }) {
 function ZoneRiskCard({ riskLevel }: { riskLevel: ZoneRiskLevel }) {
   const meta = RISK_META[riskLevel];
   return (
-    <div className="twin-well flex items-center justify-between px-3.5 py-3">
+    <div className="twin-well flex items-center justify-between px-3 py-2.5">
       <span className="twin-label">Zone risk</span>
       <span className="text-[14px] font-semibold" style={{ color: meta.color }}>
         {meta.label}
