@@ -10,8 +10,8 @@ import {
   type TimelineReading,
 } from '../domain/missionClock';
 
-const SURFACE = 'hsl(80, 14%, 99%)';
-const BAND = ['hsl(27, 16%, 93%)', 'hsl(27, 16%, 89%)'];
+const SURFACE = '#080f1e';
+const BAND = ['rgba(255, 255, 255, 0.04)', 'rgba(56, 189, 248, 0.09)'];
 const PHASE_NAME_EN: Record<string, string> = {
   Ascenso: 'Ascent',
   'Órbita de aparcamiento': 'Parking',
@@ -117,7 +117,7 @@ export function MissionTimeline({
                 y1="0"
                 x2="0"
                 y2="6"
-                stroke="hsl(220, 20%, 45%)"
+                stroke="#38bdf8"
                 strokeOpacity="0.22"
                 strokeWidth="2"
               />
@@ -131,8 +131,8 @@ export function MissionTimeline({
             width={Math.max(0, BASELINE_SHARE * iw - 2)}
             height={bandH}
             rx={6}
-            fill="hsl(80, 14%, 95%)"
-            stroke="hsl(27, 12%, 81%)"
+            fill="rgba(255, 255, 255, 0.03)"
+            stroke="rgba(255, 255, 255, 0.14)"
             strokeWidth={1}
           />
           <text x={pad + 6} y={bandTop - 6} className="fill-stem text-[11px] font-medium">
@@ -153,6 +153,8 @@ export function MissionTimeline({
                   height={bandH}
                   rx={4}
                   fill={BAND[i % 2]}
+                  stroke="rgba(255, 255, 255, 0.08)"
+                  strokeWidth={1}
                 >
                   <title>{p.name}</title>
                 </rect>
@@ -183,7 +185,7 @@ export function MissionTimeline({
             x2={x(0)}
             y1={bandTop - 2}
             y2={bandTop + bandH + 2}
-            stroke="hsl(228, 2%, 44%)"
+            stroke="rgba(148, 163, 184, 0.5)"
             strokeWidth={1}
           />
           <text x={x(0)} y={H - 26} textAnchor="middle" className="fill-stem text-[10px]">
@@ -196,7 +198,7 @@ export function MissionTimeline({
             x2={x(nowMet)}
             y1={bandTop - 4}
             y2={bandTop + bandH + 4}
-            stroke="hsl(223, 29%, 26%)"
+            stroke="#38bdf8"
             strokeWidth={2}
           />
           <text
@@ -214,7 +216,7 @@ export function MissionTimeline({
             x2={x(cursorMet)}
             y1={bandTop}
             y2={bandTop + bandH}
-            stroke="hsl(220, 20%, 45%)"
+            stroke="#e8702a"
             strokeWidth={2}
             pointerEvents="none"
           />
@@ -237,7 +239,7 @@ export function MissionTimeline({
                   cy={dotY}
                   r={isSel ? 7 : 5}
                   fill={STATUS_THEME[it.status].color}
-                  stroke={isSel ? 'hsl(223, 29%, 26%)' : SURFACE}
+                  stroke={isSel ? '#38bdf8' : SURFACE}
                   strokeWidth={2}
                 />
               </g>

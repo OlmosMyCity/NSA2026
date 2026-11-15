@@ -452,7 +452,10 @@ async function main() {
             : /lunar_base/i.test(dataUrl)
               ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
               : vehicleAt(t, events);
-    const shipName = landed ? "HLS · Landing Site, 86.8° S" : SHIP_LABEL[vehicle.id];
+    const shipName =
+      landed && mission.landing_site && !vehicleOverride
+        ? "HLS · Landing Site, 86.8° S"
+        : SHIP_LABEL[vehicle.id];
     if (shipName !== vehicleName) {
       vehicleName = shipName;
       label.ship.el.textContent = shipName;

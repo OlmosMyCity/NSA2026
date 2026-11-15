@@ -9,6 +9,7 @@ import { SkeletonCard } from '@/features/common/components/Skeleton';
 import { EmptyState } from '@/features/common/components/EmptyState';
 import { ConfirmModal } from '@/features/common/components/ConfirmModal';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { missionService } from '../services/missionService';
 import {
   Rocket,
   Search,
@@ -19,7 +20,51 @@ import {
   AlertCircle,
   RefreshCw,
   Orbit,
+  Sparkles,
 } from 'lucide-react';
+
+const SAMPLE_MISSIONS = [
+  {
+    name: 'ISS Expedition 72 — Low Earth Orbit',
+    description:
+      'Crew Dragon / Falcon 9 orbital operations at 420 km LEO aboard the International Space Station for circadian alignment and fluid shift tracking.',
+    environment: 'STATION' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 1,
+  },
+  {
+    name: 'Shackleton Base — Lunar Rover Traverse',
+    description:
+      'Starship HLS descent and pressurized rover EVA traverse along Shackleton Crater rim with real-time SpO2 and radiation shelter telemetry.',
+    environment: 'ROVER' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 1,
+  },
+  {
+    name: 'Ares I — Mars Transit & Deep Space Cruise',
+    description:
+      'Interplanetary transit trajectory toward Mars for deep-space GCR/SPE radiation countermeasures and autonomous biodosimetry.',
+    environment: 'MARS_BASE' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 4,
+  },
+  {
+    name: 'Europa Clipper — Jupiter Outer-System Cruise',
+    description:
+      'Outer-system deep-space trajectory toward Jupiter and Europa evaluating high-energy GCR shielding and autonomous DNA repair kinetics.',
+    environment: 'SPACECRAFT' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 5,
+  },
+  {
+    name: 'Vesper I — Venus Gravity-Assist Flyby',
+    description:
+      'Inner-system solar-flux flyby around Venus testing high-intensity SPE storm early warning and oral radioprotector schedules.',
+    environment: 'SPACECRAFT' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 2,
+  },
+];
 
 export function MissionsList() {
   const { user } = useAuth();
@@ -38,6 +83,29 @@ export function MissionsList() {
 
   const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleCreateSamples = async () => {
+    try {
+      setIsSeeding(true);
+      const existingNames = new Set(missions.map((m) => m.name.toLowerCase()));
+      for (const s of SAMPLE_MISSIONS) {
+        if (existingNames.has(s.name.toLowerCase())) continue;
+        await missionService.create({
+          name: s.name,
+          description: s.description,
+          environment: s.environment,
+          status: s.status,
+          startDate: new Date(Date.now() - s.daysAgo * 86400000).toISOString(),
+        });
+      }
+      await refetch();
+    } catch {
+      // ignore
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateFilters({ search: e.target.value });
@@ -79,17 +147,28 @@ export function MissionsList() {
             className="tactile-press flex items-center gap-2 py-2 text-xs font-semibold text-berry hover:text-blueberry"
           >
             <Orbit className="h-4 w-4" />
-            <span>3D NRHO Simulation</span>
+            <span>3D Mission Simulation</span>
           </Link>
 
           {isAdmin && (
-            <Link
-              href="/missions/new"
-              className="tactile-press flex items-center gap-2 rounded-sm bg-blueberry px-4 py-2 text-xs font-semibold text-plate hover:bg-berry"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Mission</span>
-            </Link>
+            <>
+              <button
+                type="button"
+                onClick={handleCreateSamples}
+                disabled={isSeeding}
+                className="tactile-press flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-blueberry hover:bg-surface-tinted disabled:opacity-50"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-berry" />
+                <span>{isSeeding ? 'Creating...' : 'Load Sample Missions'}</span>
+              </button>
+              <Link
+                href="/missions/new"
+                className="tactile-press flex items-center gap-2 rounded-sm bg-blueberry px-4 py-2 text-xs font-semibold text-plate hover:bg-berry"
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Mission</span>
+              </Link>
+            </>
           )}
         </div>
       </div>

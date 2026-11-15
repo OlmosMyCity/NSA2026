@@ -37,6 +37,8 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
   useEffect(() => {
     let alive = true;
+    setCrew([]);
+    setAstronautId(undefined);
     Promise.all([missionService.getById(missionId), astronautService.list({ missionId, limit: 50 })])
       .then(([m, c]) => {
         if (!alive) return;
