@@ -99,6 +99,9 @@ export function TrendsView() {
             How your indicators change over time. Subtle background bands mark nominal, watch, and
             critical thresholds.
           </p>
+          <p className="mt-1 text-xs text-stem">
+            Historical data, not your current status. Live vitals count as current for 15 minutes.
+          </p>
         </div>
         {crewSelector}
       </header>

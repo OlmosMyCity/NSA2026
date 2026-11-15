@@ -1,3 +1,4 @@
+import { evaluateFreshness } from "../../health/freshness.js";
 import { CrewTriageRecord, ICrewTriageRepository } from "../../../domain/repository/ICrewTriageRepository.js";
 
 /** `NO_DATA`: el tripulante no tiene lecturas. Nunca se presenta como `OK`. */
@@ -21,6 +22,9 @@ export interface CrewMemberTriage {
   alerts: string[];
   recommendation: string | null;
   lastReadingAt: string | null;
+  /** Los signos vivos de la última lectura siguen dentro de la ventana de vigencia. */
+  isFresh: boolean;
+  expiresAt: string | null;
   photoUrl: string | null;
 }
 
@@ -35,6 +39,8 @@ export interface TriageMetrics {
 export interface TriageOverview {
   crew: CrewMemberTriage[];
   metrics: TriageMetrics;
+  /** Hora del servidor, para que el cliente no dependa de su propio reloj. */
+  serverTime: string;
 }
 
 /** Sin datos va antes que nominal: no saber es más urgente que estar bien. */
@@ -56,8 +62,9 @@ function normalizeAlertMessages(alerts: unknown): string[] {
   });
 }
 
-function toCrewMemberTriage(record: CrewTriageRecord): CrewMemberTriage {
+function toCrewMemberTriage(record: CrewTriageRecord, now: Date): CrewMemberTriage {
   const latest = record.latestReading;
+  const freshness = evaluateFreshness(latest?.takenAt, now);
 
   return {
     astronautId: record.astronautId,
@@ -77,23 +84,30 @@ function toCrewMemberTriage(record: CrewTriageRecord): CrewMemberTriage {
     alerts: latest ? normalizeAlertMessages(latest.alerts) : [],
     recommendation: latest?.recommendation ?? null,
     lastReadingAt: latest ? latest.takenAt.toISOString() : null,
+    isFresh: freshness.isFresh,
+    expiresAt: freshness.expiresAt?.toISOString() ?? null,
     photoUrl: record.photoUrl,
   };
 }
 
 export class GetTriageOverviewUseCase {
-  constructor(private readonly crewRepo: ICrewTriageRepository) {}
+  constructor(
+    private readonly crewRepo: ICrewTriageRepository,
+    private readonly now: () => Date = () => new Date()
+  ) {}
 
   async execute(): Promise<TriageOverview> {
+    const now = this.now();
     const records = await this.crewRepo.listCrewWithLatestReading();
     const crew = records
-      .map(toCrewMemberTriage)
+      .map((record) => toCrewMemberTriage(record, now))
       .sort((a, b) => TRIAGE_PRIORITY[a.status] - TRIAGE_PRIORITY[b.status]);
 
     const count = (status: TriageStatus): number => crew.filter((c) => c.status === status).length;
 
     return {
       crew,
+      serverTime: now.toISOString(),
       metrics: {
         totalCrew: crew.length,
         criticalCount: count("CRITICAL"),

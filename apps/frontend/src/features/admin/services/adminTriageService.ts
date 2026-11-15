@@ -1,6 +1,7 @@
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
+import { evaluateFreshness } from '@/features/health/domain/freshness';
 import { CrewMemberTriage, FlightSurgeonMetrics, TriageStatus } from '../domain/types';
 
 class AdminTriageService {
@@ -20,6 +21,7 @@ class AdminTriageService {
           .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
 
         const latest = astroReadings[0];
+        const freshness = evaluateFreshness(latest?.takenAt, Date.now());
 
         return {
           astronautId: astro.id,
@@ -39,6 +41,8 @@ class AdminTriageService {
           alerts: latest ? latest.alerts : [],
           recommendation: latest ? latest.recommendation : null,
           lastReadingAt: latest ? latest.takenAt : null,
+          isFresh: freshness.phase === 'fresh' || freshness.phase === 'expiring',
+          expiresAt: freshness.expiresAt ? new Date(freshness.expiresAt).toISOString() : null,
           photoUrl: astro.photoUrl,
         };
       });

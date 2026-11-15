@@ -20,6 +20,9 @@ export interface CrewMemberTriage {
   alerts: string[];
   recommendation?: string | null;
   lastReadingAt: string | null;
+  /** Los signos vivos de la última lectura siguen dentro de la ventana de vigencia. */
+  isFresh: boolean;
+  expiresAt: string | null;
   photoUrl?: string | null;
 }
 

@@ -1,7 +1,7 @@
 # Supervisión desde Tierra y vigencia de datos (15 min)
 
 > Propuesta de diseño. Organiza la idea del rol "empresario" y del recordatorio de 15 minutos, la aterriza sobre el código real del repositorio y lista las correcciones que necesita `ZeroG_Vitals_Arquitectura_y_Reglas.md`.
-> Estado: **pendiente de decisión** en los puntos marcados con ⚖️ (sección 9).
+> Estado: decisiones D1–D7 **resueltas según la recomendación** de la sección 9. Bloques 0 (base), 1 (vigencia) y 2 (regla de aptitud) implementados; falta el bloque 3 (rol operador) y el pulido.
 
 ## Índice
 

@@ -413,6 +413,11 @@ export function FlightSurgeonConsole() {
                             })
                           : 'Never'}
                       </span>
+                      {astronaut.lastReadingAt && !astronaut.isFresh && (
+                        <span className="mt-0.5 block text-[11px] font-semibold text-status-caution">
+                          Expired
+                        </span>
+                      )}
                     </div>
                   </div>
 

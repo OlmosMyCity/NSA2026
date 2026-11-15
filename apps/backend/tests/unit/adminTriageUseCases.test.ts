@@ -99,6 +99,26 @@ describe("GetTriageOverviewUseCase", () => {
     });
   });
 
+  it("marca la vigencia de la última lectura con la hora del servidor", async () => {
+    const records = [record("a", reading(HealthStatus.OK)), record("b", null)];
+    const at = (iso: string) =>
+      new GetTriageOverviewUseCase(
+        repo({ listCrewWithLatestReading: vi.fn().mockResolvedValue(records) }),
+        () => new Date(iso)
+      ).execute();
+
+    const fresh = await at("2026-11-14T10:14:59Z");
+    expect(fresh.serverTime).toBe("2026-11-14T10:14:59.000Z");
+    expect(fresh.crew.find((c) => c.astronautId === "a")).toMatchObject({
+      isFresh: true,
+      expiresAt: "2026-11-14T10:15:00.000Z",
+    });
+    expect(fresh.crew.find((c) => c.astronautId === "b")).toMatchObject({ isFresh: false, expiresAt: null });
+
+    const expired = await at("2026-11-14T10:15:00Z");
+    expect(expired.crew.find((c) => c.astronautId === "a")?.isFresh).toBe(false);
+  });
+
   it("ordena crítico, vigilancia, sin datos y nominal", async () => {
     const useCase = new GetTriageOverviewUseCase(
       repo({

@@ -6,6 +6,10 @@ export const ENV = {
   SIGNAL_NOISE_URL: process.env.NEXT_PUBLIC_SIGNAL_NOISE_URL || 'http://localhost:8001',
   BIOPHYSICS_URL: process.env.NEXT_PUBLIC_BIOPHYSICS_URL || 'http://localhost:8002',
   USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true',
+  /** Minutos de vigencia de los signos vivos; debe coincidir con FRESHNESS_WINDOW_MIN del backend. */
+  FRESHNESS_WINDOW_MIN: Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN) > 0
+    ? Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN)
+    : 15,
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   SUPABASE_BUCKET: process.env.NEXT_PUBLIC_SUPABASE_BUCKET || 'artemis-assets',
