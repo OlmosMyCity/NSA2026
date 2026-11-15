@@ -20,7 +20,6 @@ import {
   type DigitalTwinState,
 } from '../services/digitalTwinService';
 import { StatusBadge } from './StatusBadge';
-import { SignalNoisePanel } from './SignalNoisePanel';
 import { INITIAL_WHAT_IF, ScenarioDock, type WhatIfState } from './twin/ScenarioDock';
 import { ZoneSelector } from './twin/ZoneSelector';
 import { ZoneInspector } from './twin/ZoneInspector';
@@ -400,8 +399,6 @@ export function HealthDashboard() {
           </a>
         </p>
       </section>
-
-      {latest && <SignalNoisePanel astronautId={latest.astronautId} latestReading={latest} />}
     </div>
   );
 }

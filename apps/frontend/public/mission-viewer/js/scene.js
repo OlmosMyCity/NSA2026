@@ -123,14 +123,14 @@ export function createScene(container, bodies) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x02040a);
 
-  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1e-5, 1e6);
+  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1e-5, 1e9);
   camera.up.set(0, 0, 1);
   camera.position.set(2, -2, 1);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.minDistance = 1e-3;
-  controls.maxDistance = 8e3;
+  controls.maxDistance = 2e6;
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.3));
   const sun = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -225,6 +225,36 @@ export function createScene(container, bodies) {
     saturn: makePlanet(56, [[0, "#e6d4a3"], [0.5, "#cdb47a"], [1, "#e9dcb8"]], [-3100, 1850, -520], true, true),
   };
 
+  const EXTRA_PALETTES = {
+    venus: { palette: [[0, "#e8c888"], [0.5, "#d4a962"], [1, "#f0d9a8"]], banded: true },
+    mars: { palette: [[0, "#d87c52"], [0.45, "#b34d2e"], [0.85, "#8f371e"], [1, "#e8ddd4"]], banded: false },
+    jupiter: { palette: [[0, "#d9c2a3"], [0.25, "#c68e5c"], [0.5, "#e6d6be"], [0.75, "#b56942"], [1, "#cbb192"]], banded: true },
+    saturn: { palette: [[0, "#e6d4a3"], [0.5, "#cdb47a"], [1, "#e9dcb8"]], banded: true },
+  };
+  const extraMeshes = {};
+  for (const b of bodies.extra || []) {
+    if (solarPlanets[b.id]) solarPlanets[b.id].visible = false;
+    const rUnits = b.radius_km / KM_PER_UNIT;
+    let mesh;
+    if (b.id === "sun") {
+      mesh = new THREE.Mesh(
+        zUpSphere(rUnits, 64),
+        new THREE.MeshBasicMaterial({ color: b.color || "#ffd166" })
+      );
+    } else {
+      const style = EXTRA_PALETTES[b.id] || {
+        palette: [[0, b.color || "#94a3b8"], [0.5, "#64748b"], [1, b.color || "#cbd5e1"]],
+        banded: false,
+      };
+      mesh = new THREE.Mesh(
+        zUpSphere(rUnits, 64),
+        new THREE.MeshStandardMaterial({ map: planetTexture(style.palette, style.banded), roughness: 0.85 })
+      );
+    }
+    scene.add(mesh);
+    extraMeshes[b.id] = mesh;
+  }
+
   function resize() {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
@@ -234,7 +264,7 @@ export function createScene(container, bodies) {
   setLineResolution(container.clientWidth, container.clientHeight);
   window.addEventListener("resize", resize);
 
-  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars, solarPlanets };
+  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars, solarPlanets, extraMeshes };
 }
 
 /** Matrix4 de Three.js a partir de una 3×3 por filas y una traslación. */

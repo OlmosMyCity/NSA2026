@@ -1,5 +1,3 @@
-import { ENV, isReachableServiceUrl } from '@/features/common/config/env';
-
 export type ScenarioId = 'NOMINAL' | 'FLARE_EARLY_WARNING' | 'PEAK_STORM_S4';
 export type ShieldingType = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
 
@@ -84,20 +82,6 @@ function buildTakeaway(
 
 class BiophysicsService {
   async getScenario(scenario: ScenarioId): Promise<BiophysicsScenarioResponse> {
-    if (isReachableServiceUrl(ENV.BIOPHYSICS_URL)) {
-      try {
-        const res = await fetch(`${ENV.BIOPHYSICS_URL}/api/biophysics/scenarios/${scenario}`, {
-          signal: AbortSignal.timeout(2500),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as BiophysicsScenarioResponse;
-          return { ...data, dataSource: 'fastapi-biophysics' };
-        }
-      } catch {
-        // Fallback to pre-computed static A100 files in public/biophysics/
-      }
-    }
-
     const [scenariosRes, dockingRes] = await Promise.all([
       fetch('/biophysics/data/kinetics_scenarios.json'),
       fetch('/biophysics/data/docking_catalog.json'),
