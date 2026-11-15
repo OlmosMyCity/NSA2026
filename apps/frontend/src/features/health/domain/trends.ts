@@ -4,7 +4,7 @@
  * window filtering, Y-axis domain framing, and threshold background band synthesis.
  */
 
-import { evaluateIndicator } from './evaluate';
+import { evaluateIndicator, nominalBounds } from './evaluate';
 import { INDICATORS } from './indicators';
 import type { HealthStatus, IndicatorId, IndicatorReading } from './types';
 
@@ -47,7 +47,7 @@ export function buildTrend(
 /** Computes the Y-axis domain covering observed data and the full green band with padding, clamped to physical limits. */
 export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [number, number] {
   const def = INDICATORS[indicator];
-  const { green } = def.thresholds;
+  const green = nominalBounds(indicator);
   const values = points.map((p) => p.value);
   let lo = Math.min(...values, green.min ?? Infinity);
   let hi = Math.max(...values, green.max ?? -Infinity);
@@ -58,19 +58,18 @@ export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [numb
 }
 
 /**
- * Generates contiguous green/amber/red bands covering `[lo, hi]` by uniformly sampling
- * the domain and merging adjacent intervals with identical status, avoiding manual
- * special-casing across open/closed threshold combinations.
+ * Green/amber/red bands covering `[lo, hi]`, computed directly from the indicator segments.
+ * Segments are contiguous, so the bands leave no gaps either.
  */
-export function statusBands(indicator: IndicatorId, [lo, hi]: [number, number], steps = 400): StatusBand[] {
+export function statusBands(indicator: IndicatorId, [lo, hi]: [number, number]): StatusBand[] {
   const bands: StatusBand[] = [];
-  const dv = (hi - lo) / steps;
-  for (let i = 0; i < steps; i++) {
-    const a = lo + i * dv;
-    const status = evaluateIndicator(indicator, a + dv / 2).status as StatusBand['status'];
-    const last = bands.at(-1);
-    if (last && last.status === status) last.to = a + dv;
-    else bands.push({ from: a, to: a + dv, status });
+  let from = -Infinity;
+  for (const s of INDICATORS[indicator].segments) {
+    const to = s.lt ?? s.lte ?? Infinity;
+    const a = Math.max(from, lo);
+    const b = Math.min(to, hi);
+    if (b > a) bands.push({ from: a, to: b, status: s.status });
+    from = to;
   }
   return bands;
 }

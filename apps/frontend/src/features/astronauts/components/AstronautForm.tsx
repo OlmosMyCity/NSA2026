@@ -21,11 +21,11 @@ import {
 
 interface AstronautFormProps {
   initialData?: Astronaut | null;
-  isEditing?: boolean;
 }
 
-export function AstronautForm({ initialData, isEditing = false }: AstronautFormProps) {
+export function AstronautForm({ initialData }: AstronautFormProps) {
   const router = useRouter();
+  const isEditing = !!initialData;
 
   const [name, setName] = useState(initialData?.name || '');
   const [role, setRole] = useState(initialData?.role || '');
@@ -39,38 +39,29 @@ export function AstronautForm({ initialData, isEditing = false }: AstronautFormP
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Lista de misiones: se carga una vez; si no hay misión elegida se toma la primera.
   useEffect(() => {
-    const loadMissions = async () => {
-      try {
-        const res = await missionService.list({ limit: 50 });
+    missionService
+      .list({ limit: 50 })
+      .then((res) => {
         setAvailableMissions(res.data);
-        if (!missionId && res.data.length > 0) {
-          setMissionId(res.data[0].id);
-        }
-      } catch {
-        // Silent fallback
-      }
-    };
-    loadMissions();
-  }, [missionId]);
+        setMissionId((current) => current || res.data[0]?.id || '');
+      })
+      .catch((err: unknown) =>
+        setErrorMessage(err instanceof Error ? err.message : 'Unable to load the mission list.'),
+      );
+  }, []);
 
-  useEffect(() => {
-    if (initialData) {
-      setName(initialData.name);
-      setRole(initialData.role);
-      setAge(initialData.age);
-      setMissionId(initialData.missionId);
-      setPreviewUrl(initialData.photoUrl || null);
-    }
-  }, [initialData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setSelectedFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    setPreviewUrl((previous) => {
+      if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
   };
 
   const handleRemoveImage = () => {

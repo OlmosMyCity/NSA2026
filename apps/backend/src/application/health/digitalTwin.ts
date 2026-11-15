@@ -13,6 +13,7 @@ import {
   type RadiationContext,
   type ZoneHazardLoad,
 } from "./hazards.js";
+import { classifyIndicator, type OverallHealthStatus, type RuleIndicator } from "./evaluateReading.js";
 
 /** Clinical status tier assigned to each indicator and aggregated per body zone. */
 export type ZoneHealthStatus = "green" | "amber" | "red" | "unknown";
@@ -129,11 +130,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 70,
     significantDelta: 6,
     extract: (r) => r.heartRateBpm,
-    evaluate: (v) => {
-      if (v > 100 || v < 40) return "red";
-      if ((v >= 90.01 && v <= 100) || (v >= 40 && v <= 49.99)) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("heartRate", v),
   },
   systolic: {
     id: "systolic",
@@ -143,11 +140,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 115,
     significantDelta: 7,
     extract: (r) => r.systolicMmHg,
-    evaluate: (v) => {
-      if (v >= 140 || v < 90) return "red";
-      if (v >= 130 && v < 140) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("systolic", v),
   },
   diastolic: {
     id: "diastolic",
@@ -157,11 +150,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 75,
     significantDelta: 5,
     extract: (r) => r.diastolicMmHg,
-    evaluate: (v) => {
-      if (v >= 90) return "red";
-      if (v >= 85 && v < 90) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("diastolic", v),
   },
   glucose: {
     id: "glucose",
@@ -171,11 +160,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 95,
     significantDelta: 12,
     extract: (r) => r.glucoseMgDl,
-    evaluate: (v) => {
-      if (v < 70 || v > 180) return "red";
-      if (v > 140 && v <= 180) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("glucose", v),
   },
   temperature: {
     id: "temperature",
@@ -185,11 +170,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 36.6,
     significantDelta: 0.3,
     extract: (r) => r.temperatureC,
-    evaluate: (v) => {
-      if (v > 38.0 || v < 35.5) return "red";
-      if ((v > 37.5 && v <= 38.0) || (v >= 35.5 && v < 36.1)) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("temperature", v),
   },
   spo2: {
     id: "spo2",
@@ -199,11 +180,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 98,
     significantDelta: 1.5,
     extract: (r) => r.spo2Pct,
-    evaluate: (v) => {
-      if (v < 92) return "red";
-      if (v >= 92 && v < 95) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("spo2", v),
   },
   sleepHours: {
     id: "sleepHours",
@@ -213,11 +190,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 8,
     significantDelta: 0.7,
     extract: (r) => r.sleepHours,
-    evaluate: (v) => {
-      if (v < 6.0) return "red";
-      if (v >= 6.0 && v < 7.0) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("sleepHours", v),
   },
   mood: {
     id: "mood",
@@ -227,11 +200,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     nominalTarget: 5,
     significantDelta: 0.8,
     extract: (r) => r.mood,
-    evaluate: (v) => {
-      if (v <= 2) return "red";
-      if (v < 4) return "amber";
-      return "green";
-    },
+    evaluate: (v) => bandStatus("mood", v),
   },
   resistanceExercise: {
     id: "resistanceExercise",
@@ -248,6 +217,17 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
     },
   },
 };
+
+/** Los indicadores medidos usan la tabla clínica única (HEALTH_BANDS) de evaluateReading. */
+const BAND_TO_ZONE: Record<OverallHealthStatus, Exclude<ZoneHealthStatus, "unknown">> = {
+  OK: "green",
+  WARNING: "amber",
+  CRITICAL: "red",
+};
+
+function bandStatus(indicator: RuleIndicator, value: number): Exclude<ZoneHealthStatus, "unknown"> {
+  return BAND_TO_ZONE[classifyIndicator(indicator, value)];
+}
 
 const ZONE_INDICATORS: Record<BodyZoneId, IndicatorId[]> = {
   heart: ["heartRate", "systolic", "diastolic"],

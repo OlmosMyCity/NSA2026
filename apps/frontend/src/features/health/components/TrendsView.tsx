@@ -17,6 +17,7 @@ import { STATUS_THEME } from '../domain/status-theme';
 import { buildTrend, RANGE_PRESETS, summarizeTrend, type RangeDays } from '../domain/trends';
 import type { IndicatorId } from '../domain/types';
 import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
+import { NoMonitoredAstronaut } from './NoMonitoredAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
 import { StatusBadge } from './StatusBadge';
 import { TrendChart } from './TrendChart';
@@ -37,6 +38,7 @@ export function TrendsView() {
     [readings, days, now],
   ) as Record<IndicatorId, ReturnType<typeof buildTrend>>;
 
+  if (!isResolving && !astronautId) return <NoMonitoredAstronaut />;
   if (isResolving || isLoading) return <Skeleton className="h-[480px] w-full rounded-lg" />;
 
   if (error) {

@@ -7,7 +7,7 @@ export default function NewMissionPage() {
     <AppLayout>
       <RouteGuard requiredRole="ADMIN">
         <div className="py-4 sm:py-8">
-          <MissionForm isEditing={false} />
+          <MissionForm />
         </div>
       </RouteGuard>
     </AppLayout>

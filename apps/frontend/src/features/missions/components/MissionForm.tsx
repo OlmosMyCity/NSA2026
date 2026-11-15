@@ -26,11 +26,11 @@ import {
 
 interface MissionFormProps {
   initialData?: Mission | null;
-  isEditing?: boolean;
 }
 
-export function MissionForm({ initialData, isEditing = false }: MissionFormProps) {
+export function MissionForm({ initialData }: MissionFormProps) {
   const router = useRouter();
+  const isEditing = !!initialData;
 
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -58,24 +58,16 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Los campos ya se siembran desde initialData; aquí solo se recupera la configuración de
+  // simulación (vehículo y trayectoria) que se guarda por misión en este navegador.
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.name);
-      setDescription(initialData.description);
-      setEnvironment(initialData.environment);
-      setStatus(initialData.status);
-      setStartDate(new Date(initialData.startDate).toISOString().split('T')[0]);
-      if (initialData.endDate) {
-        setEndDate(new Date(initialData.endDate).toISOString().split('T')[0]);
-      }
-      setPreviewUrl(initialData.patchUrl || null);
-      const savedSim = getMissionSimConfig(initialData.id);
-      if (savedSim) {
-        setVehicleId(savedSim.vehicleId || 'auto');
-        setTrajectoryPreset(savedSim.trajectoryPreset || 'auto');
-        setCustomTrajectoryJson(savedSim.customTrajectoryJson ?? null);
-        setCustomTrajectoryName(savedSim.customFileName ?? null);
-      }
+    if (!initialData) return;
+    const savedSim = getMissionSimConfig(initialData.id);
+    if (savedSim) {
+      setVehicleId(savedSim.vehicleId || 'auto');
+      setTrajectoryPreset(savedSim.trajectoryPreset || 'auto');
+      setCustomTrajectoryJson(savedSim.customTrajectoryJson ?? null);
+      setCustomTrajectoryName(savedSim.customFileName ?? null);
     }
   }, [initialData]);
 
@@ -84,8 +76,10 @@ export function MissionForm({ initialData, isEditing = false }: MissionFormProps
     if (!file) return;
 
     setSelectedFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    setPreviewUrl((previous) => {
+      if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
   };
 
   const handleRemoveImage = () => {

@@ -6,10 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '@/features/common/services/httpClient';
 import { AlertCircle } from 'lucide-react';
+import { safeReturnUrl } from '../utils/safeReturnUrl';
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const returnUrl = safeReturnUrl(searchParams.get('returnUrl'));
   const { login, isAuthenticated, user } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -27,9 +29,10 @@ export function LoginForm() {
   // Cada rol aterriza en su vista: el operador no tiene panel de salud propio.
   useEffect(() => {
     if (isAuthenticated) {
-      router.push(user?.role === 'OPERATOR' ? '/operator' : '/');
+      // Un returnUrl explícito manda; si no, cada rol va a su vista por defecto.
+      router.push(returnUrl !== '/' ? returnUrl : user?.role === 'OPERATOR' ? '/operator' : '/');
     }
-  }, [isAuthenticated, user?.role, router]);
+  }, [isAuthenticated, user?.role, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

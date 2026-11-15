@@ -110,6 +110,17 @@ const DEFAULT_DAILY_TASKS: Omit<RoutineTask, 'completed' | 'completedAt'>[] = [
   },
 ];
 
+/** Fecha local YYYY-MM-DD: el día cambia a la medianoche del usuario, no en UTC. */
+function localDate(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Rutina diaria y rachas. El backend todavía no tiene endpoint para esto, así que se
+ * guarda por astronauta en localStorage (solo en este navegador).
+ */
 class RoutineService {
   private getStorageKey(astronautId: string): string {
     return `artemis_routine_${astronautId}`;
@@ -120,7 +131,7 @@ class RoutineService {
    * on date rollover and resetting the streak if yesterday's checklist went unfinished.
    */
   getRoutineState(astronautId: string): AstronautRoutineState {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDate();
     const key = this.getStorageKey(astronautId);
 
     if (typeof window === 'undefined') {
@@ -139,7 +150,7 @@ class RoutineService {
 
       // Roll over daily tasks on date change while preserving an active streak
       if (parsed.date !== today) {
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const yesterday = localDate(-1);
         let newStreak = parsed.streakDays;
 
         // Reset streak if yesterday was not completed or more than one day elapsed
@@ -241,27 +252,15 @@ class RoutineService {
     return newState;
   }
 
+  /** Estado inicial real: sin racha, sin tareas hechas y sin insignias. */
   private buildInitialState(astronautId: string, today: string): AstronautRoutineState {
-    // Seed demo astronauts with an initial 4-day streak
-    const initialStreak = 4;
-    const badges = INITIAL_BADGES.map((b) => {
-      if (initialStreak >= b.requiredStreak) {
-        return { ...b, unlockedAt: new Date(Date.now() - 86400000).toISOString() };
-      }
-      return b;
-    });
-
     return {
       astronautId,
       date: today,
-      tasks: DEFAULT_DAILY_TASKS.map((t, idx) => ({
-        ...t,
-        completed: idx < 2, // Pre-complete the first 2 tasks
-        completedAt: idx < 2 ? new Date().toISOString() : null,
-      })),
-      streakDays: initialStreak,
-      lastCompletedDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-      badges,
+      tasks: DEFAULT_DAILY_TASKS.map((t) => ({ ...t, completed: false, completedAt: null })),
+      streakDays: 0,
+      lastCompletedDate: null,
+      badges: INITIAL_BADGES,
     };
   }
 }

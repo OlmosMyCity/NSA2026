@@ -52,10 +52,23 @@ export interface HealthReadingInput {
   takenAt?: string;
 }
 
+/** Alerta con el formato que persiste el backend en `HealthReading.alerts`. */
+export interface HealthAlert {
+  indicator: string;
+  level: Exclude<ApiHealthStatus, 'OK'>;
+  /** Protocolo médico del catálogo del backend (p. ej. PROTO_HYPOXIA); la vista previa local no lo calcula. */
+  protocolId?: string;
+  message: string;
+  value: number;
+}
+
+/** Signos vitales medidos (mismos campos que el backend). */
+export type Vitals = Omit<HealthReadingInput, 'astronautId' | 'notes' | 'takenAt'>;
+
 /** Deterministic clinical assessment produced for a reading. */
 export interface EvaluationResult {
   status: ApiHealthStatus;
-  alerts: string[];
+  alerts: HealthAlert[];
   recommendation: string;
 }
 
@@ -99,20 +112,15 @@ export type SpaceHazard =
   | 'gravity'
   | 'hostileEnvironment';
 
-/** Closed numeric interval `[min, max]`; an `undefined` bound represents an open-ended limit. */
-export interface Range {
-  min?: number;
-  max?: number;
-}
-
 /**
- * Deterministic threshold specification for an indicator.
- * Values evaluate to `green` inside `green`, `amber` inside any interval in `amber`,
- * and `red` outside both.
+ * Segment of an indicator scale. Segments are ordered ascending and the first one whose upper
+ * bound contains the value wins (`lt` excludes the bound, `lte` includes it). The last segment
+ * has no bound, so the table cannot leave gaps.
  */
-export interface IndicatorThresholds {
-  green: Range;
-  amber: Range[];
+export interface StatusSegment {
+  status: Exclude<HealthStatus, 'unknown'>;
+  lt?: number;
+  lte?: number;
 }
 
 /** Static metadata, zone mapping, HRP hazard links, and threshold bounds for an indicator. */
@@ -122,7 +130,8 @@ export interface IndicatorDefinition {
   unit: string;
   zone: BodyZoneId;
   hazards: SpaceHazard[];
-  thresholds: IndicatorThresholds;
+  /** Copy of the backend HEALTH_BANDS; see apps/backend/tests/unit/healthRulesParity.test.ts. */
+  segments: StatusSegment[];
   /** Step granularity and plausible physiological limits for form inputs and chart axes. */
   input: { min: number; max: number; step: number };
 }

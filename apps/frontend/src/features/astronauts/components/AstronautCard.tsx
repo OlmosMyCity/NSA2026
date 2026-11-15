@@ -20,9 +20,9 @@ interface AstronautCardProps {
 }
 
 export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const { user, isAdmin } = useAuth();
   const canEditBiometrics = isAdmin || user?.role === 'USER';
+  const canLogReading = isAdmin || user?.role === 'USER';
   const faceSamplesCount = astronaut._count?.faceSamples ?? 0;
 
   return (
@@ -92,13 +92,17 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
       </div>
 
       <div className="mt-6 flex items-center justify-between text-xs">
-        <Link
-          href={`/readings/new?astronautId=${astronaut.id}`}
-          className="tactile-press inline-flex items-center gap-1.5 font-semibold text-blueberry hover:text-berry"
-        >
-          <HeartPulse className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
-          <span>Log Biometrics</span>
-        </Link>
+        {canLogReading ? (
+          <Link
+            href={`/readings/new?astronautId=${astronaut.id}`}
+            className="tactile-press inline-flex items-center gap-1.5 font-semibold text-blueberry hover:text-berry"
+          >
+            <HeartPulse className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+            <span>Log Biometrics</span>
+          </Link>
+        ) : (
+          <span />
+        )}
 
         {canEditBiometrics && (
           <div className="flex items-center gap-3">

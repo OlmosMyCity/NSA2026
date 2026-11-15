@@ -1,40 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { RouteGuard } from '@/features/auth/components/RouteGuard';
 import { AstronautForm } from '@/features/astronauts/components/AstronautForm';
 import { astronautService } from '@/features/astronauts/services/astronautService';
-import { Astronaut } from '@/features/astronauts/domain/types';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
+import { useAsync } from '@/features/common/hooks/useAsync';
 import { AlertCircle } from 'lucide-react';
 
 export default function EditAstronautPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [astronaut, setAstronaut] = useState<Astronaut | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const fetchAstronaut = async () => {
-      try {
-        setIsLoading(true);
-        const data = await astronautService.getById(id);
-        setAstronaut(data);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to load astronaut.';
-        setError(msg);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAstronaut();
-  }, [id]);
+  const { data: astronaut, isLoading, error } = useAsync(() => astronautService.getById(id), [id], 'Failed to load astronaut.');
 
   return (
     <AppLayout>
@@ -59,7 +39,7 @@ export default function EditAstronautPage() {
               </Link>
             </div>
           ) : (
-            <AstronautForm initialData={astronaut} isEditing={true} />
+            <AstronautForm initialData={astronaut} />
           )}
         </div>
       </RouteGuard>
