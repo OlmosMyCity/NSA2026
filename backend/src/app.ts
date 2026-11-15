@@ -25,6 +25,7 @@ import { createRateLimiter } from "./security/rateLimiter.js";
 function buildAllowedOrigins(): Set<string> {
   const origins = new Set<string>([
     "https://orbvital-nsa2026.vercel.app",
+    "https://orbvital-nsa2026-omega.vercel.app",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",

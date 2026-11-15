@@ -1,0 +1,7 @@
+{
+  "name": "orbvital-nsa2026",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ]
+}
