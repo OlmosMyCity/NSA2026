@@ -1,6 +1,5 @@
 import { ENV, isReachableServiceUrl } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
-import { mockDb } from '@/features/common/mocks/mockDb';
 import type {
   AstronautTelemetryFrame,
   CameraMode,
@@ -107,56 +106,6 @@ export async function ingestVisionTelemetry(
     takenAt: new Date().toISOString(),
   };
 
-  if (ENV.USE_MOCKS) {
-    const bpm = payload.heartRateBpm > 0 ? Math.round(payload.heartRateBpm) : 72;
-    const mood = Math.min(5, Math.max(1, Math.round(((payload.moodValence + 1) / 2) * 4 + 1)));
-    const sleepHours = Number((4 + (payload.sleepQualityScore / 100) * 5).toFixed(2));
-    const evaluation = mockDb.evaluateReading({
-      heartRateBpm: bpm,
-      systolicMmHg: 118,
-      diastolicMmHg: 76,
-      glucoseMgDl: 95,
-      temperatureC: 36.6,
-      spo2Pct: 98,
-      sleepHours,
-      mood,
-    });
-    const now = new Date().toISOString();
-    const id = `vision-${Date.now()}`;
-    mockDb.readings.unshift({
-      id,
-      astronautId,
-      heartRateBpm: bpm,
-      systolicMmHg: 118,
-      diastolicMmHg: 76,
-      glucoseMgDl: 95,
-      temperatureC: 36.6,
-      spo2Pct: 98,
-      sleepHours,
-      mood,
-      status: evaluation.status,
-      alerts: evaluation.alerts,
-      recommendation: evaluation.recommendation,
-      notes: undefined,
-      takenAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
-    mockDb.save();
-    return {
-      reading: {
-        id,
-        astronautId,
-        heartRateBpm: bpm,
-        status: evaluation.status,
-        mood,
-        sleepHours,
-        takenAt: now,
-      },
-      incidentsTriggered: evaluation.alerts.length,
-      derivedVitals: { heartRateBpm: bpm, mood, sleepHours },
-    };
-  }
-
+  // En modo mock responde el backend simulado (features/common/mocks), igual que el resto.
   return httpClient.post<VisionIngestResponse>('/readings/vision-ingest', payload);
 }

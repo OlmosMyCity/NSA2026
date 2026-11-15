@@ -372,6 +372,50 @@ const routes: Array<[string, RegExp, Handler]> = [
     },
   ],
 
+  // Ingesta de Vision AI (IngestVisionTelemetryUseCase): deriva ánimo y sueño de la telemetría,
+  // conserva el resto de signos de la última lectura y evalúa con la tabla clínica común.
+  [
+    'POST',
+    /^\/readings\/vision-ingest$/,
+    (ctx) => {
+      const user = requireUser(ctx);
+      const { body } = ctx;
+      const astronautId = str(body.astronautId);
+      if (!astronautId) fail(400, 'The astronaut ID is required.');
+      if (user.role !== 'ADMIN' && ownAstronautId(user.id) !== astronautId) fail(403, "You cannot log telemetry for another crew member.");
+      findActive(db.astronauts, astronautId!, 'Astronaut');
+      const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+      const previous = latestReading(astronautId!);
+      const valence = num(body.moodValence);
+      const stress = num(body.stressIndex);
+      const mood =
+        valence !== undefined
+          ? clamp(Math.round(((clamp(valence, -1, 1) + 1) / 2) * 4 + 1 - (stress !== undefined ? (clamp(stress, 0, 100) / 100) * 1.2 : 0)), 1, 5)
+          : stress !== undefined
+            ? clamp(Math.round(5 - (clamp(stress, 0, 100) / 100) * 4), 1, 5)
+            : previous?.mood ?? 4;
+      const quality = num(body.sleepQualityScore);
+      const sleepHours = quality !== undefined ? Number((4 + (clamp(quality, 0, 100) / 100) * 5).toFixed(2)) : previous?.sleepHours ?? 7.5;
+      const heartRateBpm = Math.round(num(body.heartRateBpm) || previous?.heartRateBpm || 72);
+      const vitals: Vitals = {
+        heartRateBpm,
+        systolicMmHg: previous?.systolicMmHg ?? 118,
+        diastolicMmHg: previous?.diastolicMmHg ?? 76,
+        glucoseMgDl: previous?.glucoseMgDl ?? 95,
+        temperatureC: previous?.temperatureC ?? 36.6,
+        spo2Pct: previous?.spo2Pct ?? 98,
+        sleepHours,
+        mood,
+      };
+      const notes = `[Vision AI Auto-Sync] Cam: ${str(body.cameraMode) ?? '—'} | Mood: ${str(body.dominantMood) ?? '—'}`;
+      const reading = buildReading(newId('vision'), astronautId!, vitals, str(body.takenAt) ?? now(), notes);
+      db.readings.push(reading);
+      persist();
+      return [201, { reading, incidentsTriggered: reading.alerts.length, derivedVitals: { heartRateBpm, mood, sleepHours } }];
+    },
+  ],
+
   // Consola del Flight Surgeon (mismo contrato que AdminTriageController)
   [
     'GET',
