@@ -223,40 +223,44 @@ export function VisionBiometricsPanel() {
 
   // WebSocket connection to ai/vision with automatic HTTP streaming fallback
   useEffect(() => {
-    // Modo mock: telemetría simulada en el navegador, sin conectar con ai/vision (:8000)
-    if (ENV.USE_MOCKS) {
-      const sim = new MockVisionSimulator();
-      mockSimRef.current = sim;
-      setWsStatus('mock-live');
-      const MOCK_FRAME_MS = 100; // ~10 FPS
-      const mockLoop = setInterval(() => {
-        if (!streamingRef.current) return;
-        const frame = sim.next({
-          camera_mode: cameraModeRef.current,
-          context: contextRef.current,
-          sim_bpm: simBpmRef.current,
-          sim_state: simStateRef.current,
-          video: sourceRef.current === 'webcam' ? webcamVideoRef.current : null,
-        });
-        latestTelemetryRef.current = frame;
-        setTelemetry(frame);
-      }, MOCK_FRAME_MS);
-      return () => {
-        clearInterval(mockLoop);
-        mockSimRef.current = null;
-      };
-    }
-
     const wsUrl = getVisionWsUrl();
-    if (!wsUrl) {
-      setWsStatus('offline');
-      return;
-    }
 
     let unmounted = false;
-    let mode: 'ws' | 'http' = 'ws';
+    let mode: 'ws' | 'http' | 'mock' = 'ws';
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let wsOpened = false;
+    let lastMockAt = 0;
+
+    // Modo mock: si ai/vision (:8000) no responde, se usa telemetría simulada en el
+    // navegador. Si el servicio está corriendo, se usa el real (cámara incluida).
+    const MOCK_FRAME_MS = 100; // ~10 FPS
+    const MOCK_PROBE_MS = 10_000;
+
+    function startMock() {
+      if (unmounted || mode === 'mock') return;
+      mode = 'mock';
+      if (!mockSimRef.current) mockSimRef.current = new MockVisionSimulator();
+      awaitingRef.current = false;
+      setWsStatus('mock-live');
+      if (wsUrl) reconnectTimer = setTimeout(probeRealService, MOCK_PROBE_MS);
+    }
+
+    async function probeRealService() {
+      if (unmounted || mode !== 'mock') return;
+      const health = await checkVisionHealth();
+      if (unmounted || mode !== 'mock') return;
+      if (health?.status === 'ok') {
+        mockSimRef.current = null;
+        if (wsUrl!.includes('.vercel.app')) {
+          mode = 'http';
+          setWsStatus('http-live');
+        } else {
+          connectWs();
+        }
+      } else {
+        reconnectTimer = setTimeout(probeRealService, MOCK_PROBE_MS);
+      }
+    }
 
     async function fallbackToHttpOrRetry() {
       if (unmounted) return;
@@ -266,6 +270,8 @@ export function VisionBiometricsPanel() {
         mode = 'http';
         awaitingRef.current = false;
         setWsStatus('http-live');
+      } else if (ENV.USE_MOCKS) {
+        startMock();
       } else {
         setWsStatus('offline');
         reconnectTimer = setTimeout(connectWs, 3000);
@@ -317,8 +323,13 @@ export function VisionBiometricsPanel() {
       };
     }
 
-    const isVercelServerless = wsUrl.includes('.vercel.app');
-    if (isVercelServerless) {
+    if (!wsUrl) {
+      if (ENV.USE_MOCKS) {
+        startMock();
+      } else {
+        setWsStatus('offline');
+      }
+    } else if (wsUrl.includes('.vercel.app')) {
       void fallbackToHttpOrRetry();
     } else {
       connectWs();
@@ -326,6 +337,23 @@ export function VisionBiometricsPanel() {
 
     const frameLoop = setInterval(() => {
       if (!streamingRef.current || awaitingRef.current) return;
+
+      if (mode === 'mock') {
+        const sim = mockSimRef.current;
+        const now = Date.now();
+        if (!sim || now - lastMockAt < MOCK_FRAME_MS) return;
+        lastMockAt = now;
+        const frame = sim.next({
+          camera_mode: cameraModeRef.current,
+          context: contextRef.current,
+          sim_bpm: simBpmRef.current,
+          sim_state: simStateRef.current,
+          video: sourceRef.current === 'webcam' ? webcamVideoRef.current : null,
+        });
+        latestTelemetryRef.current = frame;
+        setTelemetry(frame);
+        return;
+      }
 
       if (mode === 'ws') {
         const ws = wsRef.current;
@@ -430,6 +458,7 @@ export function VisionBiometricsPanel() {
 
     return () => {
       unmounted = true;
+      mockSimRef.current = null;
       clearInterval(frameLoop);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (wsRef.current) {
