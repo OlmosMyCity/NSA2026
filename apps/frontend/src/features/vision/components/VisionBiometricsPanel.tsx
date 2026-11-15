@@ -493,7 +493,7 @@ export function VisionBiometricsPanel() {
               <select
                 value={astronautId ?? ''}
                 onChange={(e) => setAstronautId(e.target.value)}
-                className="h-9 rounded-lg border border-line bg-surface px-2.5 text-xs font-semibold text-blueberry"
+                className="twin-select w-auto min-w-[9rem] font-semibold"
               >
                 {crew.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -505,12 +505,12 @@ export function VisionBiometricsPanel() {
           )}
 
           <span
-            className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold ${
+            className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
               wsStatus === 'connected' || wsStatus === 'http-live'
-                ? 'border-status-nominal/40 bg-status-nominal/10 text-status-nominal'
+                ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
                 : wsStatus === 'connecting'
-                ? 'border-status-caution/40 bg-status-caution/10 text-status-caution'
-                : 'border-status-critical/40 bg-status-critical/10 text-status-critical'
+                ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
+                : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
             }`}
           >
             {wsStatus === 'connected' || wsStatus === 'http-live' ? (
@@ -545,11 +545,11 @@ export function VisionBiometricsPanel() {
               <span className="font-semibold text-blueberry">
                 30s DB Transaction Pipeline
               </span>
-              <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[11px] text-stem">
+              <span className="rounded-pill border border-line bg-canvas/80 px-2 py-0.5 font-mono text-[11px] text-blueberry">
                 {autoSyncEnabled ? `Next commit in ${countdownSec}s` : 'Auto-sync paused'}
               </span>
               {syncCount > 0 && (
-                <span className="rounded-pill bg-status-nominal/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-status-nominal">
+                <span className="rounded-pill border border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] px-2 py-0.5 font-mono text-[11px] font-semibold text-status-nominal">
                   {syncCount} tx committed
                 </span>
               )}
@@ -599,11 +599,11 @@ export function VisionBiometricsPanel() {
       </section>
 
       {wsStatus === 'offline' && (
-        <div className="rounded-lg border border-status-caution/40 bg-status-caution/10 p-4 text-xs text-blueberry">
-          <p className="font-semibold">Vision AI service is not reachable at localhost:8000</p>
+        <div className="rounded-lg border border-[var(--status-caution-border)] bg-slate-950/90 p-4 text-xs text-blueberry backdrop-blur-md">
+          <p className="font-semibold text-status-caution">Vision AI service is not reachable</p>
           <p className="mt-1 text-stem">
-            Start it with:{' '}
-            <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[11px]">
+            If running locally, start it with:{' '}
+            <code className="rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] text-blueberry">
               cd ai/vision &amp;&amp; .venv/bin/python run.py --port 8000
             </code>
           </p>
@@ -611,7 +611,7 @@ export function VisionBiometricsPanel() {
       )}
 
       {webcamError && (
-        <div className="rounded-lg border border-status-critical/40 bg-status-critical/10 p-3 text-xs text-status-critical">
+        <div className="rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 p-3 text-xs font-medium text-status-critical backdrop-blur-md">
           {webcamError}
         </div>
       )}
@@ -619,7 +619,7 @@ export function VisionBiometricsPanel() {
       {telemetry && telemetry.alerts.length > 0 && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-lg border border-status-critical/50 bg-status-critical/10 px-4 py-3 text-xs font-semibold text-status-critical"
+          className="flex items-center gap-2 rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 px-4 py-3 text-xs font-semibold text-status-critical backdrop-blur-md"
         >
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Active Vision Alerts: {telemetry.alerts.join(' · ')}</span>
@@ -688,7 +688,7 @@ export function VisionBiometricsPanel() {
                   setSource(e.target.value as VisionSource);
                   handleResetPipeline();
                 }}
-                className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-xs font-semibold text-blueberry"
+                className="twin-select font-semibold"
               >
                 <option value="simulator">Synthetic Astronaut</option>
                 <option value="webcam">Local Webcam</option>
@@ -700,7 +700,7 @@ export function VisionBiometricsPanel() {
               <select
                 value={cameraMode}
                 onChange={(e) => setCameraMode(e.target.value as CameraMode)}
-                className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-xs font-semibold text-blueberry"
+                className="twin-select font-semibold"
               >
                 <option value="rgb_pos">RGB (POS)</option>
                 <option value="rgb_chrom">RGB (CHROM)</option>
@@ -713,7 +713,7 @@ export function VisionBiometricsPanel() {
               <select
                 value={context}
                 onChange={(e) => setContext(e.target.value as MonitoringContext)}
-                className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-xs font-semibold text-blueberry"
+                className="twin-select font-semibold"
               >
                 <option value="cabin_active">Cabin Active</option>
                 <option value="sleep_pod">Sleep Pod</option>
