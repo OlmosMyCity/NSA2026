@@ -56,21 +56,22 @@ enum IncidentStatus {
 }
 
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   name         String
   passwordHash String
-  role         Role        @default(USER)
-  state        UserState   @default(ACTIVE)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  role         Role      @default(USER)
+  state        UserState @default(ACTIVE)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  missions     Mission[]   @relation("MissionCreator")
-  astronaut    Astronaut?
-  acknowledgedIncidents Incident[] @relation("IncidentAcknowledger")
-  closedIncidents       Incident[] @relation("IncidentCloser")
-  issuedDirectives      Directive[] @relation("DirectiveIssuer")
+  missions              Mission[]       @relation("MissionCreator")
+  astronaut             Astronaut?
+  acknowledgedIncidents Incident[]      @relation("IncidentAcknowledger")
+  closedIncidents       Incident[]      @relation("IncidentCloser")
+  issuedDirectives      Directive[]     @relation("DirectiveIssuer")
+  invalidatedReadings   HealthReading[] @relation("ReadingInvalidator")
 
   @@map("users")
 }
@@ -90,47 +91,48 @@ model Mission {
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
 
-  astronauts  Astronaut[]
-  incidents   Incident[]
+  astronauts Astronaut[]
+  incidents  Incident[]
 
   @@map("missions")
 }
 
 model Astronaut {
-  id          String          @id @default(uuid())
-  missionId   String
-  mission     Mission         @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  userId      String?         @unique
-  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name        String
-  role        String
-  age         Int
-  photoUrl    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  deletedAt   DateTime?
+  id        String    @id @default(uuid())
+  missionId String
+  mission   Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId    String?   @unique
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  role      String
+  age       Int
+  photoUrl  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  readings    HealthReading[]
-  incidents   Incident[]
-  directives  Directive[]
+  readings   HealthReading[]
+  incidents  Incident[]
+  directives Directive[]
 
   @@map("astronauts")
 }
 
 model HealthReading {
-  id             String       @id @default(uuid())
-  astronautId    String
-  astronaut      Astronaut    @relation(fields: [astronautId], references: [id], onDelete: Cascade)
-  
+  id          String    @id @default(uuid())
+  astronautId String
+  // P6: sin borrado físico. Un astronauta con lecturas no se puede borrar (se desactiva con deletedAt).
+  astronaut   Astronaut @relation(fields: [astronautId], references: [id], onDelete: Restrict)
+
   // 7 Indicadores Vitales (NASA Human Research Program)
-  heartRateBpm   Int
-  systolicMmHg   Int
-  diastolicMmHg  Int
-  glucoseMgDl    Float
-  temperatureC   Float
-  spo2Pct        Float
-  sleepHours     Float
-  mood           Int
+  heartRateBpm  Int
+  systolicMmHg  Int
+  diastolicMmHg Int
+  glucoseMgDl   Float
+  temperatureC  Float
+  spo2Pct       Float
+  sleepHours    Float
+  mood          Int
 
   // Diagnóstico clínico computado por evaluateReading
   status         HealthStatus @default(OK)
@@ -138,12 +140,26 @@ model HealthReading {
   recommendation String?
   notes          String?
 
-  takenAt        DateTime     @default(now())
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  takenAt   DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Obsoleto: usar isValid. Se conserva solo por las filas antiguas.
+  deletedAt DateTime?
+
+  // P1: los datos de salud solo se agregan. Una lectura errónea se invalida;
+  // una corrección es una lectura nueva que apunta a la que reemplaza.
+  isValid           Boolean        @default(true)
+  invalidatedAt     DateTime?
+  invalidatedReason String?
+  invalidatedById   String?
+  invalidatedBy     User?          @relation("ReadingInvalidator", fields: [invalidatedById], references: [id], onDelete: SetNull)
+  supersedesId      String?        @unique
+  supersedes        HealthReading? @relation("ReadingCorrection", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy      HealthReading? @relation("ReadingCorrection")
 
   @@index([astronautId, takenAt])
+  @@index([astronautId, isValid, takenAt])
+  @@index([invalidatedById])
   @@map("health_readings")
 }
 
@@ -174,7 +190,7 @@ model Incident {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  directives       Directive[]
+  directives Directive[]
 
   @@index([status, type, astronautId])
   @@index([astronautId, openedAt])
@@ -197,4 +213,3 @@ model Directive {
   @@index([astronautId, createdAt])
   @@map("directives")
 }
-

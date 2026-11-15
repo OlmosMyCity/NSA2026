@@ -120,7 +120,7 @@ export class IngestVisionTelemetryUseCase {
       }
 
       const latest = await tx.healthReading.findFirst({
-        where: { astronautId: dto.astronautId, deletedAt: null },
+        where: { astronautId: dto.astronautId, isValid: true },
         orderBy: { takenAt: "desc" },
       });
 

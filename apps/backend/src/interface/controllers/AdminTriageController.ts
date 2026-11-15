@@ -44,7 +44,7 @@ export class AdminTriageController {
               },
             },
             readings: {
-              where: { deletedAt: null },
+              where: { isValid: true },
               orderBy: { takenAt: "desc" },
               take: 1,
             },
