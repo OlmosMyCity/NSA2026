@@ -166,7 +166,7 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
           {evaluation && getStatusBadge(evaluation.status)}
         </div>
         <p className="mt-1.5 text-sm text-stem">
-          Enter physiological indicators to compute the current onboard clinical assessment.
+          Record vitals for onboard clinical triage.
         </p>
 
         {/* Wizard steps — text tabs with bottom underline */}
@@ -477,7 +477,7 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
                 {evaluation.alerts.length === 0 ? (
                   <p className="text-sm text-status-nominal flex items-center gap-1.5 font-medium">
                     <CheckCircle2 className="h-4 w-4" />
-                    All 7 indicators are within nominal physiological ranges.
+                    All 7 vitals nominal.
                   </p>
                 ) : (
                   <ul className="space-y-1.5">

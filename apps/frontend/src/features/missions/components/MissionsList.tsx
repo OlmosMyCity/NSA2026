@@ -145,7 +145,7 @@ export function MissionsList() {
             Missions &amp; Habitats
           </h1>
           <p className="mt-1.5 text-sm text-stem">
-            Operational environments where crew physiological health is monitored.
+            Active crew habitats and trajectories.
           </p>
         </div>
 

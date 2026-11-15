@@ -101,8 +101,7 @@ export function MolecularTwinSection({
             DNA Repair Kinetics &amp; Radioprotector Docking
           </h2>
           <p className="mt-1 text-sm text-stem max-w-2xl">
-            Molecular radioprotector interactions and γ-H2AX / 8-OHdG biomarker kinetics
-            synchronized with the active space weather scenario.
+            Radioprotector docking and γ-H2AX / 8-OHdG kinetics.
           </p>
         </div>
 

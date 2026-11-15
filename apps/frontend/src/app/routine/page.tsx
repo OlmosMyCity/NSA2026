@@ -67,7 +67,7 @@ export default function RoutinePage() {
                 Daily HRP Countermeasure Routine
               </h1>
               <p className="mt-1.5 text-sm text-stem max-w-2xl">
-                Resistive exercise plan, biomedical telemetry, and deep-space risk mitigation.
+                Daily exercise, telemetry, and risk mitigation.
               </p>
             </div>
 

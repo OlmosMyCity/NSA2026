@@ -454,7 +454,7 @@ export function VisionBiometricsPanel() {
             Crew Optical Biometrics &amp; Fatigue
           </h1>
           <p className="mt-1 text-xs text-stem">
-            Real-time contactless heart rate, HRV, cognitive stress, and ocular fatigue monitoring.
+            Contactless HR, HRV, stress, and ocular fatigue.
           </p>
         </div>
 
