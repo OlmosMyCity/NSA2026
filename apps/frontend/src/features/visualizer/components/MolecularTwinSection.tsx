@@ -95,20 +95,20 @@ export function MolecularTwinSection({
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-berry">
             <Dna className="h-4 w-4" aria-hidden="true" />
-            <span>Biophysics Twin · A100 Pre-Computed Docking &amp; ODE Kinetics</span>
+            <span>Biophysics Twin · Molecular Docking &amp; DNA Repair Kinetics</span>
           </div>
           <h2 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-blueberry">
             DNA Repair Kinetics &amp; Radioprotector Docking
           </h2>
           <p className="mt-1 text-sm text-stem max-w-2xl">
-            AutoDock Vina poses and nonlinear Michaelis–Menten γ-H2AX / 8-OHdG ODE simulations
+            Molecular radioprotector interactions and γ-H2AX / 8-OHdG biomarker kinetics
             synchronized with the active space weather scenario.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {isLoading && (
-            <span className="font-mono text-xs text-berry mr-1">Updating ODEs…</span>
+            <span className="font-mono text-xs text-berry mr-1">Updating…</span>
           )}
           {SCENARIO_OPTIONS.map((opt) => (
             <button
@@ -167,7 +167,7 @@ export function MolecularTwinSection({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-blueberry">
                   <Atom className="h-4 w-4 text-berry" aria-hidden="true" />
-                  3D Molecular Complex (A100 Docking)
+                  3D Molecular Complex
                 </h3>
                 {activeComplex && (
                   <span
@@ -242,7 +242,7 @@ export function MolecularTwinSection({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-blueberry">
                   <FlaskConical className="h-4 w-4 text-status-caution" aria-hidden="true" />
-                  ODE Biomarker Kinetics &amp; Sampling Window
+                  Biomarker Kinetics &amp; Sampling Window
                 </h3>
                 <div className="flex gap-1.5">
                   {SHIELDING_OPTIONS.map((opt) => (

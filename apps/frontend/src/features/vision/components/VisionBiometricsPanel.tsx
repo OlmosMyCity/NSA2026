@@ -6,26 +6,18 @@ import {
   AlertTriangle,
   Brain,
   Camera,
-  CheckCircle2,
-  Database,
   Eye,
   HeartPulse,
   Moon,
-  RefreshCw,
-  RotateCcw,
   Video,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 import { useActiveAstronaut } from '@/features/health/hooks/useActiveAstronaut';
-import { StatusBadge } from '@/features/health/components/StatusBadge';
-import { API_STATUS } from '@/features/health/domain/api-adapter';
 import type {
   AstronautTelemetryFrame,
   CameraMode,
   MonitoringContext,
-  SimState,
-  VisionIngestResponse,
   VisionSource,
 } from '../domain/types';
 import {
@@ -37,56 +29,34 @@ import {
   tickSimulatorHttp,
 } from '../services/visionService';
 
-const SYNC_INTERVAL_SEC = 30;
-
-const SIM_PRESETS: { value: SimState; label: string; context: MonitoringContext }[] = [
-  { value: 'nominal', label: 'Nominal Cabin', context: 'cabin_active' },
-  { value: 'stressed', label: 'High Stress', context: 'cabin_active' },
-  { value: 'drowsy', label: 'Drowsy / PERCLOS', context: 'cabin_active' },
-  { value: 'sleeping_deep', label: 'Deep Sleep Pod', context: 'sleep_pod' },
-];
+const SYNC_INTERVAL_MS = 30_000;
+const DEFAULT_CAMERA_MODE: CameraMode = 'rgb_pos';
+const DEFAULT_SIM_BPM = 72;
+const DEFAULT_SIM_STATE = 'nominal' as const;
 
 export function VisionBiometricsPanel() {
   const { astronautId, setAstronautId, crew } = useActiveAstronaut();
 
   const [source, setSource] = useState<VisionSource>('simulator');
-  const [cameraMode, setCameraMode] = useState<CameraMode>('rgb_pos');
   const [context, setContext] = useState<MonitoringContext>('cabin_active');
-  const [simState, setSimState] = useState<SimState>('nominal');
-  const [simBpm, setSimBpm] = useState<number>(72);
   const [streaming, setStreaming] = useState<boolean>(true);
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'offline'>('connecting');
   const [telemetry, setTelemetry] = useState<AstronautTelemetryFrame | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
 
-  // 30s DB transaction auto-sync state
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(true);
-  const [countdownSec, setCountdownSec] = useState<number>(SYNC_INTERVAL_SEC);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncCount, setSyncCount] = useState<number>(0);
-  const [lastSync, setLastSync] = useState<{
-    at: string;
-    result: VisionIngestResponse;
-  } | null>(null);
-
   const wsRef = useRef<WebSocket | null>(null);
   const awaitingRef = useRef<boolean>(false);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
-  const bvpCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const psdCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isSyncingRef = useRef<boolean>(false);
 
   // Latest refs for intervals so timers don't reset on every frame
   const latestTelemetryRef = useRef<AstronautTelemetryFrame | null>(null);
   const astronautIdRef = useRef<string | undefined>(astronautId);
   const sourceRef = useRef<VisionSource>(source);
-  const cameraModeRef = useRef<CameraMode>(cameraMode);
   const contextRef = useRef<MonitoringContext>(context);
-  const simStateRef = useRef<SimState>(simState);
-  const simBpmRef = useRef<number>(simBpm);
   const streamingRef = useRef<boolean>(streaming);
 
   useEffect(() => {
@@ -96,78 +66,11 @@ export function VisionBiometricsPanel() {
     sourceRef.current = source;
   }, [source]);
   useEffect(() => {
-    cameraModeRef.current = cameraMode;
-  }, [cameraMode]);
-  useEffect(() => {
     contextRef.current = context;
   }, [context]);
   useEffect(() => {
-    simStateRef.current = simState;
-  }, [simState]);
-  useEffect(() => {
-    simBpmRef.current = simBpm;
-  }, [simBpm]);
-  useEffect(() => {
     streamingRef.current = streaming;
   }, [streaming]);
-
-  // Draw BVP waveform and Power Spectrum whenever telemetry updates
-  useEffect(() => {
-    if (!telemetry) return;
-
-    const bvpCanvas = bvpCanvasRef.current;
-    if (bvpCanvas) {
-      const ctx = bvpCanvas.getContext('2d');
-      if (ctx) {
-        const w = bvpCanvas.width;
-        const h = bvpCanvas.height;
-        ctx.clearRect(0, 0, w, h);
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-        ctx.beginPath();
-        ctx.moveTo(0, h / 2);
-        ctx.lineTo(w, h / 2);
-        ctx.stroke();
-
-        const samples = telemetry.heart_rate.bvp_waveform;
-        if (samples && samples.length >= 2) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          const step = w / (samples.length - 1);
-          for (let i = 0; i < samples.length; i++) {
-            const x = i * step;
-            const y = h / 2 - (samples[i] / 3.2) * (h * 0.42);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-        }
-      }
-    }
-
-    const psdCanvas = psdCanvasRef.current;
-    if (psdCanvas) {
-      const ctx = psdCanvas.getContext('2d');
-      if (ctx) {
-        const w = psdCanvas.width;
-        const h = psdCanvas.height;
-        ctx.clearRect(0, 0, w, h);
-        const freqs = telemetry.heart_rate.spectrum_freqs_bpm;
-        const power = telemetry.heart_rate.spectrum_power;
-        const peakBpm = telemetry.heart_rate.bpm;
-        if (freqs && freqs.length >= 2 && power && power.length === freqs.length) {
-          const barW = Math.max(2, w / freqs.length - 1);
-          for (let i = 0; i < freqs.length; i++) {
-            const x = (i / freqs.length) * w;
-            const barH = power[i] * (h - 14);
-            const isPeak = Math.abs(freqs[i] - peakBpm) < 5.0;
-            ctx.fillStyle = isPeak ? '#f43f5e' : 'rgba(56, 189, 248, 0.5)';
-            ctx.fillRect(x, h - barH, barW, barH);
-          }
-        }
-      }
-    }
-  }, [telemetry]);
 
   // Manage local webcam stream when source === 'webcam'
   useEffect(() => {
@@ -190,7 +93,7 @@ export function VisionBiometricsPanel() {
         }
       } catch {
         if (!cancelled) {
-          setWebcamError('Could not access local webcam. Switched back to Simulator.');
+          setWebcamError('Could not access local camera. Switched back to cabin feed.');
           setSource('simulator');
         }
       }
@@ -218,7 +121,7 @@ export function VisionBiometricsPanel() {
     };
   }, [source]);
 
-  // WebSocket connection to ai/vision with automatic HTTP streaming fallback
+  // Optical telemetry connection with automatic HTTP fallback
   useEffect(() => {
     const wsUrl = getVisionWsUrl();
     if (!wsUrl) {
@@ -309,10 +212,10 @@ export function VisionBiometricsPanel() {
           ws.send(
             JSON.stringify({
               type: 'tick',
-              camera_mode: cameraModeRef.current,
+              camera_mode: DEFAULT_CAMERA_MODE,
               context: contextRef.current,
-              sim_bpm: simBpmRef.current,
-              sim_state: simStateRef.current,
+              sim_bpm: DEFAULT_SIM_BPM,
+              sim_state: DEFAULT_SIM_STATE,
             })
           );
         } else if (sourceRef.current === 'webcam') {
@@ -329,7 +232,7 @@ export function VisionBiometricsPanel() {
                   type: 'frame',
                   image_b64: dataUrl,
                   timestamp: performance.now() / 1000.0,
-                  camera_mode: cameraModeRef.current,
+                  camera_mode: DEFAULT_CAMERA_MODE,
                   context: contextRef.current,
                   include_hud: false,
                 })
@@ -340,14 +243,13 @@ export function VisionBiometricsPanel() {
         return;
       }
 
-      // HTTP streaming fallback (for serverless / container hosts without WS upgrade)
       if (sourceRef.current === 'simulator') {
         awaitingRef.current = true;
         void tickSimulatorHttp({
-          camera_mode: cameraModeRef.current,
+          camera_mode: DEFAULT_CAMERA_MODE,
           context: contextRef.current,
-          sim_bpm: simBpmRef.current,
-          sim_state: simStateRef.current,
+          sim_bpm: DEFAULT_SIM_BPM,
+          sim_state: DEFAULT_SIM_STATE,
         })
           .then((frame) => {
             if (unmounted) return;
@@ -377,7 +279,7 @@ export function VisionBiometricsPanel() {
                 }
                 void analyzeWebcamFrameHttp({
                   blob,
-                  camera_mode: cameraModeRef.current,
+                  camera_mode: DEFAULT_CAMERA_MODE,
                   context: contextRef.current,
                   include_hud: false,
                 })
@@ -413,44 +315,29 @@ export function VisionBiometricsPanel() {
     };
   }, []);
 
-  const syncToDbNow = useCallback(async () => {
+  const syncTelemetry = useCallback(async () => {
     const targetAstro = astronautIdRef.current;
     const frame = latestTelemetryRef.current;
-    if (!targetAstro || !frame || isSyncing) return;
+    if (!targetAstro || !frame || isSyncingRef.current) return;
 
-    setIsSyncing(true);
-    setSyncError(null);
+    isSyncingRef.current = true;
     try {
-      const result = await ingestVisionTelemetry(targetAstro, frame);
-      setLastSync({
-        at: new Date().toLocaleTimeString(),
-        result,
-      });
-      setSyncCount((c) => c + 1);
-      setCountdownSec(SYNC_INTERVAL_SEC);
-    } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Failed to sync vision reading to DB');
+      await ingestVisionTelemetry(targetAstro, frame);
+    } catch {
+      // Background telemetry persistence failure does not block live view
     } finally {
-      setIsSyncing(false);
+      isSyncingRef.current = false;
     }
-  }, [isSyncing]);
+  }, []);
 
-  // 30-second automatic DB transaction timer
+  // Silent background persistence to crew health record every 30s
   useEffect(() => {
-    if (!autoSyncEnabled || !streaming) return;
-
+    if (!streaming) return;
     const timer = setInterval(() => {
-      setCountdownSec((prev) => {
-        if (prev <= 1) {
-          void syncToDbNow();
-          return SYNC_INTERVAL_SEC;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
+      void syncTelemetry();
+    }, SYNC_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [autoSyncEnabled, streaming, syncToDbNow]);
+  }, [streaming, syncTelemetry]);
 
   const handleResetPipeline = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -460,15 +347,10 @@ export function VisionBiometricsPanel() {
     }
   };
 
-  const handlePresetChange = (preset: SimState) => {
-    setSimState(preset);
-    const match = SIM_PRESETS.find((p) => p.value === preset);
-    if (match) setContext(match.context);
-  };
-
   const hr = telemetry?.heart_rate;
   const mood = telemetry?.mood;
   const sleep = telemetry?.sleep;
+  const isLive = wsStatus === 'connected' || wsStatus === 'http-live';
 
   return (
     <div className="space-y-6">
@@ -477,13 +359,13 @@ export function VisionBiometricsPanel() {
         <div>
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-berry">
             <Video className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Contactless Computer Vision Biometrics (ai/vision)</span>
+            <span>Contactless Optical Biometrics</span>
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
-            Vision AI &amp; rPPG Monitor
+            Crew Optical Biometrics &amp; Fatigue
           </h1>
           <p className="mt-1 text-xs text-stem">
-            Real-time facial landmarks, emotion ONNX, PERCLOS fatigue, and rPPG heart rate — auto-committed to PostgreSQL every 30s.
+            Real-time contactless heart rate, HRV, cognitive stress, and ocular fatigue monitoring.
           </p>
         </div>
 
@@ -507,109 +389,28 @@ export function VisionBiometricsPanel() {
 
           <span
             className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
-              wsStatus === 'connected' || wsStatus === 'http-live'
+              isLive
                 ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
                 : wsStatus === 'connecting'
-                ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
-                : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
+                  ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
+                  : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
             }`}
           >
-            {wsStatus === 'connected' || wsStatus === 'http-live' ? (
+            {isLive ? (
               <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
               <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span>
-              {wsStatus === 'connected'
-                ? `Vision WS Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
-                : wsStatus === 'http-live'
-                ? `Vision HTTP Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
+              {isLive
+                ? 'Optical Telemetry Active'
                 : wsStatus === 'connecting'
-                ? 'Connecting to Vision...'
-                : 'Vision Service Offline'}
+                  ? 'Connecting Sensor…'
+                  : 'Sensor Standby'}
             </span>
           </span>
         </div>
       </header>
-
-      {/* 30s Auto-Sync DB Transaction Bar */}
-      <section
-        aria-label="Database Auto-Sync Transaction Status"
-        className="surface-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-berry/10 text-berry">
-            <Database className="h-4 w-4" aria-hidden="true" />
-          </div>
-          <div className="space-y-0.5 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-blueberry">
-                30s DB Transaction Pipeline
-              </span>
-              <span className="rounded-pill border border-line bg-canvas/80 px-2 py-0.5 font-mono text-[11px] text-blueberry">
-                {autoSyncEnabled ? `Next commit in ${countdownSec}s` : 'Auto-sync paused'}
-              </span>
-              {syncCount > 0 && (
-                <span className="rounded-pill border border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] px-2 py-0.5 font-mono text-[11px] font-semibold text-status-nominal">
-                  {syncCount} tx committed
-                </span>
-              )}
-            </div>
-            {lastSync ? (
-              <p className="text-[11px] text-stem">
-                <CheckCircle2 className="mr-1 inline h-3 w-3 text-status-nominal" aria-hidden="true" />
-                Last DB commit at <strong className="text-blueberry">{lastSync.at}</strong> · HR{' '}
-                {lastSync.result.derivedVitals.heartRateBpm} bpm · Mood {lastSync.result.derivedVitals.mood}/5 · Sleep{' '}
-                {lastSync.result.derivedVitals.sleepHours}h · Status{' '}
-                <StatusBadge status={API_STATUS[lastSync.result.reading.status] ?? 'unknown'} compact />
-                {lastSync.result.incidentsTriggered > 0 && (
-                  <span className="ml-2 font-semibold text-status-critical">
-                    ({lastSync.result.incidentsTriggered} incident triggered)
-                  </span>
-                )}
-              </p>
-            ) : (
-              <p className="text-[11px] text-stem">
-                Feeds Digital Twin and Medical Incident triggers automatically.
-              </p>
-            )}
-            {syncError && (
-              <p className="text-[11px] font-medium text-status-critical">{syncError}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAutoSyncEnabled((v) => !v)}
-            className="tactile-press rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
-          >
-            {autoSyncEnabled ? 'Pause Auto-Sync' : 'Resume Auto-Sync'}
-          </button>
-          <button
-            type="button"
-            disabled={!telemetry || !astronautId || isSyncing}
-            onClick={() => void syncToDbNow()}
-            className="tactile-press inline-flex items-center gap-1.5 rounded-lg bg-blueberry px-3 py-1.5 text-xs font-semibold text-plate disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            <span>{isSyncing ? 'Committing...' : 'Commit Now'}</span>
-          </button>
-        </div>
-      </section>
-
-      {wsStatus === 'offline' && (
-        <div className="rounded-lg border border-[var(--status-caution-border)] bg-slate-950/90 p-4 text-xs text-blueberry backdrop-blur-md">
-          <p className="font-semibold text-status-caution">Vision AI service is not reachable</p>
-          <p className="mt-1 text-stem">
-            If running locally, start it with:{' '}
-            <code className="rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] text-blueberry">
-              cd ai/vision &amp;&amp; .venv/bin/python run.py --port 8000
-            </code>
-          </p>
-        </div>
-      )}
 
       {webcamError && (
         <div className="rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 p-3 text-xs font-medium text-status-critical backdrop-blur-md">
@@ -623,18 +424,18 @@ export function VisionBiometricsPanel() {
           className="flex items-center gap-2 rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 px-4 py-3 text-xs font-semibold text-status-critical backdrop-blur-md"
         >
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>Active Vision Alerts: {telemetry.alerts.join(' · ')}</span>
+          <span>Active Biometric Alerts: {telemetry.alerts.join(' · ')}</span>
         </div>
       )}
 
-      {/* Main Split: Video HUD + Controls | Biometric Cards */}
+      {/* Main Split: Optical Feed + Controls | Biometric Cards */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        {/* Left: Camera HUD + Stream Controls */}
+        {/* Left: Optical Sensor Feed & Stream Controls */}
         <div className="surface-card space-y-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Camera className="h-4 w-4 text-berry" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-blueberry">Optical Biometric HUD</h2>
+              <h2 className="text-sm font-semibold text-blueberry">Optical Sensor Feed</h2>
             </div>
             <div className="flex items-center gap-2">
               {telemetry && (
@@ -649,19 +450,10 @@ export function VisionBiometricsPanel() {
               >
                 {streaming ? 'Pause Stream' : 'Resume Stream'}
               </button>
-              <button
-                type="button"
-                onClick={handleResetPipeline}
-                title="Reset rPPG & Blink Buffers"
-                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-stem hover:text-blueberry"
-              >
-                <RotateCcw className="h-3 w-3" aria-hidden="true" />
-                <span>Reset</span>
-              </button>
             </div>
           </div>
 
-          {/* HUD Frame */}
+          {/* Sensor Feed Viewport */}
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line bg-slate-950">
             <video
               ref={webcamVideoRef}
@@ -680,21 +472,18 @@ export function VisionBiometricsPanel() {
                         : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
                     }`}
                   >
-                    {telemetry?.face_detected ? 'FACE LOCKED · LIVE 30+ FPS' : 'SCANNING FACE...'}
+                    {telemetry?.face_detected ? 'SUBJECT LOCKED' : 'SCANNING SUBJECT...'}
                   </span>
                   {telemetry && (
                     <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
-                      {telemetry.heart_rate.bpm > 0 ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM` : 'rPPG CALIBRATING'} · {telemetry.mood.dominant_mood}
+                      {telemetry.heart_rate.bpm > 0 ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM` : 'CALIBRATING'} · {telemetry.mood.dominant_mood}
                     </span>
                   )}
                 </div>
                 {telemetry && (
-                  <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-blueberry">
+                  <div className="flex items-center justify-start gap-2 font-mono text-[10px] text-blueberry">
                     <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
                       STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS {telemetry.sleep.perclos.toFixed(1)}%
-                    </span>
-                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
-                      {telemetry.camera_mode.toUpperCase()}
                     </span>
                   </div>
                 )}
@@ -702,22 +491,22 @@ export function VisionBiometricsPanel() {
             ) : telemetry?.annotated_frame_jpeg_b64 ? (
               <img
                 src={`data:image/jpeg;base64,${telemetry.annotated_frame_jpeg_b64}`}
-                alt="Vision AI Biometric HUD"
+                alt="Crew Optical Feed"
                 className="h-full w-full object-contain"
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-slate-400">
                 <Activity className="h-6 w-6 animate-pulse text-sky-400" aria-hidden="true" />
-                <span>Waiting for Vision AI telemetry stream...</span>
+                <span>Waiting for optical telemetry stream...</span>
               </div>
             )}
             <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />
           </div>
 
-          {/* Source & Mode Controls */}
-          <div className="grid gap-3 sm:grid-cols-3">
+          {/* Source & Context Controls */}
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-[11px] font-medium text-stem">
-              <span>Input Source</span>
+              <span>Sensor Source</span>
               <select
                 value={source}
                 onChange={(e) => {
@@ -726,21 +515,8 @@ export function VisionBiometricsPanel() {
                 }}
                 className="twin-select font-semibold"
               >
-                <option value="simulator">Synthetic Astronaut</option>
-                <option value="webcam">Local Webcam</option>
-              </select>
-            </label>
-
-            <label className="space-y-1 text-[11px] font-medium text-stem">
-              <span>rPPG Algorithm</span>
-              <select
-                value={cameraMode}
-                onChange={(e) => setCameraMode(e.target.value as CameraMode)}
-                className="twin-select font-semibold"
-              >
-                <option value="rgb_pos">RGB (POS)</option>
-                <option value="rgb_chrom">RGB (CHROM)</option>
-                <option value="nir_ir">NIR / Night Vision</option>
+                <option value="simulator">Cabin Optical Feed</option>
+                <option value="webcam">Local Camera</option>
               </select>
             </label>
 
@@ -756,61 +532,23 @@ export function VisionBiometricsPanel() {
               </select>
             </label>
           </div>
-
-          {source === 'simulator' && (
-            <div className="space-y-2 rounded-lg border border-line bg-surface-tinted/50 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stem">
-                  Simulator Presets
-                </span>
-                <span className="font-mono text-xs font-semibold text-blueberry">
-                  Target: {simBpm} BPM
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {SIM_PRESETS.map((p) => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => handlePresetChange(p.value)}
-                    className={`rounded-pill px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                      simState === p.value
-                        ? 'bg-blueberry text-plate'
-                        : 'border border-line bg-surface text-stem hover:text-blueberry'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <input
-                type="range"
-                min={48}
-                max={150}
-                value={simBpm}
-                onChange={(e) => setSimBpm(Number(e.target.value))}
-                className="w-full accent-berry"
-                aria-label="Simulated Heart Rate BPM"
-              />
-            </div>
-          )}
         </div>
 
-        {/* Right: 3 Biometric Engine Cards */}
+        {/* Right: 3 Biometric Cards */}
         <div className="space-y-4">
-          {/* 1. Cardiovascular rPPG */}
+          {/* 1. Cardiovascular */}
           <section className="surface-card space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between border-b border-line pb-2.5">
               <div className="flex items-center gap-2">
                 <HeartPulse className="h-4 w-4 text-status-critical" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-blueberry">Cardiovascular (rPPG)</h2>
+                <h2 className="text-sm font-semibold text-blueberry">Cardiovascular</h2>
               </div>
               <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
                 {hr ? hr.status : 'idle'}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] text-stem">Heart Rate</p>
                 <p className="font-mono text-xl font-bold text-blueberry">
@@ -830,67 +568,21 @@ export function VisionBiometricsPanel() {
                   {hr ? `${hr.respiration_rpm.toFixed(1)} rpm` : '--'}
                 </p>
               </div>
-              <div>
-                <p className="text-[11px] text-stem">Signal SQI</p>
-                <p className="font-mono text-base font-semibold text-blueberry">
-                  {hr ? `${hr.signal_quality.toFixed(0)}%` : '--'}
-                </p>
-              </div>
-            </div>
-
-            {/* Buffer Fill */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-stem">
-                <span>Temporal Window Buffer</span>
-                <span className="font-mono">{hr ? `${hr.buffer_fill_pct.toFixed(0)}%` : '0%'}</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-tinted">
-                <div
-                  className="h-full bg-sky-500 transition-all"
-                  style={{ width: `${hr?.buffer_fill_pct ?? 0}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-line bg-slate-950/90 p-2">
-                <p className="mb-1 font-mono text-[10px] text-slate-400">BVP Waveform</p>
-                <canvas ref={bvpCanvasRef} width={260} height={64} className="h-16 w-full" />
-              </div>
-              <div className="rounded-lg border border-line bg-slate-950/90 p-2">
-                <p className="mb-1 font-mono text-[10px] text-slate-400">Power Spectrum (PSD)</p>
-                <canvas ref={psdCanvasRef} width={260} height={64} className="h-16 w-full" />
-              </div>
             </div>
           </section>
 
-          {/* 2. Mood & Psychological Stress */}
+          {/* 2. Mood & Cognitive Stress */}
           <section className="surface-card space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between border-b border-line pb-2.5">
               <div className="flex items-center gap-2">
                 <Brain className="h-4 w-4 text-berry" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-blueberry">Mood &amp; Cognitive Stress</h2>
               </div>
-              <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] text-stem">
-                {mood?.model_backend ?? 'onnx+au'}
-              </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-[11px] text-stem">Dominant State</p>
-                <p className="text-xs font-bold text-blueberry">{mood?.dominant_mood ?? '--'}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-stem">Raw Emotion</p>
-                <p className="text-xs font-semibold text-blueberry">{mood?.raw_emotion ?? '--'}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-stem">Valence</p>
-                <p className="font-mono text-xs font-semibold text-blueberry">
-                  {mood ? mood.mood_valence.toFixed(2) : '--'}
-                </p>
-              </div>
+            <div>
+              <p className="text-[11px] text-stem">Dominant State</p>
+              <p className="text-sm font-bold text-blueberry">{mood?.dominant_mood ?? '--'}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -930,14 +622,14 @@ export function VisionBiometricsPanel() {
             <div className="flex items-center justify-between border-b border-line pb-2.5">
               <div className="flex items-center gap-2">
                 <Moon className="h-4 w-4 text-indigo-500" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-blueberry">Sleep, PERCLOS &amp; Fatigue</h2>
+                <h2 className="text-sm font-semibold text-blueberry">Sleep &amp; Fatigue</h2>
               </div>
               <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
                 {sleep?.fatigue_level ?? 'Nominal'}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <div>
                 <p className="text-[11px] text-stem">Sleep Score</p>
                 <p className="font-mono text-base font-bold text-blueberry">
@@ -951,15 +643,9 @@ export function VisionBiometricsPanel() {
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-stem">EAR Mean</p>
+                <p className="text-[11px] text-stem">Blink Rate</p>
                 <p className="font-mono text-sm font-semibold text-blueberry">
-                  {sleep ? sleep.ear_mean.toFixed(3) : '--'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-stem">Blinks/min</p>
-                <p className="font-mono text-sm font-semibold text-blueberry">
-                  {sleep ? sleep.blink_rate_per_min.toFixed(1) : '--'}
+                  {sleep ? `${sleep.blink_rate_per_min.toFixed(1)}/m` : '--'}
                 </p>
               </div>
               <div>
@@ -969,7 +655,7 @@ export function VisionBiometricsPanel() {
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-stem">Stage</p>
+                <p className="text-[11px] text-stem">Sleep State</p>
                 <p className="flex items-center gap-1 text-xs font-semibold text-blueberry">
                   <Eye className="h-3 w-3 text-berry" aria-hidden="true" />
                   <span>{sleep?.sleep_stage_estimate ?? '--'}</span>

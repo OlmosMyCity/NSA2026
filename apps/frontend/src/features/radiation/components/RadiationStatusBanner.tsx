@@ -146,11 +146,6 @@ export function RadiationStatusBanner() {
                 Protones &gt;10 MeV: {proton10.fluxPfu.toFixed(1)} pfu
               </span>
             )}
-            {status.isSimulated && (
-              <span className="px-2 py-0.5 rounded bg-slate-800/10 text-blueberry/80 font-medium">
-                Simulación activa
-              </span>
-            )}
             {status.earlyWarning?.isWarningActive && status.earlyWarning.triggerEvent && (
               <span className="text-amber-900 font-medium">
                 ⚠ {status.earlyWarning.triggerEvent}

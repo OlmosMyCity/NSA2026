@@ -4,8 +4,8 @@ import { HealthTabs } from '@/features/health/components/HealthTabs';
 import { VisionBiometricsPanel } from '@/features/vision/components/VisionBiometricsPanel';
 
 export const metadata: Metadata = {
-  title: 'Vision AI Monitor · Orbvital',
-  description: 'Contactless computer vision biometrics (rPPG, ONNX mood, PERCLOS fatigue) with 30s DB transaction sync.',
+  title: 'Optical Biometrics · Orbvital',
+  description: 'Contactless optical biometrics and crew fatigue monitoring.',
 };
 
 export default function VisionPage() {

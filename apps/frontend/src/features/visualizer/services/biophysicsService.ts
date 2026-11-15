@@ -88,7 +88,7 @@ class BiophysicsService {
     ]);
 
     if (!scenariosRes.ok || !dockingRes.ok) {
-      throw new Error('Unable to load pre-computed A100 biophysics catalog.');
+      throw new Error('Unable to load biophysics catalog.');
     }
 
     const scenariosJson = (await scenariosRes.json()) as Record<

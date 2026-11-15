@@ -326,7 +326,6 @@ export function HealthDashboard() {
               zone={selected}
               summary={zones[selected]}
               twinZone={result ? result.twin.zones[selected] : null}
-              modelScore={result ? result.decision.modelEstimate.score[selected] : null}
               isStale={isStale}
             />
           ) : (
@@ -338,12 +337,6 @@ export function HealthDashboard() {
               isStale={isStale}
               onSelectZone={focusZone}
             />
-          )}
-          {isStale && (
-            <p className="flex items-center gap-1.5 text-[11px] text-status-caution" role="status">
-              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-              Model results are from the previous scenario. Run triage to update.
-            </p>
           )}
         </aside>
       </div>

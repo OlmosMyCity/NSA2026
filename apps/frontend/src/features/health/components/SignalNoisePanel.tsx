@@ -6,7 +6,6 @@ import {
   AlertOctagon,
   CheckCircle2,
   Cpu,
-  Radio,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
@@ -32,12 +31,6 @@ const SHIELDING_OPTIONS: { value: ShieldingType; label: string }[] = [
   { value: 'CREW_CABIN_NOMINAL', label: 'Crew Cabin' },
   { value: 'STORM_SHELTER', label: 'Storm Shelter' },
 ];
-
-const SOURCE_LABELS: Record<BiodosimetryTriageResult['source'], string> = {
-  'backend-bridge': 'API Bridge + ML',
-  'signal-noise-fastapi': 'FastAPI ML Engine',
-  'local-simulation': 'Calibrated Local Model',
-};
 
 export function SignalNoisePanel({
   astronautId,
@@ -130,13 +123,6 @@ export function SignalNoisePanel({
             Separates true genotoxic DNA damage (γ-H2AX / FDXR) from oxidative stress caused by sleep loss or microgravity (8-OHdG).
           </p>
         </div>
-
-        {result && (
-          <span className="inline-flex items-center gap-1.5 self-start rounded-md border border-line bg-surface-subtle px-3 py-1 font-mono text-[11px] text-blueberry">
-            <Radio className="h-3 w-3 text-berry" aria-hidden="true" />
-            {SOURCE_LABELS[result.source]}
-          </span>
-        )}
       </div>
 
       {/* Simulation Controls */}
