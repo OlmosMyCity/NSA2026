@@ -1,3 +1,9 @@
+/**
+ * @module health/components/twin/twinMeta
+ * Shared visual constants and deterministic threshold-band utilities for the
+ * Digital Twin inspector, What-If sliders, and rule-vs-model risk mapping.
+ */
+
 import { evaluateIndicator } from '../../domain/evaluate';
 import type { HealthStatus, IndicatorId } from '../../domain/types';
 import type { RecommendedAction, ZoneRiskLevel } from '../../services/digitalTwinService';

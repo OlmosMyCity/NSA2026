@@ -17,6 +17,7 @@ interface TriageDecisionCardProps {
   isLoading: boolean;
 }
 
+/** Displays rule-authoritative triage action, flight-surgeon escalation state, and AI discrepancy alerts. */
 export function TriageDecisionCard({ decision, isLoading }: TriageDecisionCardProps) {
   if (isLoading && !decision) {
     return (

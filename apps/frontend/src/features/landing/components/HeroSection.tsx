@@ -14,7 +14,7 @@ export function HeroSection() {
           </h1>
 
           <p className="text-base sm:text-lg text-yogurt leading-relaxed max-w-lg">
-            Artemis IV crew vitals, 5 spaceflight hazards, and flight surgeon link.
+            Crewed spaceflight vitals, 5 biomedical hazards, and flight surgeon link.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">

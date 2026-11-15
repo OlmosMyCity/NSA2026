@@ -1,5 +1,16 @@
+/**
+ * @module application/health/medicalProtocols
+ * Standardized NASA HRP biomedical response protocols referenced by deterministic reading
+ * evaluations (`evaluateReading`) and clinical incident workflows.
+ *
+ * Note: Protocol `title`, `summary`, and `immediateActions` strings are preserved in Spanish
+ * to satisfy UI display and unit-test contract assertions.
+ */
+
+/** Clinical severity classification aligned with Prisma `HealthStatus`. */
 export type ProtocolSeverity = "OK" | "WARNING" | "CRITICAL";
 
+/** Deterministic clinical response protocol triggered by vital-sign threshold breaches. */
 export interface MedicalProtocol {
   id: string;
   title: string;
@@ -9,6 +20,7 @@ export interface MedicalProtocol {
   immediateActions: string[];
 }
 
+/** Registry of all deterministic biomedical response protocols keyed by `protocolId`. */
 export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocol> = {
   PROTO_NOMINAL: {
     id: "PROTO_NOMINAL",
@@ -253,10 +265,12 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocol> = {
   },
 };
 
+/** Looks up a deterministic medical protocol by ID, returning `null` if unknown. */
 export function getMedicalProtocol(protocolId: string): MedicalProtocol | null {
   return MEDICAL_PROTOCOLS[protocolId] ?? null;
 }
 
+/** Returns all registered NASA HRP medical protocols. */
 export function listMedicalProtocols(): MedicalProtocol[] {
   return Object.values(MEDICAL_PROTOCOLS);
 }

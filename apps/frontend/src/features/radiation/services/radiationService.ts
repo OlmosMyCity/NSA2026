@@ -1,6 +1,15 @@
+/**
+ * Space weather and solar radiation incident client.
+ * Fetches NOAA S-scale telemetry, SPE early-warning predictions, active mitigation
+ * checklists, and incident acknowledgement mutations from the backend.
+ *
+ * @module features/radiation/services/radiationService
+ */
+
 import { httpClient } from '@/features/common/services/httpClient';
 import { authStorage } from '@/features/common/services/storage';
 
+/** NOAA Solar Radiation Storm scale levels (S0 nominal through S5 extreme). */
 export type NOAAStormScale =
   | 'S0_NOMINAL'
   | 'S1_MINOR'
@@ -53,10 +62,12 @@ export interface RadiationIncident {
 }
 
 class RadiationService {
+  /** Fetches public NOAA solar radiation telemetry, proton flux (>10 MeV pfu), and mitigation protocols. */
   async getStatus(): Promise<RadiationStatusResponse> {
     return httpClient.get<RadiationStatusResponse>('/radiation/status', { skipAuth: true });
   }
 
+  /** Returns the currently OPEN or ACKNOWLEDGED solar radiation storm incident, if authenticated. */
   async getActiveRadiationIncident(): Promise<RadiationIncident | null> {
     if (!authStorage.getToken()) return null;
     const res = await httpClient.get<{ data: RadiationIncident[] }>('/incidents', {
@@ -67,6 +78,7 @@ class RadiationService {
     );
   }
 
+  /** Transitions an active radiation incident from OPEN to ACKNOWLEDGED for the current operator. */
   async acknowledgeIncident(incidentId: string): Promise<RadiationIncident> {
     return httpClient.patch<RadiationIncident>(`/incidents/${incidentId}/acknowledge`);
   }

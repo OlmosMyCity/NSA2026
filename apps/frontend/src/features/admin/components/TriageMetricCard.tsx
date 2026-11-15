@@ -3,6 +3,9 @@ import type { CrewMemberTriage, FlightSurgeonMetrics } from '../domain/types';
 
 export type TriageFilter = 'ALL' | CrewMemberTriage['status'];
 
+/** Tarjetas de métricas; `NO_DATA` se filtra con su propio botón cuando hay tripulantes sin lecturas. */
+type MetricFilter = Exclude<TriageFilter, 'NO_DATA'>;
+
 interface MetricDef {
   label: string;
   hint: string;
@@ -13,10 +16,10 @@ interface MetricDef {
   idle: string;
 }
 
-const METRICS: Record<TriageFilter, MetricDef> = {
+const METRICS: Record<MetricFilter, MetricDef> = {
   ALL: {
     label: 'Active Crew',
-    hint: 'Artemis IV & Gateway Station',
+    hint: 'Apollo, ISS & Artemis Programs',
     icon: Radio,
     count: (m) => m.totalCrew,
     text: 'text-blueberry',
@@ -52,10 +55,10 @@ const METRICS: Record<TriageFilter, MetricDef> = {
   },
 };
 
-export const TRIAGE_FILTERS = Object.keys(METRICS) as TriageFilter[];
+export const TRIAGE_FILTERS = Object.keys(METRICS) as MetricFilter[];
 
 interface TriageMetricCardProps {
-  filter: TriageFilter;
+  filter: MetricFilter;
   metrics: FlightSurgeonMetrics;
   selected: boolean;
   onSelect: (filter: TriageFilter) => void;

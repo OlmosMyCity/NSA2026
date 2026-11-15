@@ -1,12 +1,18 @@
+/**
+ * @module errorHandler
+ * Centralized Express error-handling middleware translating syntax, Zod, domain,
+ * Prisma, and unexpected errors into sanitized JSON HTTP responses.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { AppError } from "../../domain/errors/AppError.js";
 
 /**
- * Middleware centralizado de manejo de errores (Criterio 5 de la rúbrica).
- * Captura AppError de dominio, errores conocidos de Prisma, Zod y errores inesperados.
- * NUNCA expone el stack trace en la respuesta HTTP.
+ * Centralized error-handling middleware.
+ * Catches domain `AppError` instances, known Prisma client errors, Zod validation failures,
+ * and unexpected runtime exceptions. NEVER exposes stack traces in HTTP responses.
  */
 export function errorHandler(
   err: Error,
@@ -14,13 +20,13 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  // 0. JSON malformado en el cuerpo HTTP
+  // 0. Malformed JSON in HTTP request body
   if (err instanceof SyntaxError && "status" in err && (err as { status?: number }).status === 400) {
     res.status(400).json({ error: "Cuerpo JSON inválido en la solicitud." });
     return;
   }
 
-  // 0b. Validación de esquema HTTP (Zod)
+  // 0b. HTTP schema validation failure (Zod)
   if (err instanceof ZodError) {
     res.status(400).json({
       error: err.issues[0]?.message || "Los datos proporcionados no son válidos.",
@@ -28,7 +34,7 @@ export function errorHandler(
     return;
   }
 
-  // 1. Errores de Dominio / Aplicación (400, 404, 409)
+  // 1. Domain / Application errors (400, 401, 403, 404, 409)
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       error: err.message,
@@ -36,7 +42,7 @@ export function errorHandler(
     return;
   }
 
-  // 2. Errores de Prisma (PostgreSQL)
+  // 2. Prisma ORM constraint / record errors (PostgreSQL)
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2002") {
       const target = Array.isArray(err.meta?.target) ? err.meta.target.join(", ") : "campo único";
@@ -66,8 +72,8 @@ export function errorHandler(
     return;
   }
 
-  // 3. Error no previsto (500 Internal Server Error)
-  // Se loguea internamente en el servidor para monitoreo, pero NUNCA se expone al cliente
+  // 3. Unexpected internal error (500 Internal Server Error)
+  // Logged server-side for monitoring, but NEVER leaked to the HTTP client.
   console.error("❌ [UNHANDLED_ERROR]:", err.message);
 
   res.status(500).json({

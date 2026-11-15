@@ -1,7 +1,16 @@
+/**
+ * @module application/use-cases/astronaut/UpdateAstronautUseCase
+ * Use case for partial validation and update of an existing astronaut profile.
+ */
+
 import { IAstronautRepository } from "../../../domain/repository/IAstronautRepository.js";
 import { AstronautWithMission, UpdateAstronautDTO } from "../../../domain/models/Astronaut.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
 
+/**
+ * Validates non-empty trimmed `name`/`role` and positive `age` when provided, then updates
+ * the astronaut record; throws `NotFoundError` (404) if missing.
+ */
 export class UpdateAstronautUseCase {
   constructor(private readonly astronautRepo: IAstronautRepository) {}
 

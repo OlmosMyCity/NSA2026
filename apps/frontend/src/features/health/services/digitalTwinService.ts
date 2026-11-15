@@ -1,9 +1,28 @@
+/**
+ * @module health/services/digitalTwinService
+ * Client contract and evaluator for the 5-zone Physiological Digital Twin
+ * (`heart`, `brain`, `blood`, `bones`, `sleep`).
+ *
+ * Architecture:
+ * - **Dual-layer decision model**: Deterministic threshold rules remain the
+ *   authoritative verdict (`official`), while Gemini Decision 1 (`gemini-decision-1`)
+ *   provides an optional/cached AI second opinion (`modelEstimate`) with explicit
+ *   discrepancy reporting and a non-diagnostic disclaimer.
+ * - **Zero-token What-If separation**: Interactive slider/environment edits in the
+ *   UI evaluate locally with zero AI tokens; this service is called only on initial
+ *   load or when the user explicitly clicks "Run triage".
+ * - **Offline / mock resilience**: Falls back to `localFallbackEvaluate` when
+ *   `ENV.USE_MOCKS` is active or the backend `/astronauts/digital-twin/evaluate`
+ *   endpoint is unavailable.
+ */
+
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { summarizeZones } from '../domain/summary';
 import { toIndicatorReadings, type ApiHealthReading } from '../domain/api-adapter';
 import type { BodyZoneId, SpaceHazard } from '../domain/types';
 
+/** Operational habitat/vehicle context influencing NASA HRP hazard weights. */
 export type MissionEnvironment =
   | 'SPACECRAFT'
   | 'STATION'
@@ -11,8 +30,10 @@ export type MissionEnvironment =
   | 'LUNAR_BASE'
   | 'MARS_BASE';
 
+/** Structural radiation shielding configuration (`g/cm²` aluminum-equivalent tiers). */
 export type ShieldingType = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
 
+/** NOAA Solar Radiation Storm scale (S0 quiet sun through S5 extreme proton event). */
 export type NOAAStormScale =
   | 'S0_NOMINAL'
   | 'S1_MINOR'
@@ -31,6 +52,7 @@ export type RecommendedAction =
   | 'contact_ground'
   | 'no_action';
 
+/** Evaluated physiological state and NASA HRP 5-hazard load overlay for a single twin zone. */
 export interface ZoneTwinState {
   zone: BodyZoneId;
   status: 'green' | 'amber' | 'red' | 'unknown';
@@ -38,6 +60,7 @@ export interface ZoneTwinState {
   riskScore: 0 | 1 | 2 | 3;
   trend: TrendDirection;
   isOverdue: boolean;
+  /** Normalized `[0, 1]` hazard exposure breakdown across the 5 NASA HRP stressors. */
   hazardLoad: {
     total: number;
     topHazard: SpaceHazard;
@@ -45,6 +68,7 @@ export interface ZoneTwinState {
   };
 }
 
+/** Complete 5-zone Digital Twin snapshot for a given mission and radiation context. */
 export interface DigitalTwinState {
   evaluatedAt: string;
   environment: MissionEnvironment;
@@ -55,6 +79,7 @@ export interface DigitalTwinState {
   zones: Record<BodyZoneId, ZoneTwinState>;
 }
 
+/** Per-zone risk assessment emitted by either deterministic rules or the AI model. */
 export interface ZoneScoreEstimate {
   zone: BodyZoneId;
   riskScore: number;
@@ -74,6 +99,7 @@ export interface DecisionResult {
   };
 }
 
+/** Stateless evaluation payload sent to `/astronauts/digital-twin/evaluate` for real or What-If telemetry. */
 export interface EvaluateTwinPayload {
   readings: ApiHealthReading[];
   environment: MissionEnvironment;
@@ -88,7 +114,12 @@ const RISK_BY_STATUS: Record<'green' | 'amber' | 'red' | 'unknown', { score: 0 |
   red: { score: 3, level: 'critical' },
 };
 
-/** Fallback local determinista para modo mock o sin backend disponible. */
+/**
+ * Deterministic local fallback used in mock mode or when the backend endpoint
+ * is unreachable. Evaluates all 5 zones via `summarizeZones`, overlays S4/S5
+ * unshielded storm risk onto the blood/radiation model, and yields matching
+ * `official` and `modelEstimate` verdicts under `rules-fallback`.
+ */
 function localFallbackEvaluate(payload: EvaluateTwinPayload): {
   twin: DigitalTwinState;
   decision: DecisionResult;
@@ -164,6 +195,11 @@ function localFallbackEvaluate(payload: EvaluateTwinPayload): {
   };
 }
 
+/**
+ * Evaluates a Digital Twin telemetry and environment snapshot via the backend
+ * Gemini Decision 1 + deterministic rules endpoint, falling back locally on
+ * mock mode or network failure.
+ */
 export async function evaluateDigitalTwinRemote(
   payload: EvaluateTwinPayload
 ): Promise<{ twin: DigitalTwinState; decision: DecisionResult }> {
@@ -184,6 +220,7 @@ export async function evaluateDigitalTwinRemote(
           spo2Pct: r.spo2Pct,
           sleepHours: r.sleepHours,
           mood: r.mood,
+          resistanceExerciseMin: r.resistanceExerciseMin ?? undefined,
           takenAt: r.takenAt,
         })),
         environment: payload.environment,

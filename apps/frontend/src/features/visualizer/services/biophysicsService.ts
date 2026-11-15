@@ -1,3 +1,11 @@
+/**
+ * Biophysics digital-twin data service loading pre-computed A100 nonlinear ODE
+ * DNA damage/repair kinetics (`gamma-H2AX`, `8-OHdG`) and AutoDock Vina molecular
+ * docking evidence across solar radiation scenarios and shielding configurations.
+ *
+ * @module features/visualizer/services/biophysicsService
+ */
+
 export type ScenarioId = 'NOMINAL' | 'FLARE_EARLY_WARNING' | 'PEAK_STORM_S4';
 export type ShieldingType = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
 

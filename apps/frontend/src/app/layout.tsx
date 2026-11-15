@@ -22,7 +22,7 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'Orbvital — Crew Biomedical Telemetry & Health',
   description:
-    'Orbvital autonomous clinical monitoring and physiological risk assessment platform for Artemis IV cislunar and lunar surface operations.',
+    'Orbvital autonomous clinical monitoring and physiological risk assessment platform for crewed orbital and lunar spaceflight operations.',
   icons: {
     icon: '/icon.svg',
   },

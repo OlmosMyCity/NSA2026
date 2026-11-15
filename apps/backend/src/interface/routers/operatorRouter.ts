@@ -1,0 +1,32 @@
+import { Router } from "express";
+import { Role } from "@prisma/client";
+import { OperatorController } from "../controllers/OperatorController.js";
+import { authenticate } from "../middlewares/authenticate.js";
+import { authorizeRoles } from "../middlewares/authorizeRoles.js";
+import { PrismaOperatorCrewRepository } from "../../infrastructure/repository/PrismaOperatorCrewRepository.js";
+import { PrismaAstronautRepository } from "../../infrastructure/repository/PrismaAstronautRepository.js";
+import {
+  GetOperatorCrewMemberUseCase,
+  GetOperatorCrewOverviewUseCase,
+} from "../../application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
+import {
+  GetCrewLocationUseCase,
+  UpdateCrewLocationUseCase,
+} from "../../application/use-cases/operator/UpdateCrewLocationUseCase.js";
+
+const crewRepo = new PrismaOperatorCrewRepository();
+const astronautRepo = new PrismaAstronautRepository();
+
+export const operatorController = new OperatorController(
+  new GetOperatorCrewOverviewUseCase(crewRepo),
+  new UpdateCrewLocationUseCase(astronautRepo, crewRepo),
+  new GetCrewLocationUseCase(astronautRepo, crewRepo),
+  new GetOperatorCrewMemberUseCase(crewRepo)
+);
+
+/** Supervisión desde Tierra: solo lectura, solo rol OPERATOR y solo sus misiones. */
+export const operatorRouter = Router();
+
+operatorRouter.use(authenticate, authorizeRoles(Role.OPERATOR));
+operatorRouter.get("/crew", operatorController.getCrewOverview);
+operatorRouter.get("/crew/:astronautId", operatorController.getCrewMember);

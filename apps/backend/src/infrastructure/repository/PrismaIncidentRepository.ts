@@ -1,9 +1,19 @@
+/**
+ * @module PrismaIncidentRepository
+ * PostgreSQL/Prisma implementation of `IIncidentRepository` supporting crew-scoped vs. global
+ * incident filtering and active incident deduplication lookups.
+ */
+
 import { Incident, IncidentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../database/prismaClient.js";
 import { IncidentFilters, OpenIncidentDTO, PaginatedIncidents } from "../../domain/models/Incident.js";
 import { IIncidentRepository, UpdateIncidentData } from "../../domain/repository/IIncidentRepository.js";
 
+/**
+ * Prisma-backed repository for clinical and mission-level contingency incidents.
+ */
 export class PrismaIncidentRepository implements IIncidentRepository {
+  /** Queries paginated incidents with optional astronaut, mission, category, severity, and global-scope filters. */
   async findAll(filters: IncidentFilters): Promise<PaginatedIncidents> {
     const page = filters.page && filters.page > 0 ? filters.page : 1;
     const limit = filters.limit && filters.limit > 0 ? filters.limit : 20;
@@ -50,6 +60,7 @@ export class PrismaIncidentRepository implements IIncidentRepository {
     return prisma.incident.findUnique({ where: { id } });
   }
 
+  /** Finds the latest active (`OPEN` or `ACKNOWLEDGED`) incident of a given type for deduplication. */
   async findActiveByType(type: string, astronautId?: string | null): Promise<Incident | null> {
     return prisma.incident.findFirst({
       where: {

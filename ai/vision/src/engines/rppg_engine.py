@@ -23,7 +23,13 @@ from src.schemas import CameraMode, HeartRateMetrics
 
 
 class RPPGEngine:
-    """Lightweight CPU DSP engine for contactless BPM, HRV (RMSSD/SDNN), and Respiration."""
+    """Lightweight CPU DSP engine for contactless BPM, HRV (RMSSD/SDNN), and Respiration.
+
+    Maintains a rolling buffer (default 12 s) of skin-ROI RGB means, resamples irregular
+    frame timestamps onto a uniform 30 Hz grid, extracts the Blood Volume Pulse (BVP) using
+    POS, CHROM, or NIR single-channel multi-ROI fusion, and applies Butterworth bandpass
+    filtering (0.75-3.0 Hz / 45-180 BPM) plus Welch/FFT spectral peak refinement.
+    """
 
     def __init__(self, buffer_seconds: float = RPPG_BUFFER_SECONDS) -> None:
         self.buffer_seconds = buffer_seconds
@@ -36,6 +42,7 @@ class RPPGEngine:
         self._last_valid_metrics: HeartRateMetrics | None = None
 
     def reset(self) -> None:
+        """Clears ROI sample buffers and resets smoothed BPM state."""
         self.timestamps.clear()
         self.rgb_forehead.clear()
         self.rgb_left_cheek.clear()
@@ -51,6 +58,7 @@ class RPPGEngine:
         roi_rgb_means: Dict[str, np.ndarray],
         camera_mode: CameraMode = CameraMode.RGB_POS,
     ) -> HeartRateMetrics:
+        """Ingests a frame's skin-ROI RGB averages and computes BPM, HRV, respiration, and SQI."""
         if not face_detected or "combined" not in roi_rgb_means:
             return HeartRateMetrics(
                 bpm=round(self._smoothed_bpm, 1),
@@ -169,7 +177,11 @@ class RPPGEngine:
 
     @staticmethod
     def _extract_pos(rgb: np.ndarray, fs: float) -> np.ndarray:
-        """Plane-Orthogonal-to-Skin (POS) rPPG algorithm (Wang et al., 2017)."""
+        """Plane-Orthogonal-to-Skin (POS) rPPG algorithm (Wang et al., 2017).
+
+        Overlap-adds 1.6 s sliding windows of temporally normalized RGB signals projected onto
+        orthogonal axes S1 = G - B and S2 = G + B - 2R with alpha = std(S1) / std(S2).
+        """
         n = rgb.shape[0]
         win_len = max(16, int(1.6 * fs))
         h = np.zeros(n, dtype=np.float64)
@@ -198,7 +210,11 @@ class RPPGEngine:
 
     @staticmethod
     def _extract_chrom(rgb: np.ndarray) -> np.ndarray:
-        """Chrominance-based (CHROM) rPPG algorithm (De Haan & Jeanne, 2013)."""
+        """Chrominance-based (CHROM) rPPG algorithm (De Haan & Jeanne, 2013).
+
+        Constructs motion-orthogonal chrominance signals Xs = 3R - 2G and Ys = 1.5R + G - 1.5B
+        from temporally normalized RGB channels and combines them via Xs - (std(Xs)/std(Ys)) * Ys.
+        """
         means = np.maximum(np.mean(rgb, axis=0, keepdims=True), 1.0)
         cn = rgb / means - 1.0
         xs = 3.0 * cn[:, 0] - 2.0 * cn[:, 1]
@@ -208,7 +224,11 @@ class RPPGEngine:
         return xs - alpha * ys
 
     def _extract_nir_monochrome(self, t_raw: np.ndarray, t_uniform: np.ndarray) -> np.ndarray:
-        """Spatial-Temporal Single-Channel NIR/IR rPPG combiner across forehead and cheek sub-ROIs."""
+        """Spatial-Temporal Single-Channel NIR/IR rPPG combiner across forehead and cheek sub-ROIs.
+
+        Normalizes each anatomical patch by its temporal mean to reject ambient drift and fuses
+        them with weights 0.50 forehead, 0.25 left cheek, and 0.25 right cheek.
+        """
         fh = np.vstack(self.rgb_forehead)[:, 1]
         lc = np.vstack(self.rgb_left_cheek)[:, 1]
         rc = np.vstack(self.rgb_right_cheek)[:, 1]
@@ -228,6 +248,7 @@ class RPPGEngine:
 
     @staticmethod
     def _bandpass_filter(sig: np.ndarray, fs: float, low_hz: float, high_hz: float) -> np.ndarray:
+        """Applies a zero-phase 3rd-order Butterworth bandpass filter when signal length permits."""
         nyq = 0.5 * fs
         low = max(0.01, min(0.95, low_hz / nyq))
         high = max(low + 0.05, min(0.99, high_hz / nyq))
@@ -240,6 +261,7 @@ class RPPGEngine:
     def _estimate_bpm_spectral(
         filtered_bvp: np.ndarray, fs: float
     ) -> Tuple[float, float, List[float], List[float]]:
+        """Estimates dominant heart rate (BPM) and spectral SQI via Hann-windowed 2048-pt FFT."""
         n = filtered_bvp.size
         win = np.hanning(n)
         windowed = filtered_bvp * win
@@ -288,6 +310,7 @@ class RPPGEngine:
 
     @staticmethod
     def _estimate_hrv(filtered_bvp: np.ndarray, fs: float, bpm: float) -> Tuple[float, float]:
+        """Computes time-domain HRV (RMSSD, SDNN in ms) from systolic peaks, rejecting IBI outliers outside 300-1500 ms."""
         if bpm <= 0.0 or filtered_bvp.size < 45:
             return 0.0, 0.0
         expected_period_samples = (60.0 / bpm) * fs
@@ -308,6 +331,7 @@ class RPPGEngine:
         return float(np.clip(rmssd, 5.0, 180.0)), float(np.clip(sdnn, 5.0, 200.0))
 
     def _estimate_respiration(self, detrended_sig: np.ndarray, fs: float) -> float:
+        """Estimates respiration rate (RPM) from the 0.15-0.45 Hz respiratory band of the detrended BVP."""
         if detrended_sig.size < int(4.0 * fs):
             return 0.0
         resp_wave = self._bandpass_filter(detrended_sig, fs, RPPG_RESP_LOW_HZ, RPPG_RESP_HIGH_HZ)

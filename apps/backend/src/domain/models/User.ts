@@ -1,11 +1,20 @@
+/**
+ * @module domain/models/User
+ * Domain projections, DTOs, and cryptographic port interfaces for authentication and user identity.
+ */
+
 import { Role, User } from "@prisma/client";
 
-/** Usuario tal como se expone fuera de la capa de datos: nunca incluye el hash de la contraseña. */
+/** User projection exposed outside the persistence layer; never includes `passwordHash`. */
 export type PublicUser = Omit<User, "passwordHash">;
 
+/** Full user record joined with an optional linked astronaut profile ID (for login verification). */
 export type UserWithAstronaut = User & { astronaut: { id: string } | null };
+
+/** Public user projection joined with an optional linked astronaut profile ID. */
 export type PublicUserWithAstronaut = PublicUser & { astronaut: { id: string } | null };
 
+/** Input payload for persisting a new user account with a pre-hashed password. */
 export interface CreateUserDTO {
   email: string;
   name: string;
@@ -13,14 +22,14 @@ export interface CreateUserDTO {
   role?: Role;
 }
 
-/** Datos que viajan dentro del JWT y que los middlewares inyectan en `req.user`. */
+/** Claims embedded in the signed JWT and attached to `req.user` by auth middleware. */
 export interface AuthTokenPayload {
   id: string;
   email: string;
   role: Role;
 }
 
-/** Usuario que recibe el frontend tras register/login (contrato de `AuthResponse`). */
+/** Sanitized user representation returned to the frontend after register/login (`AuthResponse` contract). */
 export interface AuthUser {
   id: string;
   email: string;
@@ -29,17 +38,19 @@ export interface AuthUser {
   astronautId?: string;
 }
 
+/** Authentication payload pairing the sanitized user profile with a signed bearer token. */
 export interface AuthResponse {
   user: AuthUser;
   token: string;
 }
 
-/** Puertos que implementa infrastructure/services (bcrypt y JWT). */
+/** Port implemented by `infrastructure/services` (bcrypt) for password hashing and verification. */
 export interface PasswordHasher {
   hash(plain: string): Promise<string>;
   compare(plain: string, hash: string): Promise<boolean>;
 }
 
+/** Maps a `PublicUser` (and optional linked astronaut ID) into the frontend `AuthUser` contract. */
 export function toAuthUser(user: PublicUser & { astronaut?: { id: string } | null }): AuthUser {
   return {
     id: user.id,
@@ -50,6 +61,7 @@ export function toAuthUser(user: PublicUser & { astronaut?: { id: string } | nul
   };
 }
 
+/** Port implemented by `infrastructure/services` (JWT) for signing authentication tokens. */
 export interface TokenSigner {
   sign(payload: AuthTokenPayload): string;
 }

@@ -1,9 +1,18 @@
+/**
+ * @module application/use-cases/incident/CloseIncidentUseCase
+ * Use case for resolving and closing an incident with audit metadata.
+ */
+
 import { Incident, IncidentStatus } from "@prisma/client";
 import { CloseIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
 import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
+/**
+ * Transitions an active incident (`OPEN` or `ACKNOWLEDGED`) to `CLOSED`, attaches
+ * optional resolution notes, and emits `incident:closed`. Idempotent if already `CLOSED`.
+ */
 export class CloseIncidentUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
 

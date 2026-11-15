@@ -1,3 +1,9 @@
+/**
+ * @module imageUpload
+ * Multipart image upload middleware backed by Multer memory storage and `storageService`,
+ * enforcing a 5 MB limit, MIME allowlist, and magic-byte verification while passing JSON bodies through.
+ */
+
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import multer from "multer";
 import { ValidationError } from "../../domain/errors/AppError.js";
@@ -8,7 +14,7 @@ import {
   storageService,
 } from "../../infrastructure/services/StorageService.js";
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB, igual que el frontend
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB, matching frontend upload limits
 
 const parser = multer({
   storage: multer.memoryStorage(),
@@ -20,9 +26,10 @@ const parser = multer({
 });
 
 /**
- * Acepta un archivo opcional en `field` (multipart/form-data), lo sube a Supabase Storage
- * y deja su URL pública en `req.body[bodyKey]`. Las peticiones JSON pasan sin cambios.
- * Ej: router.post("/", authenticate, ...imageUpload("patch", "missions", "patchUrl"), controller.create)
+ * Accepts an optional file on `field` (`multipart/form-data`), verifies magic bytes,
+ * uploads it via `storageService`, and writes its public URL into `req.body[bodyKey]`.
+ * Standard `application/json` requests pass through untouched.
+ * Example: `router.post("/", authenticate, ...imageUpload("patch", "missions", "patchUrl"), controller.create)`
  */
 export function imageUpload(field: string, folder: StorageFolder, bodyKey: string): RequestHandler[] {
   const parse: RequestHandler = (req, res, next) => {

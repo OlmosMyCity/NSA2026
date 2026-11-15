@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * @module health/components/HealthTabs
+ * Sub-navigation bar across My Health views (`/dashboard`, `/trends`, `/vision`)
+ * with a dynamic shortcut to the crew member's active mission.
+ */
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -14,6 +20,7 @@ const TABS = [
   { href: '/vision', label: 'Vision AI (Live)' },
 ];
 
+/** Route tabs for My Health and contextual active-mission link. */
 export function HealthTabs() {
   const pathname = usePathname();
   const { user } = useAuth();

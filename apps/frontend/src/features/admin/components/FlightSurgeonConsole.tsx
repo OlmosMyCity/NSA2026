@@ -11,7 +11,7 @@ import { DirectiveDialog } from './DirectiveDialog';
 import { RadiationIncidentBanner } from './RadiationIncidentBanner';
 import { TRIAGE_FILTERS, TriageMetricCard, type TriageFilter } from './TriageMetricCard';
 
-const EMPTY_METRICS: FlightSurgeonMetrics = { totalCrew: 0, criticalCount: 0, warningCount: 0, nominalCount: 0 };
+const EMPTY_METRICS: FlightSurgeonMetrics = { totalCrew: 0, criticalCount: 0, warningCount: 0, nominalCount: 0, noDataCount: 0 };
 
 export function FlightSurgeonConsole() {
   const triage = useAsync(() => adminTriageService.getTriageOverview(), [], 'Unable to load crew triage.');
@@ -66,6 +66,17 @@ export function FlightSurgeonConsole() {
           >
             All ({crew.length})
           </button>
+          {(triage.data?.metrics.noDataCount ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('NO_DATA')}
+              className={`tactile-press py-1.5 text-xs font-semibold tabular-nums transition-colors ${
+                filter === 'NO_DATA' ? 'border-b-2 border-plate text-blueberry' : 'text-stem hover:text-blueberry'
+              }`}
+            >
+              No data ({triage.data?.metrics.noDataCount})
+            </button>
+          )}
           <button
             type="button"
             onClick={triage.refetch}

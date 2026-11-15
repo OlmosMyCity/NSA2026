@@ -46,7 +46,7 @@ export function DirectiveDialog({ member, onClose, onSent }: DirectiveDialogProp
               Clinical Directive for {member.astronautName}
             </h3>
             <p className="mt-0.5 text-xs text-stem">
-              Mission: {member.missionName} · Module: {member.environment}
+              Mission: {member.missionName} · Module: {member.environment ?? '—'}
             </p>
           </div>
           <button

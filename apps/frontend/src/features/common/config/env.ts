@@ -11,6 +11,10 @@ export const ENV = {
   API_HOST: process.env.NEXT_PUBLIC_API_HOST || DEFAULT_API_HOST,
   VISION_URL: process.env.NEXT_PUBLIC_VISION_URL || 'http://localhost:8000',
   USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true',
+  /** Minutos de vigencia de los signos vivos; debe coincidir con FRESHNESS_WINDOW_MIN del backend. */
+  FRESHNESS_WINDOW_MIN: Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN) > 0
+    ? Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN)
+    : 15,
 } as const;
 
 /**

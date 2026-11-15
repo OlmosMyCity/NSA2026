@@ -1,6 +1,15 @@
+/**
+ * @module application/use-cases/health/GetAstronautHealthSummaryUseCase
+ * Use case for retrieving an astronaut's aggregated multi-system health summary.
+ */
+
 import { IHealthReadingRepository, AstronautHealthSummary } from "../../../domain/repository/IHealthReadingRepository.js";
 import { NotFoundError } from "../../../domain/errors/AppError.js";
 
+/**
+ * Fetches the latest reading, 5 physiological subsystem statuses, and 7-day trend history
+ * for an astronaut; throws `NotFoundError` (404) if the ID is blank or unknown.
+ */
 export class GetAstronautHealthSummaryUseCase {
   constructor(private readonly readingRepo: IHealthReadingRepository) {}
 

@@ -27,15 +27,19 @@ export interface MockUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'OPERATOR';
   password: string;
 }
 
-export type MockAstronaut = Omit<Astronaut, 'mission'>;
+/** Misión con el operador de tierra asignado (Mission.operatorId en el backend). */
+export type MockMission = Mission & { operatorId?: string | null };
+
+/** Astronauta con su ubicación, que el backend solo expone por la ruta autenticada /astronauts/:id/location. */
+export type MockAstronaut = Omit<Astronaut, 'mission'> & { currentLocation?: string | null; locationUpdatedAt?: string | null };
 
 export interface MockState {
   users: MockUser[];
-  missions: Mission[];
+  missions: MockMission[];
   astronauts: MockAstronaut[];
   readings: MockReading[];
   directives: MockDirective[];
@@ -48,9 +52,10 @@ const iso = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
 const USERS: MockUser[] = [
   { id: 'user-admin-01', email: 'elena.rodriguez@nasa.gov', name: 'Dra. Elena Rodriguez', role: 'ADMIN', password: 'HrpFlight#2026' },
   { id: 'user-crew-01', email: 'r.wiseman@nasa.gov', name: 'Reid Wiseman', role: 'USER', password: 'OrionCrew#4IV' },
+  { id: 'user-operator-01', email: 'ops@orbvital.example', name: 'Mission Operations', role: 'OPERATOR', password: 'GroundOps#2026' },
 ];
 
-const mission = (m: Pick<Mission, 'id' | 'name' | 'description' | 'environment' | 'status'> & { start: number; created: number }): Mission => ({
+const mission = (m: Pick<MockMission, 'id' | 'name' | 'description' | 'environment' | 'status' | 'operatorId'> & { start: number; created: number }): MockMission => ({
   id: m.id,
   name: m.name,
   description: m.description,
@@ -60,11 +65,12 @@ const mission = (m: Pick<Mission, 'id' | 'name' | 'description' | 'environment' 
   endDate: null,
   patchUrl: null,
   createdById: 'user-admin-01',
+  operatorId: m.operatorId ?? null,
   createdAt: iso(m.created),
   updatedAt: iso(0),
 });
 
-const MISSIONS: Mission[] = [
+const MISSIONS: MockMission[] = [
   mission({
     id: 'mission-01',
     name: 'Apollo 11 — First Lunar Landing',
@@ -72,6 +78,7 @@ const MISSIONS: Mission[] = [
       '8-day crewed lunar landing mission (July 16–24, 1969) aboard Saturn V SA-506, CSM Columbia, and LM Eagle with Neil Armstrong, Buzz Aldrin, and Michael Collins touching down at Mare Tranquillitatis.',
     environment: 'LUNAR_BASE',
     status: 'IN_PROGRESS',
+    operatorId: 'user-operator-01',
     start: -4 * DAY,
     created: -30 * DAY,
   }),
@@ -127,9 +134,9 @@ const MISSIONS: Mission[] = [
   }),
 ];
 
-const astronaut = (id: string, name: string, role: string, age: number, userId: string | null = null): MockAstronaut => ({
+const astronaut = (id: string, missionId: string, name: string, role: string, age: number, userId: string | null = null): MockAstronaut => ({
   id,
-  missionId: 'mission-01',
+  missionId,
   userId,
   name,
   role,
@@ -140,92 +147,223 @@ const astronaut = (id: string, name: string, role: string, age: number, userId: 
 });
 
 const ASTRONAUTS: MockAstronaut[] = [
-  astronaut('astro-01', 'Reid Wiseman', 'Mission Commander', 49, 'user-crew-01'),
-  astronaut('astro-02', 'Victor Glover', 'Pilot', 48),
-  astronaut('astro-03', 'Christina Koch', 'Mission Specialist (Science)', 46),
-  astronaut('astro-04', 'Jeremy Hansen', 'Mission Specialist (Systems)', 50),
+  astronaut('astro-01', 'mission-01', 'Cmdr. Elena Vance', 'Mission Commander', 42, 'user-crew-01'),
+  astronaut('astro-02', 'mission-01', 'Dr. Marcus Thorne', 'Lunar Module Pilot', 39),
+  astronaut('astro-03', 'mission-02', 'Maj. Kenji Takahashi', 'Flight Engineer (ISS)', 44),
+  astronaut('astro-04', 'mission-03', 'Capt. Sofia Navarro', 'Command Module Pilot', 41),
+  astronaut('astro-05', 'mission-04', "Dr. Liam O'Connor", 'Lunar Surface Geologist', 38),
+  astronaut('astro-06', 'mission-05', 'Cmdr. Nadia Al-Mansoor', 'Artemis Flight Specialist', 45),
+  astronaut('astro-07', 'mission-06', 'Lt. Col. Mateo Silva', 'Lunar Orbit Navigator', 43),
 ];
-
-/** Última lectura de cada astronauta; el historial de 30 días se deriva de ella. */
-const LATEST: Array<{ astronautId: string; ageMs: number; notes: string; vitals: Vitals }> = [
-  {
-    astronautId: 'astro-01',
-    ageMs: 2 * HOUR,
-    notes: 'Morning post-cycle ergometer reading.',
-    vitals: { heartRateBpm: 68, systolicMmHg: 118, diastolicMmHg: 76, glucoseMgDl: 95, temperatureC: 36.6, spo2Pct: 98, sleepHours: 7.5, mood: 5 },
-  },
-  {
-    astronautId: 'astro-02',
-    ageMs: 6 * HOUR,
-    notes: '4-hour lunar surface EVA completed.',
-    vitals: { heartRateBpm: 94, systolicMmHg: 134, diastolicMmHg: 86, glucoseMgDl: 145, temperatureC: 37.7, spo2Pct: 94, sleepHours: 6.2, mood: 3 },
-  },
-  {
-    astronautId: 'astro-03',
-    ageMs: 1 * HOUR,
-    notes: 'Intense fatigue and headache following regolith sampling.',
-    vitals: { heartRateBpm: 104, systolicMmHg: 144, diastolicMmHg: 92, glucoseMgDl: 185, temperatureC: 38.3, spo2Pct: 91, sleepHours: 5.1, mood: 2 },
-  },
-  {
-    astronautId: 'astro-04',
-    ageMs: 12 * HOUR,
-    notes: 'Evening routine check.',
-    vitals: { heartRateBpm: 72, systolicMmHg: 120, diastolicMmHg: 78, glucoseMgDl: 110, temperatureC: 36.8, spo2Pct: 99, sleepHours: 8.0, mood: 4 },
-  },
-];
-
-/** Pseudoaleatorio determinista: mismas gráficas en cada recarga. */
-function seeded(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-const round = (v: number, d = 0) => Math.round(v * 10 ** d) / 10 ** d;
 
 export function buildReading(id: string, astronautId: string, vitals: Vitals, takenAt: string, notes: string | null = null): MockReading {
   const evaluation = evaluateVitals(vitals);
   return { id, astronautId, ...vitals, ...evaluation, notes, takenAt, createdAt: takenAt, updatedAt: takenAt };
 }
 
-/** 29 días sintéticos (los antiguos tienden a valores más sanos) + la lectura real. */
-function history({ astronautId, ageMs, notes, vitals: base }: (typeof LATEST)[number]): MockReading[] {
-  const rand = seeded(astronautId.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
-  const jitter = (spread: number) => (rand() - 0.5) * 2 * spread;
-  const latestAt = Date.now() - ageMs;
-  const rows: MockReading[] = [];
-  for (let day = 29; day >= 1; day--) {
-    const drift = day / 30;
-    rows.push(
-      buildReading(
-        `read-${astronautId}-d${day}`,
-        astronautId,
-        {
-          heartRateBpm: round(base.heartRateBpm - drift * 12 + jitter(4)),
-          systolicMmHg: round(base.systolicMmHg - drift * 10 + jitter(4)),
-          diastolicMmHg: round(base.diastolicMmHg - drift * 6 + jitter(3)),
-          glucoseMgDl: round(base.glucoseMgDl - drift * 30 + jitter(8)),
-          temperatureC: round(base.temperatureC - drift * 0.8 + jitter(0.2), 1),
-          spo2Pct: round(Math.min(100, base.spo2Pct + drift * 4 + jitter(1))),
-          sleepHours: round(Math.max(3, base.sleepHours + drift * 1.5 + jitter(0.6)), 1),
-          mood: Math.max(1, Math.min(5, round(base.mood + drift * 2 + jitter(0.6)))),
-        },
-        new Date(latestAt - day * DAY).toISOString(),
-      ),
-    );
-  }
-  rows.push(buildReading(`read-${astronautId}-latest`, astronautId, base, new Date(latestAt).toISOString(), notes));
-  return rows;
+/** Punto del calendario de controles de una misión (horas desde el inicio de la misión). */
+interface SchedulePoint {
+  offsetHours: number;
+  hr: number;
+  sbp: number;
+  dbp: number;
+  glu: number;
+  temp: number;
+  spo2: number;
+  sleep: number;
+  mood: number;
+  notes: string;
 }
+
+/** Lecturas de un astronauta según el calendario de su misión; el estado lo calcula la tabla clínica común. */
+function buildScheduleReadings(astronautId: string, missionStartIso: string, points: SchedulePoint[], prefix: string): MockReading[] {
+  const startMs = Date.parse(missionStartIso);
+  return points.map((p, idx) =>
+    buildReading(
+      `${prefix}-${idx + 1}`,
+      astronautId,
+      {
+        heartRateBpm: p.hr,
+        systolicMmHg: p.sbp,
+        diastolicMmHg: p.dbp,
+        glucoseMgDl: p.glu,
+        temperatureC: p.temp,
+        spo2Pct: p.spo2,
+        sleepHours: p.sleep,
+        mood: p.mood,
+      },
+      new Date(startMs + p.offsetHours * HOUR).toISOString(),
+      p.notes,
+    ),
+  );
+}
+
+const STANDARD_CHECKLIST: SchedulePoint[] = [
+  {
+    offsetHours: -2,
+    hr: 66,
+    sbp: 118,
+    dbp: 76,
+    glu: 94,
+    temp: 36.6,
+    spo2: 99,
+    sleep: 7.8,
+    mood: 5,
+    notes: 'L-2h suit-up biomedical check.',
+  },
+  {
+    offsetHours: 0.4,
+    hr: 112,
+    sbp: 142,
+    dbp: 86,
+    glu: 108,
+    temp: 36.8,
+    spo2: 97,
+    sleep: 7.5,
+    mood: 4,
+    notes: 'T+24m post-MECO / orbital insertion telemetry.',
+  },
+  {
+    offsetHours: 2.5,
+    hr: 74,
+    sbp: 120,
+    dbp: 78,
+    glu: 98,
+    temp: 36.7,
+    spo2: 98,
+    sleep: 7.5,
+    mood: 5,
+    notes: 'T+2h30m pre-TLI systems & medical check.',
+  },
+  {
+    offsetHours: 12,
+    hr: 64,
+    sbp: 114,
+    dbp: 74,
+    glu: 96,
+    temp: 36.5,
+    spo2: 98,
+    sleep: 6.8,
+    mood: 4,
+    notes: 'T+12h scheduled 12-hour biomedical log.',
+  },
+  {
+    offsetHours: 24,
+    hr: 61,
+    sbp: 112,
+    dbp: 72,
+    glu: 92,
+    temp: 36.5,
+    spo2: 98,
+    sleep: 6.6,
+    mood: 4,
+    notes: 'T+24h daily medical & cognitive check-in.',
+  },
+  {
+    offsetHours: 48,
+    hr: 62,
+    sbp: 113,
+    dbp: 73,
+    glu: 95,
+    temp: 36.6,
+    spo2: 98,
+    sleep: 6.9,
+    mood: 5,
+    notes: 'T+48h routine 24h biomedical check.',
+  },
+  {
+    offsetHours: 72,
+    hr: 65,
+    sbp: 116,
+    dbp: 75,
+    glu: 101,
+    temp: 36.6,
+    spo2: 97,
+    sleep: 6.7,
+    mood: 4,
+    notes: 'T+72h pre-lunar approach telemetry.',
+  },
+];
+
+const SCHEDULED_READINGS: MockReading[] = [
+  ...buildScheduleReadings('astro-01', MISSIONS[0].startDate, [
+    ...STANDARD_CHECKLIST,
+    {
+      offsetHours: 96,
+      hr: 91,
+      sbp: 132,
+      dbp: 84,
+      glu: 116,
+      temp: 37.1,
+      spo2: 96,
+      sleep: 6.4,
+      mood: 5,
+      notes: 'T+96h post-lunar EVA surface check.',
+    },
+  ], 'm1-a1'),
+  ...buildScheduleReadings('astro-02', MISSIONS[0].startDate, [
+    STANDARD_CHECKLIST[0],
+    STANDARD_CHECKLIST[3],
+    STANDARD_CHECKLIST[5],
+  ], 'm1-a2'),
+  ...buildScheduleReadings('astro-03', MISSIONS[1].startDate, [
+    STANDARD_CHECKLIST[0],
+    STANDARD_CHECKLIST[1],
+    {
+      offsetHours: 2.0,
+      hr: 63,
+      sbp: 114,
+      dbp: 74,
+      glu: 93,
+      temp: 36.5,
+      spo2: 98,
+      sleep: 6.8,
+      mood: 4,
+      notes: 'Orbit 2 biomedical telemetry.',
+    },
+  ], 'm2-a3'),
+  ...buildScheduleReadings('astro-04', MISSIONS[2].startDate, [
+    STANDARD_CHECKLIST[0],
+    STANDARD_CHECKLIST[1],
+    STANDARD_CHECKLIST[3],
+    {
+      offsetHours: 58,
+      hr: 86,
+      sbp: 128,
+      dbp: 82,
+      glu: 88,
+      temp: 35.7,
+      spo2: 95,
+      sleep: 4.5,
+      mood: 2,
+      notes: 'T+58h post-anomaly LM lifeboat power-down telemetry.',
+    },
+  ], 'm3-a4'),
+  ...buildScheduleReadings('astro-05', MISSIONS[3].startDate, [
+    ...STANDARD_CHECKLIST,
+    {
+      offsetHours: 110,
+      hr: 96,
+      sbp: 136,
+      dbp: 86,
+      glu: 122,
+      temp: 37.2,
+      spo2: 95,
+      sleep: 6.2,
+      mood: 4,
+      notes: 'T+110h Taurus-Littrow LRV geological traverse.',
+    },
+  ], 'm4-a5'),
+  ...buildScheduleReadings('astro-06', MISSIONS[4].startDate, STANDARD_CHECKLIST, 'm5-a6'),
+  ...buildScheduleReadings('astro-07', MISSIONS[5].startDate, STANDARD_CHECKLIST.slice(0, 6), 'm6-a7'),
+];
 
 export function seedState(): MockState {
   return {
     users: USERS.map((u) => ({ ...u })),
     missions: MISSIONS.map((m) => ({ ...m })),
     astronauts: ASTRONAUTS.map((a) => ({ ...a })),
-    readings: LATEST.flatMap(history),
+    readings: SCHEDULED_READINGS.map((r) => ({ ...r })),
     directives: [],
   };
 }

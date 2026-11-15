@@ -17,8 +17,8 @@ const contains = (s: StatusSegment, value: number) =>
   (s.lt === undefined && s.lte === undefined);
 
 /**
- * Estado de un valor según los tramos del indicador (misma regla que el backend).
- * Con `phaseId`, usa las normas fisiológicas de esa fase (NASA-STD-3001 / NASA HRP).
+ * Status of a value according to the indicator segments (same rule as the backend).
+ * When `phaseId` is supplied, uses that phase's physiological norms (NASA-STD-3001 / NASA HRP).
  */
 export function evaluateIndicator(indicator: IndicatorId, value: number, phaseId?: string | null): IndicatorEvaluation {
   if (!Number.isFinite(value)) return { indicator, value, status: 'unknown' };
@@ -28,7 +28,7 @@ export function evaluateIndicator(indicator: IndicatorId, value: number, phaseId
 
 const SEVERITY: Record<HealthStatus, number> = { unknown: 0, green: 1, amber: 2, red: 3 };
 
-/** El peor estado manda: se usa para colorear una zona de la figura. */
+/** Returns the highest-severity status across a collection (`red > amber > green > unknown`), used to tint each 3D zone. */
 export function worstStatus(statuses: HealthStatus[]): HealthStatus {
   return statuses.reduce<HealthStatus>(
     (worst, s) => (SEVERITY[s] > SEVERITY[worst] ? s : worst),

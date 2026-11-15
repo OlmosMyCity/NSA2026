@@ -1,5 +1,8 @@
 /**
- * Manejo seguro de persistencia de sesión en localStorage (compatible con SSR)
+ * SSR-safe session persistence helper synchronizing auth tokens and user metadata
+ * across `localStorage`, cookies (for Next.js middleware), and window auth events.
+ *
+ * @module features/common/services/storage
  */
 
 const TOKEN_KEY = 'artemis_auth_token';
@@ -9,7 +12,7 @@ export interface StoredUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'OPERATOR';
   astronautId?: string;
 }
 
@@ -34,7 +37,7 @@ export const authStorage = {
       document.cookie = `artemis_auth_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax${getSecureCookieSuffix()}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
-      // Ignorar si localStorage está bloqueado
+      // Ignore if localStorage is blocked or unavailable
     }
   },
 
@@ -55,7 +58,7 @@ export const authStorage = {
       document.cookie = `artemis_auth_role=${encodeURIComponent(user.role)}; path=/; max-age=86400; SameSite=Lax${getSecureCookieSuffix()}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
-      // Ignorar
+      // Ignore storage errors
     }
   },
 
@@ -69,7 +72,7 @@ export const authStorage = {
       document.cookie = `artemis_auth_role=; path=/; max-age=0; SameSite=Lax${secure}`;
       window.dispatchEvent(new Event('artemis:auth-change'));
     } catch {
-      // Ignorar
+      // Ignore storage errors
     }
   },
 

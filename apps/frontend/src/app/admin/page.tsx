@@ -4,6 +4,7 @@ import React from 'react';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { RouteGuard } from '@/features/auth/components/RouteGuard';
 import { FlightSurgeonConsole } from '@/features/admin/components/FlightSurgeonConsole';
+import { OperatorAccessPanel } from '@/features/admin/components/OperatorAccessPanel';
 
 export default function AdminPage() {
   return (
@@ -27,6 +28,7 @@ export default function AdminPage() {
           </div>
 
           <FlightSurgeonConsole />
+          <OperatorAccessPanel />
         </div>
       </RouteGuard>
     </AppLayout>

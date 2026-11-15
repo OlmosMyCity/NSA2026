@@ -12,7 +12,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = safeReturnUrl(searchParams.get('returnUrl'));
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,11 +26,13 @@ export function LoginForm() {
     }
   }, [searchParams]);
 
+  // Cada rol aterriza en su vista: el operador no tiene panel de salud propio.
   useEffect(() => {
     if (isAuthenticated) {
-      router.push(returnUrl);
+      // Un returnUrl explícito manda; si no, cada rol va a su vista por defecto.
+      router.push(returnUrl !== '/' ? returnUrl : user?.role === 'OPERATOR' ? '/operator' : '/');
     }
-  }, [isAuthenticated, router, returnUrl]);
+  }, [isAuthenticated, user?.role, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +47,6 @@ export function LoginForm() {
     try {
       setIsSubmitting(true);
       await login({ email: email.trim(), password });
-      router.push(returnUrl);
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);

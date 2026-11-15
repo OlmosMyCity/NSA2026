@@ -1,115 +1,197 @@
-# 🌌 NASA Space Apps Challenge 2026 — Artemis Crew Health & Deep Space Radiation Engine
+# Orbvital — Autonomous Deep-Space Crew Health, 3D Digital Twin & Space-Weather Triage
 
-> **Repository:** [NSA2026](https://github.com/Josecopro/NSA2026)  
-> **Challenge:** Create Health Monitoring Software for Astronauts on Space Missions  
-> **Subject Area:** Human Spaceflight Hazards · Space Radiation Early Warning · Biomedical Dosimetry
-
----
-
-## 🎯 Executive Overview
-
-Long-duration missions outside Earth's protective magnetosphere (such as NASA's Artemis lunar exploration and upcoming Mars flights) expose astronauts to extreme spaceflight hazards, with **space radiation** identified by NASA's Human Research Program (HRP) as the single most critical threat to crew survival.
-
-This project delivers a **Deep Space Radiation Prediction and Early Warning Engine** tightly coupled with astronaut health monitoring. Rather than functioning as a passive medical dashboard, the system proactively detects solar storms, computes relativistic particle arrival windows, models tissue-absorbed biological doses across shielding configurations, and triggers automated crew emergency protocols.
+> **Event:** 2026 NASA Space Apps Challenge — *Create Health Monitoring Software for Astronauts on Space Missions*  
+> **Repository:** [OlmosMyCity/NSA2026](https://github.com/OlmosMyCity/NSA2026)  
+> **Domains:** Crew Medical Autonomy · Physiological Digital Twin · Relativistic Radiation Dosimetry · Contactless Vision Biometrics · Flight Surgeon Command
 
 ---
 
-## ⚡ Core Scientific & Technical Capabilities
+## Project Vision: Why Orbvital Exists
 
-### 1. Zero-Latency Heliophysics Ingestion
-- **NOAA SWPC Operational Models:** Directly ingests daily probabilistic forecasts (`solar_probabilities.json`) predicting 1-, 2-, and 3-day odds for C-, M-, and X-class solar flares, high-energy proton events ($>10\text{ MeV}$ SPE), and Polar Cap Absorption states.
-- **GOES Satellites Telemetry:** Real-time 1-minute telemetry of X-ray flux ($0.05\text{--}0.4\text{ nm}$ and $0.1\text{--}0.8\text{ nm}$) and high-energy proton flux ($>10$, $>50$, $>100\text{ MeV}$) from primary GOES satellites.
-- **NASA DONKI & WSA-ENLIL Modeling:** Ingests Coronal Mass Ejection (CME) shock arrival estimates and plasma velocities.
+Human spaceflight is crossing a structural boundary. In Low Earth Orbit (ISS), astronauts operate inside Earth's protective magnetosphere with near-instantaneous voice/telemetry links (<2 s delay) and emergency return capability measured in hours. As missions expand to **Lunar orbits**, **Lunar South Pole habitats**, **Gateway NRHO**, and **interplanetary Mars transit**—carrying 20–40 minute two-way light-time delays, periodic solar conjunction blackouts, and sustained deep-space radiation—**Earth-tethered telemedicine cannot remain the sole loop for acute clinical decisions**.
 
-### 2. Relativistic Particle Transport & Early Warning Engine
-High-energy solar protons travel at relativistic speeds ($E > 100\text{ MeV} \Rightarrow v \approx 0.43c$) through the interplanetary magnetic field:
-$$v(E) = c \sqrt{1 - \left(\frac{m_p c^2}{E + m_p c^2}\right)^2}$$
+**Orbvital** transforms raw physiological logs, contactless cabin camera feeds, live space-weather telemetry, and orbital mission dynamics into an **autonomous, explainable, closed-loop onboard medical intelligence platform**:
 
-By calculating the trajectory along the **interplanetary Parker Spiral** ($L \approx 1.25\text{ AU}$ with pitch-angle scattering), our engine identifies the $\sim 20\text{ to }90\text{ minute}$ operational window between the GOES X-ray flare detection and the peak proton storm impact in cis-lunar space.
-
-### 3. Biological Dosimetry & Shielding Attenuation
-In accordance with **NASA-STD-3001** (30-day limit: $250\text{ mSv}$, career cap: $500\text{ mSv}$):
-- **EVA Spacesuit ($1.2\text{ g/cm}^2$):** $95\%$ flux transmission — extreme biological hazard without shelter.
-- **Nominal Cabin ($10.0\text{ g/cm}^2$):** $75\%$ attenuation — baseline habitat shielding.
-- **Crew Storm Shelter ($25.0\text{ g/cm}^2$):** $95.8\%$ attenuation — shielded bunker configuration utilizing water reserves, consumable supplies, and hydrogenated polyethylene panels.
-
-### 4. Automated NOAA Scale & Medical Mitigation Protocol
-- Classifies storm intensity from **$S0\text{ (Nominal)}$** up to **$S5\text{ (Extreme)}$**.
-- Issues immediate operational and medical directives: abort EVA, initiate shelter ingress checklist, prepare antiemetics (Ondansetron), and administer radioprotective antioxidant regimens.
-
-### 5. Interactive Demo Simulator for Judges
-Enables real-time simulation of scenarios via API or SDK:
-- `NOMINAL`: Quiet interplanetary background conditions.
-- `FLARE_EARLY_WARNING`: X4.5 solar flare trigger with active 48-minute countdown to peak flux.
-- `PEAK_STORM_S4`: Severe SPE event ($14,500\text{ pfu}$) demonstrating life-saving radiation attenuation in the Storm Shelter.
+1. **Explainable Clinical Autonomy (*"Rules Decide, AI Advises"*):**  
+   A deterministic clinical rules engine anchored in **NASA-STD-3001** and **NASA Human Research Program (HRP)** thresholds establishes the authoritative physiological status (`green` / `amber` / `red`), phase-adjusted vital norms, overdue telemetry windows, trend slopes, and emergency directives. **Gemini Decision 1 (`gemini-decision-1`)** runs solely on explicit triage demand to assist with recommended action selection (`re_measure`, `rest`, `exercise`, `shelter_shielding`, `contact_ground`, `no_action`), confidence scoring, and optional free-text mood / instrument photo estimation without allowing opaque model hallucinations to override clinical safety bounds.
+2. **Proactive Environmental & Phase Coupling, Not Passive Charts:**  
+   Astronaut vitals do not exist in a vacuum. Heart rate of 125 bpm during launch `+Gx/+Gz` acceleration or 48 bpm in 0-G orbital cruise can be physiologically expected, whereas mild hypoxia during an **S4 Solar Particle Event (SPE)** outside a Storm Shelter is an acute emergency. Orbvital correlates active mission phase (`phaseNorms.ts`), habitat environment (`SPACECRAFT`, `STATION`, `ROVER`, `LUNAR_BASE`, `MARS_BASE`), and real-time **NOAA SWPC / GOES / NASA DONKI** solar storm scales directly into cross-domain triage priorities (such as automatic `P0_STORM_CRITICAL` shelter-in-place protocols).
+3. **Zero-Friction Capture, Immutable Medical Integrity & Instant Scenario Rehearsal:**  
+   Crew members with high workload and low attention budget can log vitals through a 4-step intake wizard featuring a **3-question behavioral mood check-in** (`/readings/new`) or stream cabin video to **Orbvital Vision (`ai/vision`)** for contactless **rPPG heart rate / HRV**, **NASA-standard PERCLOS fatigue**, and **affect/stress estimation**—with an animated **3D anatomical synthetic head (`SyntheticHead3D`)** and browser simulator fallback when running serverless demos. All persisted health records enforce **append-only clinical integrity** (no edits or deletes; invalidations and linked corrections only, guarded by PostgreSQL triggers). Inside the `/dashboard` **3D Digital Twin**, crew and Flight Surgeons can run instant zero-token **What-If scenario simulations** seeded from live crew vitals before committing an explicit AI triage call.
 
 ---
 
-## 🏗️ Repository Architecture
+## Platform Pillars
+
+### 1. Interactive 3D Physiological Digital Twin (`/dashboard`)
+- **5-Zone Anatomical Twin:** Interactive 3D model (`Body3D` + right-hand zone inspector) covering **Heart** (resting HR, systolic/diastolic BP), **Brain** (mood, cognitive/affective load), **Blood** (blood glucose, SpO₂, body temperature), **Bones** (ARED/T2 resistive countermeasure adherence in altered gravity), and **Sleep** (daily sleep duration & overdue checks).
+- **Phase-Adjusted Physiological Norms (`NASA-STD-3001 & HRP`):** Clinical evaluation adapts thresholds across four operational regimes (`phaseNorms.ts`):
+
+| Flight Regime | Applicable Phases | Expected Nominal Adjustments (vs. 1-G Baseline) | Physiological Basis |
+| :--- | :--- | :--- | :--- |
+| **1-G Earth Baseline** | Pre-launch | HR `50–90 bpm`, SBP `90–129 mmHg`, DBP `<= 84 mmHg`, SpO₂ `>= 95%`, Sleep `>= 7.0 h` | Standard pre-flight clinical screening norms |
+| **Launch & Ascent (`+Gx/+Gz`)** | `ascent`, `heo` | HR `60–135 bpm`, SBP `95–155 mmHg`, DBP `<= 95 mmHg`, SpO₂ `>= 94%` | Sympathetic surge & thoracic acceleration load |
+| **Microgravity / Orbital Cruise (`0-G`)** | `parking`, `leo`, `outbound`, `transit`, `cruise`, `lunar_orbit`, `nrho`, `return`, `flyby`, `gravity_assist`, `perihelion` | HR `45–88 bpm`, SBP `85–125 mmHg`, Sleep `>= 6.5 h/day` | Cephalad fluid shift, baroreceptor unloading & circadian drift |
+| **Entry, Descent & Landing** | `approach`, `descent`, `edl`, `landing` | HR `55–130 bpm`, SBP `85–145 mmHg`, SpO₂ `>= 94%` | Reentry `+Gx/+Gz` load & orthostatic intolerance |
+
+- **NASA HRP 5-Hazard Exposure Model (`hazards.ts`):** Quantifies normalized per-zone environmental stress across **Space Radiation**, **Isolation & Confinement**, **Distance from Earth**, **Altered Gravity Fields**, and **Hostile Closed Environments** tailored by habitat and solar storm scale.
+- **What-If Scenario Dock (`ScenarioDock`):** Real-time simulation across mission habitats, NOAA solar storm scales (`S0`–`S5`), shielding tiers, and physiological slider perturbations without spending LLM tokens.
+- **Gemini Decision 1 Clinical Triage (`decisionService.ts`):** Server-side evaluation using `@google/genai` with deterministic caching, offline fallback (`DEMO_OFFLINE`), quota guard (`DECISION_API_MAX_CALLS`), and multimodal free-text mood & instrument photo estimation.
+
+### 2. Deep Space Radiation Early Warning & Dosimetry Engine (`packages/radiation-engine`)
+- **Live Heliophysics Ingestion:** Streams operational 1/2/3-day solar flare & SPE probabilities from **NOAA SWPC**, 1-minute GOES X-ray (`0.1–0.8 nm`) and $>10\text{ MeV}$ proton telemetry, DSCOVR/ACE solar wind plasma & IMF $B_z$, and **NASA DONKI WSA-ENLIL** CME shock analyses with offline fallback resilience.
+- **Relativistic Parker Spiral Early Warning (`sepPrediction.ts`):** Tracks GOES X-ray flux rise rate ($dF/dt$) to catch X-class / steep M-class flare onsets and computes proton transit times along the curved Parker Spiral ($1.25\text{ AU}$ with pitch-angle scattering) via:
+  $$v(E) = c \sqrt{1 - \left(\frac{m_p c^2}{E + m_p c^2}\right)^2}$$
+  producing an actionable **~20–90 minute warning lead window** prior to peak Solar Particle Event impact in cislunar/lunar space.
+- **Shielding-Attenuated Biological Dosimetry (`doseCalculator.ts`):** Models effective dose rates ($\mu\text{Sv/h}$) and 30-day projections ($\text{mSv}$) against **NASA-STD-3001** caps ($250\text{ mSv}$ 30-day / $500\text{ mSv}$ career reference) across:
+  - `EVA_SUIT` ($1.2\text{ g/cm}^2$, $95\%$ proton transmission)
+  - `CREW_CABIN_NOMINAL` ($10.0\text{ g/cm}^2$, $25\%$ transmission)
+  - `STORM_SHELTER` ($25.0\text{ g/cm}^2$, $4\%$ transmission / $96\%$ attenuation)
+- **Interactive Storm Simulator:** Supports `NOMINAL`, `FLARE_EARLY_WARNING` (X4.5 trigger with 48 min countdown), `PEAK_STORM_S4`, `SIDE_MISS_CME`, and parametric custom CME events (`POST /api/radiation/predict-impact`).
+
+### 3. Contactless AI Computer Vision Biometrics (`ai/vision` & `/vision`)
+- **CPU-First, Open-Source Stack:** Runs on standard CPU (`FastAPI` + `WebSockets` + `MediaPipe Face Landmarker` 478 landmarks + `ONNX Runtime FERPlus` + `SciPy`) without GPU bloat.
+- **Multi-Camera rPPG (`rppg_engine.py`):** Extracts Blood Volume Pulse from forehead (glabella) and cheek ROIs using **POS** (*Plane-Orthogonal-to-Skin*) and **CHROM** for RGB cameras plus single-channel spatial-temporal **NIR-rPPG** for low-light/sleep-pod infrared feeds—delivering BPM, HRV (`RMSSD`, `SDNN`), respiration rate (RPM), PSD spectrum, and Signal Quality Index (SQI).
+- **Fatigue & Sleep-Pod Actigraphy (`sleep_engine.py`):** Computes **EAR** (*Eye Aspect Ratio*), NASA-standard **PERCLOS**, **MAR** (*Mouth Aspect Ratio* yawn counter), 3D head-pose pitch/yaw/roll nodding, microsleep events, and frame-difference actigraphy for sleep staging (`Deep Rest`, `Light/Restless Sleep`, `Awake`).
+- **Mood, Stress & 3D Synthetic Fallback (`mood_engine.py`, `SyntheticHead3D.tsx`, `visionMock.ts`):** Fuses `emotion-ferplus-8.onnx` probabilities with geometric facial Action Units into stress index ($0\text{–}100$), valence ($-1\text{ to }+1$), and cognitive alertness. In browser-only/serverless demos where `:8000` is offline, `/vision` renders a live 3D anatomical head animated by real-time respiration, pulse, head pose, and stress color modulation alongside browser mock telemetry—and swaps automatically to live `ai/vision` when available.
+- **Automated Clinical Sync:** `/vision` batches live biometric frames every **30 seconds** into `POST /api/readings/vision-ingest`, deriving NASA HRP mood ($1\text{–}5$) and sleep-equivalent hours alongside persisted vitals.
+
+### 4. 3D Multi-Mission Trajectory & Live Moment Visualizer (`/visualizer`)
+- Interactive orbital and interplanetary mission viewer featuring real crewed NASA profiles—**Artemis II (Cislunar Free-Return)**, **ISS Expedition 72 (LEO)**, **Apollo 8**, **Apollo 11**, **Apollo 13**, and **Apollo 17**—alongside configurable trajectories (`LRO`, `Mars 2020`, `Europa Clipper`, `Parker Solar Probe`), custom trajectory JSON uploads, and launch vehicle switching.
+- Synchronizes elapsed mission clock ticks with spacecraft position, heliocentric/cislunar coordinates, mission phases, and phase-specific physiological hazard emphasis.
+
+### 5. Flight Surgeon Console, Append-Only Integrity & Autonomous Incident SLA (`/admin`, `/routine`)
+- **Append-Only Medical Record Integrity (`P1–P7`, see [REGLAS_DE_NEGOCIO.md](file:///home/sanma613/Desktop/NSA2026/docs/REGLAS_DE_NEGOCIO.md)):** Health readings are strictly immutable once logged. Erroneous readings are formally **invalidated with an audit reason** (`POST /api/readings/:id/invalidate`) or superseded transactionally via linked corrections (`POST /api/readings/:id/corrections`), enforced by PostgreSQL trigger `health_readings_append_only` and Prisma Migrate (`20261115000000_immutable_health_data`). `PUT/PATCH/DELETE /api/readings/:id` return `405 Method Not Allowed`.
+- **Automated Incident Detection & Correlation (`syncSystemIncidents.ts`, `correlation.ts`):** Every abnormal reading or `S1`–`S5` solar storm opens/deduplicates database-backed `Incident` records; during `S3+` storms, `CRITICAL` medical cases automatically escalate to `P0_STORM_CRITICAL` shelter-in-place directives.
+- **Real-Time SSE Stream (`GET /api/incidents/stream`):** Broadcasts `incident:opened`, `incident:escalated`, `incident:acknowledged`, and `incident:closed` events via `IncidentNotificationCenter` with SLA acknowledgement timers (`5 min` Critical / `15 min` Warning).
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    Cam["Cabin RGB / NIR Camera\n(WebRTC / Upload / 3D Simulator)"] --> Vision["ai/vision\nFastAPI + WS\nMediaPipe · ONNX · rPPG · PERCLOS"]
+    NOAA["NOAA SWPC · GOES-18\nNASA DONKI WSA-ENLIL"] --> Rad["packages/radiation-engine\nRelativistic SEP · Dose · GCR/SPE"]
+    Vision -->|"30s Auto-Sync (POST /api/readings/vision-ingest)"| API
+    Rad -->|"Embedded TS SDK"| API["apps/backend\nExpress Clean Architecture + Prisma\nRules Engine · Gemini Decision 1 · SSE"]
+    API <--> DB[("PostgreSQL (Supabase / Neon)\nAppend-Only Health Readings\nUsers · Missions · Crew · Incidents · Directives")]
+    API -->|"DECISIONS API"| Gemini["Google Gemini\ngemini-decision-1"]
+    API <-->|"REST + SSE (/api/incidents/stream)"| Web["apps/frontend\nNext.js 14 · Tailwind\nThree.js 3D Twin & Orbit Visualizer"]
+    Web <-->|"Live WS / HTTP Frames"| Vision
+```
+
+### Monorepo Structure
 
 ```text
 NSA2026/
-├── docs/
-│   ├── SPACE_RADIATION_MODULE_PLAN.md      # Detailed scientific and architectural roadmap
-│   └── RADIATION_ENGINE_INTEGRATION_GUIDE.md # Frontend & Backend integration guide
-└── radiation-engine/                       # Independent TypeScript engine & microservice
-    ├── src/
-    │   ├── types/index.ts                  # Domain models and strict interfaces
-    │   ├── clients/
-    │   │   ├── noaaSwpcClient.ts           # NOAA SWPC live feeds & fallback logic
-    │   │   └── nasaDonkiClient.ts          # NASA DONKI WSA-ENLIL CME client
-    │   ├── physics/
-    │   │   ├── sepPrediction.ts            # Relativistic particle kinetics & warning window
-    │   │   └── doseCalculator.ts           # Biological dose & shielding attenuation models
-    │   ├── alert/
-    │   │   └── mitigationRules.ts          # NOAA S1–S5 scales & emergency protocols
-    │   ├── simulator/
-    │   │   └── stormSimulator.ts           # Interactive scenario state generator
-    │   ├── index.ts                        # Main exportable RadiationEngine SDK facade
-    │   └── server.ts                       # REST API microservice (Express)
-    └── tests/
-        └── radiationEngine.test.ts         # Automated unit test suite (Vitest)
+├── apps/
+│   ├── backend/                     # Express 4 + TypeScript Clean Architecture API & Clinical Decision Core
+│   │   ├── prisma/                  # PostgreSQL schema, Prisma Migrate migrations & idempotent seed/seed.sql
+│   │   ├── src/
+│   │   │   ├── domain/              # Core entities, custom AppErrors, repository interfaces
+│   │   │   ├── application/         # Digital twin, HRP hazards, decisionService, incident bus & use cases
+│   │   │   ├── infrastructure/      # Prisma repositories, JWT, bcrypt, Blob/Supabase storage, radiation wiring
+│   │   │   └── interface/           # Express controllers, middlewares, Zod validation & routers
+│   │   └── tests/unit/              # 19 Vitest suites (unit & HTTP integration tests)
+│   └── frontend/                    # Next.js 14 App Router + React 18 + Three.js UI
+│       ├── public/                  # 3D anatomical assets (/anatomy/body.glb, head.glb) & trajectory JSONs
+│       └── src/
+│           ├── app/                 # Routes: /dashboard, /visualizer, /vision, /trends, /routine, /missions, /astronauts, /admin
+│           └── features/            # Feature-sliced modules (health, visualizer, vision, radiation, admin, missions, astronauts, routine, auth, common)
+├── packages/
+│   └── radiation-engine/            # @nsa2026/radiation-engine TypeScript space-weather physics & simulation package
+│       ├── src/                     # Clients, physics (sepPrediction, doseCalculator, solarWindImpact), mitigation rules, simulator
+│       └── tests/                   # Physics & early-warning unit suite (16 tests)
+├── ai/
+│   └── vision/                      # Python 3.11 FastAPI contactless biometric subsystem (rPPG, PERCLOS, Mood/Stress)
+│       ├── src/                     # MediaPipe tracker, rPPG/Sleep/Mood engines, pipeline & static telemetry HUD
+│       └── tests/                   # Pytest suites for rPPG, sleep, mood & API
+├── docs/                            # Challenge alignment, deployment architecture, integrity rules & radiation specs
+├── package.json                     # npm workspaces configuration (apps/backend, packages/radiation-engine)
+└── vercel.json                      # Unified Vercel Services deployment routing (/api/* & /health -> backend, /* -> frontend)
 ```
 
 ---
 
-## 🚀 Quickstart
+## Core API Surface (`apps/backend`)
 
-### 1. Running the Automated Test Suite
-```bash
-cd radiation-engine
-npm install
-npm test
-```
+All primary API routes are mounted under `/api/*` (with health checks at `/health` and `/api/health`):
 
-### 2. Running In-Memory Engine Verification
-```bash
-npx ts-node src/cliTest.ts
-```
-
-### 3. Launching the REST API Microservice
-```bash
-npm run dev
-# Server starts at http://localhost:4000
-```
-
-### Key API Endpoints:
-- `GET /api/radiation/status`: Live space weather telemetry, early warning state, biological doses, and mitigation checklist.
-- `GET /api/radiation/cme-forecast`: NASA DONKI CME shock arrival forecast.
-- `POST /api/radiation/simulate`: Trigger demo scenarios (`FLARE_EARLY_WARNING`, `PEAK_STORM_S4`, `NOMINAL`, `RESET`).
-
----
-
-## 🩺 Phase-Adjusted Physiological Norms (NASA-STD-3001 & HRP)
-
-Vital signs that appear abnormal relative to a resting 1-G Earth baseline can be **physiologically nominal** during specific spaceflight phases. The clinical evaluator (`apps/frontend/src/features/health/domain/phaseNorms.ts`) adapts expected green/amber thresholds to the active mission phase:
-
-| Flight Regime | Applicable Phases | Expected Nominal Adjustments (vs. 1-G Earth Baseline) | Physiological Basis |
+| Domain | Endpoints | Auth / Role | Purpose |
 | :--- | :--- | :--- | :--- |
-| **1-G Earth Baseline** | Pre-launch | HR `50–90 bpm`, SBP `90–129 mmHg`, DBP `≤ 84 mmHg`, SpO₂ `≥ 95%`, Sleep `≥ 7.0 h` | Pre-flight clinical screening norms |
-| **Launch & Ascent (`+Gx/+Gz`)** | `ascent`, `heo` | HR `60–135 bpm`, SBP `95–155 mmHg`, DBP `≤ 95 mmHg`, SpO₂ `≥ 94%` | Sympathetic surge, adrenaline, and thoracic compression under launch acceleration |
-| **Microgravity / Orbital Cruise (`0-G`)** | `parking`, `leo`, `outbound`, `transit`, `cruise`, `lunar_orbit`, `nrho`, `return`, `flyby`, `gravity_assist`, `perihelion` | HR `45–88 bpm`, SBP `85–125 mmHg`, Sleep `≥ 6.5 h/day` | Cephalad fluid shift, baroreceptor unloading, lower resting cardiac workload, and 16 sunrises/day circadian drift |
-| **Entry, Descent & Landing** | `approach`, `descent`, `edl`, `landing` | HR `55–130 bpm`, SBP `85–145 mmHg`, SpO₂ `≥ 94%` | Reentry `+Gx/+Gz` deceleration load and post-flight orthostatic intolerance |
+| **Auth** | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` | Public / JWT | Registration, bcrypt authentication, current user session |
+| **Missions** | `GET /api/missions`, `GET /api/missions/:id`, `POST/PUT/DELETE /api/missions` | Public read / `ADMIN` write | Crewed & planetary mission registry & patch upload |
+| **Crew & Digital Twin** | `GET /api/astronauts`, `GET /api/astronauts/:id`, `GET /api/astronauts/:id/summary`, `GET /api/astronauts/:id/digital-twin`, `POST /api/astronauts/:id/simulate`, `POST /api/astronauts/digital-twin/evaluate` | JWT (`ADMIN` for crew CRUD) | Crew profiles, 5-zone physiological twin evaluation, What-If simulation, Gemini Decision 1 triage |
+| **Append-Only Readings & Vision** | `GET/POST /api/readings`, `GET /api/readings/:id`, `POST /api/readings/:id/invalidate`, `POST /api/readings/:id/corrections`, `POST /api/readings/vision-ingest` (`PUT/PATCH/DELETE` -> `405`) | JWT | Append-only 7-vital clinical logs, audit invalidations/corrections, automatic incident triggers & Vision sync |
+| **Space Radiation** | `GET /api/radiation/status`, `GET /api/radiation/cme-forecast`, `POST /api/radiation/simulate`, `POST /api/radiation/predict-impact` | Public read / `ADMIN` simulate | Live NOAA/NASA status, proton ETA countdown, dose attenuation, simulation & custom CME impact |
+| **Incidents & Protocols** | `GET /api/incidents`, `GET /api/incidents/stream`, `GET /api/incidents/protocols`, `GET /api/incidents/mission-catalog`, `GET /api/incidents/:id`, `POST /api/incidents`, `PATCH /api/incidents/:id/acknowledge`, `PATCH /api/incidents/:id/close` | JWT (`ADMIN` open/close) | Database-backed incident lifecycle, SSE real-time push, SLA escalation & NASA HRP protocols |
+| **Flight Surgeon** | `GET /api/admin/triage`, `GET /api/admin/astronauts/:id/directives`, `POST /api/admin/astronauts/:id/directives` | `ADMIN` | Multi-astronaut triage matrix correlated with active storm scale & clinical directives |
+| **Media Uploads** | `POST /api/uploads/astronauts`, `POST /api/uploads/missions` | `ADMIN` | Multipart image upload via Vercel Blob or Supabase Storage |
+
+---
+
+## Local Development Quickstart
+
+### Prerequisites
+- **Node.js 22+** & **npm 10+**
+- **PostgreSQL** instance (e.g., Supabase or Neon free tier)
+- **Python 3.11+** (optional, required only for running native `ai/vision`)
+
+### 1. Install Dependencies & Build Shared Radiation Engine
+```bash
+npm install
+npm --workspace=@nsa2026/radiation-engine run build
+```
+
+### 2. Configure Environment Variables
+Copy the provided templates and populate your credentials:
+- `apps/backend/.env` (from `apps/backend/.env.example`):
+  - `DATABASE_URL` / `DIRECT_URL`: PostgreSQL pooled & direct connection strings
+  - `JWT_SECRET`: Signing secret for bearer tokens (required in runtime)
+  - `GEMINI_API_KEY`: Optional server-side key for `gemini-decision-1` (set `DEMO_OFFLINE="true"` to run 100% deterministically without API calls)
+  - `ALLOWED_ORIGINS`: Comma-separated allowed CORS origins (`http://localhost:3000,...`)
+  - `BLOB_READ_WRITE_TOKEN` or `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`: Image upload storage
+- `apps/frontend/.env.local` (from `apps/frontend/.env.example`):
+  - `NEXT_PUBLIC_API_HOST=http://localhost:4000/api`
+  - `NEXT_PUBLIC_API_URL=http://localhost:4000`
+  - `NEXT_PUBLIC_VISION_URL=http://localhost:8000`
+  - `NEXT_PUBLIC_USE_MOCKS=false`
+
+### 3. Apply Migrations, Seed & Run Services
+```bash
+# Terminal 1 — Backend API (port 4000)
+cd apps/backend
+npx prisma generate
+npm run prisma:deploy
+npx prisma db seed
+npm run dev
+
+# Terminal 2 — Next.js Frontend (port 3000)
+cd apps/frontend
+npm install
+npm run dev
+
+# Terminal 3 — Optional AI Vision Biometrics Server (port 8000)
+cd ai/vision
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python download_models.py
+.venv/bin/python run.py --port 8000
+```
+
+Open `http://localhost:3000` in your browser.
+
+---
+
+## Automated Testing & Verification
+
+| Component | Command | Coverage |
+| :--- | :--- | :--- |
+| **Radiation Engine** | `cd packages/radiation-engine && npm test && npm run build` | Relativistic beta/transit kinematics, shielding attenuation, NOAA scale & offline storm simulation |
+| **Backend API & Clinical Core** | `cd apps/backend && npx tsc --noEmit && npm test` | Digital Twin rules, Decision Service fallback, append-only health integrity, auth, uploads, incidents & triage correlation |
+| **Frontend Typecheck & Build** | `cd apps/frontend && npx tsc --noEmit && npm run build` | Next.js App Router, Three.js scenes, phase-adjusted evaluator, feature modules & API clients |
+| **AI Vision Biometrics** | `cd ai/vision && .venv/bin/pytest -v` | rPPG heart rate extraction, EAR/PERCLOS fatigue & actigraphy, Mood engine & FastAPI/WebSocket endpoints |
 
 ---
 
@@ -119,11 +201,25 @@ AI tools were used to build this project, and the product itself uses AI models 
 
 ---
 
-## 📚 References & Standards
+## References & Standards
+
 - **NASA-STD-3001, Volume 1 (Crew Health):** *NASA Spaceflight Human-System Standard — Pre-flight, In-flight, and Post-flight Physiological & Medical Standards* (<https://www.nasa.gov/ochmo/human-system-standards/>)
 - **NASA-STD-3001, Volume 2 (Human Factors, Habitability, and Environmental Health):** *Translational Acceleration Limits, Launch/Entry/Landing (LEL) Tolerances, and Cabin Atmosphere* (<https://www.nasa.gov/ochmo/human-system-standards/>)
-- **NASA Human Research Program (HRP):** *The 5 Hazards of Human Spaceflight — Space Radiation, Isolation, Distance, Gravity Fields, Hostile Environments* (<https://www.nasa.gov/hrp/hazards>)
-- **NASA HRP Cardiovascular & Fluid Shift Research:** *Cardiovascular Deconditioning, Cephalad Fluid Shift, and Orthostatic Intolerance in Microgravity* (<https://www.nasa.gov/hrp/bodyinspace>)
+- **NASA Human Research Program (HRP):** *5 Hazards of Human Spaceflight & The Human Body in Space* (<https://www.nasa.gov/hrp/hazards>, <https://www.nasa.gov/hrp/bodyinspace>)
 - **NOAA SWPC:** *Space Weather Scales for Solar Radiation Storms (S-Scale)* (<https://www.swpc.noaa.gov/noaa-scales-explanation>)
 - **NASA DONKI:** *Space Weather Database Of Notifications, Knowledge, Information* (<https://kauai.ccmc.gsfc.nasa.gov/DONKI/>)
-- **JPL Solar System Dynamics:** *Approximate Positions of the Planets (Standish) & Mission Ephemerides (Artemis II, ISS, LRO, Mars 2020, Europa Clipper, Parker Solar Probe)* (<https://ssd.jpl.nasa.gov/>)
+- **JPL Solar System Dynamics:** *Approximate Positions of the Planets & Crewed Mission Ephemerides (Apollo 8/11/13/17, ISS, Artemis II)* (<https://ssd.jpl.nasa.gov/>)
+
+---
+
+## Module Documentation Index
+
+- [Backend API Documentation](./apps/backend/README.md)
+- [Frontend Web Platform Documentation](./apps/frontend/README.md)
+- [Deep Space Radiation Engine Package](./packages/radiation-engine/README.md)
+- [AI Contactless Vision Biometrics](./ai/vision/README.md)
+- [Health Data Integrity & Business Rules (P1–P8)](./docs/REGLAS_DE_NEGOCIO.md)
+- [Architecture & Free-Tier Deployment Guide](./docs/ARCHITECTURE_AND_DEPLOY_GUIDE.md)
+- [NASA Space Apps 2026 Challenge Mapping](./docs/NASA_SPACE_APPS_CHALLENGE.md)
+- [Radiation Engine Integration Guide](./docs/RADIATION_ENGINE_INTEGRATION_GUIDE.md)
+- [Space Radiation Module Scientific Plan](./docs/SPACE_RADIATION_MODULE_PLAN.md)

@@ -1,3 +1,12 @@
+/**
+ * @module missionControlBiometricsClient
+ * Browser client for the Astronaut Vitals Mission Control dashboard.
+ *
+ * Streams either synthetic simulator `tick` requests or local webcam JPEG frames over the
+ * `/ws/telemetry` WebSocket at ~15 Hz (65 ms interval with backpressure gating via `awaitingResponse`),
+ * renders rPPG BVP waveforms and Welch power spectra onto HTML5 canvases, and submits
+ * pre-recorded videos to `/api/analyze/video`.
+ */
 (() => {
   const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${wsProtocol}//${window.location.host}/ws/telemetry`;
@@ -32,6 +41,9 @@
   let loopTimer = null;
   let awaitingResponse = false;
 
+  /**
+   * Opens the `/ws/telemetry` WebSocket connection with automatic 1.5 s reconnect backoff.
+   */
   function connectWebSocket() {
     ws = new WebSocket(wsUrl);
     ws.onopen = () => {
@@ -57,6 +69,9 @@
     };
   }
 
+  /**
+   * Polls simulator ticks or webcam JPEG frames every 65 ms while gating on in-flight responses.
+   */
   function startStreamingLoop() {
     if (loopTimer) clearInterval(loopTimer);
     loopTimer = setInterval(() => {
@@ -95,6 +110,9 @@
     }, 65);
   }
 
+  /**
+   * Switches input between the synthetic astronaut simulator and local `getUserMedia` webcam, resetting pipeline buffers.
+   */
   async function toggleSource() {
     const source = sourceSelect.value;
     if (source === "webcam") {
@@ -148,6 +166,10 @@
     }
   });
 
+  /**
+   * Updates HUD frame, mission health alerts, rPPG/HRV gauges, mood metrics, and sleep/actigraphy readouts.
+   * @param {Object} t - Serialized `AstronautTelemetryFrame` payload from `/ws/telemetry`.
+   */
   function renderTelemetry(t) {
     if (t.annotated_frame_jpeg_b64) {
       hudImage.src = `data:image/jpeg;base64,${t.annotated_frame_jpeg_b64}`;
@@ -223,6 +245,9 @@
     document.getElementById("restless-val").textContent = String(sl.restlessness_events);
   }
 
+  /**
+   * Draws normalized filtered Blood Volume Pulse (BVP) samples onto the oscilloscope canvas.
+   */
   function drawWaveform(ctx, w, h, samples, color) {
     ctx.clearRect(0, 0, w, h);
     ctx.strokeStyle = "#1e293b";
@@ -245,6 +270,9 @@
     ctx.stroke();
   }
 
+  /**
+   * Renders the normalized rPPG power spectral density bars across 45-180 BPM, highlighting the detected peak.
+   */
   function drawSpectrum(ctx, w, h, freqsBpm, power, peakBpm) {
     ctx.clearRect(0, 0, w, h);
     if (!freqsBpm || freqsBpm.length < 2) return;

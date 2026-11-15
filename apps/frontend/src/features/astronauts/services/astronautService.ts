@@ -1,4 +1,5 @@
 import { httpClient } from '@/features/common/services/httpClient';
+import type { CrewLocation } from '@/features/operator/domain/types';
 import type { Astronaut, AstronautFilters, CreateAstronautInput, PaginatedAstronauts, UpdateAstronautInput } from '../domain/types';
 
 /** En modo mock, httpClient responde con el backend simulado (features/common/mocks). */
@@ -14,5 +15,15 @@ export const astronautService = {
 
   delete: async (id: string): Promise<void> => {
     await httpClient.delete(`/astronauts/${id}`);
+  },
+
+  /** Ubicación actual: solo el propio tripulante o el Flight Surgeon (ruta autenticada). */
+  getLocation: async (id: string): Promise<CrewLocation | null> => {
+    const res = await httpClient.get<{ currentLocation: CrewLocation | null }>(`/astronauts/${id}/location`);
+    return res.currentLocation;
+  },
+
+  updateLocation: async (id: string, location: CrewLocation): Promise<void> => {
+    await httpClient.patch(`/astronauts/${id}/location`, { location });
   },
 };

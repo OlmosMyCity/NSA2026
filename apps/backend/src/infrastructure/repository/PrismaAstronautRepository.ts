@@ -1,3 +1,9 @@
+/**
+ * @module PrismaAstronautRepository
+ * PostgreSQL/Prisma implementation of `IAstronautRepository` with soft-delete filtering,
+ * bounded pagination, and eager mission summary projection.
+ */
+
 import { Prisma } from "@prisma/client";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import {
@@ -9,6 +15,12 @@ import {
 } from "../../domain/models/Astronaut.js";
 import { prisma } from "../database/prismaClient.js";
 
+// Las rutas de astronautas son públicas: la ubicación solo sale por su ruta autenticada.
+const withoutLocation = { currentLocation: true, locationUpdatedAt: true } as const;
+
+/**
+ * Prisma-backed repository for crew profile persistence and mission assignment queries.
+ */
 export class PrismaAstronautRepository implements IAstronautRepository {
   async findMany(filters: AstronautFilters): Promise<PaginatedResult<AstronautWithMission>> {
 
@@ -39,6 +51,7 @@ export class PrismaAstronautRepository implements IAstronautRepository {
         skip,
         take: limit,
         orderBy: { createdAt: "asc" },
+        omit: withoutLocation,
         include: {
           mission: {
             select: {
@@ -69,6 +82,7 @@ export class PrismaAstronautRepository implements IAstronautRepository {
         id,
         deletedAt: null,
       },
+      omit: withoutLocation,
       include: {
         mission: {
           select: {
@@ -86,6 +100,7 @@ export class PrismaAstronautRepository implements IAstronautRepository {
         userId,
         deletedAt: null,
       },
+      omit: withoutLocation,
       include: {
         mission: {
           select: {
@@ -107,6 +122,7 @@ export class PrismaAstronautRepository implements IAstronautRepository {
         userId: data.userId || null,
         photoUrl: data.photoUrl || null,
       },
+      omit: withoutLocation,
       include: {
         mission: {
           select: {
@@ -132,6 +148,7 @@ export class PrismaAstronautRepository implements IAstronautRepository {
         userId: data.userId,
         photoUrl: data.photoUrl,
       },
+      omit: withoutLocation,
       include: {
         mission: {
           select: {

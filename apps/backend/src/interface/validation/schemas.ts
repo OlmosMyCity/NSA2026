@@ -1,9 +1,23 @@
-import { Environment, IncidentCategory, IncidentSeverity, MissionStatus } from "@prisma/client";
+/**
+ * @module schemas
+ * Zod request validation schemas and helper parsers for missions, astronauts,
+ * physiological readings, vision telemetry, biodosimetry, incidents, and directives.
+ */
+
+import {
+  CrewLocation,
+  Environment,
+  IncidentCategory,
+  IncidentSeverity,
+  MissionStatus,
+  Role,
+} from "@prisma/client";
 import { z } from "zod";
 import { ValidationError } from "../../domain/errors/AppError.js";
 
 /**
- * Convierte cadenas numéricas no vacías sin transformar `""` o `null` en `0`.
+ * Parses non-empty numeric strings while preventing `""`, `null`, or `boolean` values
+ * from implicitly coercing to `0` (also handles multipart string fields).
  */
 function finiteNumber(
   label: string,
@@ -31,8 +45,8 @@ function finiteNumber(
 }
 
 /**
- * Valida URLs opcionales de imagen permitiendo únicamente esquema `https:` o `null`.
- * Conserva `undefined` para no sobrescribir valores en actualizaciones parciales.
+ * Validates optional image URLs, allowing only `https:` URLs or `null`.
+ * Preserves `undefined` so partial PATCH/PUT payloads do not overwrite stored values.
  */
 export const safeImageUrlSchema = z
   .union([z.string(), z.null(), z.undefined()])
@@ -88,6 +102,7 @@ const healthVitalsShape = {
   takenAt: optionalDateSchema,
 };
 
+/** Schema for creating a physiological health reading within safe clinical bounds. */
 export const createHealthReadingSchema = z.object({
   astronautId: requiredNonEmptyString("astronautId", 128),
   ...healthVitalsShape,
@@ -109,6 +124,7 @@ export const correctHealthReadingSchema = z.object({
   reason: readingChangeReason,
 });
 
+/** Schema for creating a mission with chronological `startDate` <= `endDate` enforcement. */
 export const createMissionSchema = z
   .object({
     name: requiredNonEmptyString("name", 200),
@@ -175,17 +191,45 @@ export const updateAstronautSchema = z.object({
   photoUrl: safeImageUrlSchema.optional(),
 });
 
+/** Schema for clinical directives transmitted from flight surgeons to crew consoles. */
 export const directivesSchema = z.object({
   directives: requiredNonEmptyString("directives", 2000),
   incidentId: z.string().trim().min(1).max(128).nullable().optional(),
 });
 
+export const crewLocationSchema = z.object({
+  location: z.nativeEnum(CrewLocation, { message: "El campo 'location' no es una ubicación válida." }),
+});
+
+export const createUserByAdminSchema = z.object({
+  name: requiredNonEmptyString("name", 120),
+  email: z
+    .string({ message: "El campo 'email' es obligatorio." })
+    .trim()
+    .email("El email no es válido.")
+    .max(254, "El email es demasiado largo."),
+  // Estas cuentas ven datos de terceros: se exige más que al registro público.
+  password: z
+    .string({ message: "El campo 'password' es obligatorio." })
+    .min(10, "La contraseña debe tener al menos 10 caracteres.")
+    .max(128, "La contraseña es demasiado larga."),
+  role: z.nativeEnum(Role, { message: "El campo 'role' no es un rol válido." }),
+});
+
+export const assignMissionOperatorSchema = z.object({
+  operatorId: z.union([z.string().trim().min(1), z.null()], {
+    message: "El campo 'operatorId' debe ser un id de usuario o null.",
+  }),
+});
+
+/** Schema for selecting or resetting a deterministic solar radiation simulation scenario. */
 export const radiationSimulateSchema = z.object({
   scenario: z
     .enum(["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4", "SIDE_MISS_CME", "RESET"])
     .optional(),
 });
 
+/** Schema for biodosimetry triage requests combining shielding, vitals, radiation state, and biomarkers. */
 export const biodosimetryTriageSchema = z.object({
   astronautId: z.string().trim().min(1).max(128).optional(),
   shieldingType: z.enum(["EVA_SUIT", "CREW_CABIN_NOMINAL", "STORM_SHELTER"]).optional(),
@@ -217,6 +261,7 @@ export const closeIncidentSchema = z.object({
   resolutionNotes: z.string().trim().max(2000).nullable().optional(),
 });
 
+/** Schema for edge camera/rPPG vision telemetry ingestion payloads. */
 export const visionIngestSchema = z.object({
   astronautId: requiredNonEmptyString("astronautId", 128),
   heartRateBpm: finiteNumber("heartRateBpm", 0, 260),
@@ -240,7 +285,8 @@ export const visionIngestSchema = z.object({
 });
 
 /**
- * Parsea un objeto con un esquema Zod y traduce cualquier falla a ValidationError (400).
+ * Parses an unknown input object against a Zod schema and translates the first
+ * validation issue into a `ValidationError` (HTTP 400).
  */
 export function parseWithValidation<TSchema extends z.ZodTypeAny>(
   schema: TSchema,

@@ -1,5 +1,16 @@
+/**
+ * @module application/health/evaluateReading
+ * Pure deterministic clinical triage engine enforcing NASA Human Research Program (HRP)
+ * biomedical thresholds for Artemis crew health readings.
+ *
+ * Architectural role: Acts as the authoritative deterministic rule engine for reading
+ * classification (`OK`, `WARNING`, `CRITICAL`), triggered alerts, and protocol selection.
+ * Alert messages are preserved in Spanish for clinical UI and test assertions.
+ */
+
 import { getMedicalProtocol } from "./medicalProtocols.js";
 
+/** Raw vital-sign and behavioral metrics for a single biomedical reading. */
 export interface HealthReadingInput {
   heartRateBpm: number;
   systolicMmHg: number;
@@ -8,11 +19,13 @@ export interface HealthReadingInput {
   temperatureC: number;
   spo2Pct: number;
   sleepHours: number;
-  mood: number; // 1 a 5
+  mood: number; // 1 to 5 scale
 }
 
+/** Severity level assigned to an individual physiological threshold breach. */
 export type HealthAlertLevel = "WARNING" | "CRITICAL";
 
+/** Individual clinical alert produced when a vital indicator breaches HRP bounds. */
 export interface HealthAlert {
   indicator: string;
   level: HealthAlertLevel;
@@ -21,8 +34,10 @@ export interface HealthAlert {
   value: number;
 }
 
+/** Aggregate health classification derived from all evaluated vital indicators. */
 export type OverallHealthStatus = "OK" | "WARNING" | "CRITICAL";
 
+/** Output of `evaluateReading` pairing overall status, primary protocol ID, alerts, and guidance. */
 export interface HealthEvaluationResult {
   status: OverallHealthStatus;
   protocolId: string;
@@ -273,10 +288,18 @@ const ALERT_RULES: Array<{
 ];
 
 /**
- * Evalúa los 7 indicadores vitales de un astronauta según los estándares
- * del Human Research Program (HRP) de la NASA para misiones Artemis.
+ * Evaluates 7 astronaut physiological and behavioral indicators against the shared
+ * `HEALTH_BANDS` table (NASA HRP thresholds for Artemis missions):
+ * - Heart rate (bpm): critical `< 40` or `> 100`; warning `40–49` or `91–100`
+ * - Blood pressure (mmHg): critical sys `< 90` or `>= 140`, or dia `>= 90`; warning sys `130–139` or dia `85–89`
+ * - Blood glucose (mg/dL): critical `< 70` or `> 180`; warning `141–180`
+ * - Body temperature (°C): critical `< 35.5` or `> 38.0`; warning `35.5–36.0` or `37.6–38.0`
+ * - SpO2 (%): critical `< 92`; warning `92–94`
+ * - Sleep (hours): critical `< 6.0`; warning `6.0–6.99`
+ * - Mood (1–5): critical `<= 2`; warning `< 4`
  *
- * Función de dominio puro (sin efectos secundarios ni dependencias externas).
+ * Pure domain function with zero side effects or external dependencies; `CRITICAL` alerts
+ * take precedence over `WARNING` alerts when selecting the primary `protocolId`.
  */
 export function evaluateReading(reading: HealthReadingInput): HealthEvaluationResult {
   const alerts: HealthAlert[] = [];

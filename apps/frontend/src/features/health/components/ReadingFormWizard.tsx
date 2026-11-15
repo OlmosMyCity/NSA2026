@@ -9,6 +9,7 @@ import { API_STATUS } from '../domain/api-adapter';
 import type { Vitals } from '../domain/types';
 import { StatusBadge } from './StatusBadge';
 import { AssessmentPanel } from './reading-form/AssessmentPanel';
+import { MoodCheckIn } from './reading-form/MoodCheckIn';
 import { VitalField } from './reading-form/VitalField';
 import { ASSESSMENT_STEP_LABEL, DEFAULT_VITALS, VITAL_STEPS } from './reading-form/steps';
 import { useCrewSelection } from './reading-form/useCrewSelection';
@@ -133,9 +134,13 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
             </div>
 
             <div className={`grid grid-cols-1 gap-6 ${current.fields.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-              {current.fields.map(({ indicator, field }) => (
-                <VitalField key={field} indicator={indicator} value={vitals[field]} onChange={setVital(field)} />
-              ))}
+              {current.fields.map(({ indicator, field }) =>
+                field === 'mood' ? (
+                  <MoodCheckIn key={field} value={vitals.mood} onChange={setVital('mood')} />
+                ) : (
+                  <VitalField key={field} indicator={indicator} value={vitals[field]} onChange={setVital(field)} />
+                ),
+              )}
             </div>
 
             {step === VITAL_STEPS.length - 1 && (

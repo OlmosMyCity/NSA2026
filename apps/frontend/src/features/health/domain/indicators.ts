@@ -1,13 +1,20 @@
+/**
+ * @module health/domain/indicators
+ * Canonical catalog of the 9 monitored physiological and behavioral indicators,
+ * mapping each metric to one of the 5 Digital Twin zones (`heart`, `brain`, `blood`,
+ * `bones`, `sleep`), associated NASA HRP hazards, and deterministic threshold bands.
+ */
+
 import type { BodyZoneId, IndicatorDefinition, IndicatorId } from './types';
 
 /**
- * Catálogo de indicadores con umbrales orientativos para la demo (no son criterio clínico).
- * Los tramos son copia exacta de HEALTH_BANDS en
- * apps/backend/src/application/health/evaluateReading.ts; el test
- * apps/backend/tests/unit/healthRulesParity.test.ts falla si divergen.
+ * Indicator catalog with mission-demo reference thresholds (illustrative, not clinical criteria).
+ * Segments are an exact copy of HEALTH_BANDS in
+ * apps/backend/src/application/health/evaluateReading.ts; the test
+ * apps/backend/tests/unit/healthRulesParity.test.ts fails if they diverge.
  *
- * `resistanceExercise` no está en HEALTH_BANDS (el backend no lo persiste); su tramo
- * coincide con el del gemelo digital (apps/backend/src/application/health/digitalTwin.ts).
+ * `resistanceExercise` is not in HEALTH_BANDS (the backend does not persist it); its segment
+ * matches the digital twin (apps/backend/src/application/health/digitalTwin.ts).
  */
 export const INDICATORS: Record<IndicatorId, IndicatorDefinition> = {
   heartRate: {
@@ -95,7 +102,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDefinition> = {
 
 export const INDICATOR_IDS = Object.keys(INDICATORS) as IndicatorId[];
 
-/** Indicadores agrupados por zona de la figura humana. */
+/** Indicator IDs grouped by their target 3D anatomical zone. */
 export const INDICATORS_BY_ZONE: Record<BodyZoneId, IndicatorId[]> = {
   heart: [],
   brain: [],

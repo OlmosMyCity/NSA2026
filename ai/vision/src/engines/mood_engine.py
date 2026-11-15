@@ -1,4 +1,11 @@
-"""Astronaut Mood, Emotion, and Psychological Stress Engine (ONNX FERPlus + Action Units)."""
+"""Astronaut Mood, Emotion, and Psychological Stress Engine (ONNX FERPlus + Action Units).
+
+Performs 50/50 hybrid probability fusion between the 8-class `emotion-ferplus-8.onnx`
+convolutional classifier (64x64 grayscale aligned face crop) and geometric facial Action Units
+(EAR, MAR, brow furrow, smile ratio), smoothed via Exponential Moving Average (EMA) and
+combined with rPPG heart rate (>85 BPM autonomic stress contribution) and PERCLOS alertness.
+Falls back cleanly to `"au_geometric"` if the ONNX model or `onnxruntime` is unavailable.
+"""
 
 from typing import Dict, Optional
 import numpy as np
@@ -19,6 +26,7 @@ FERPLUS_LABELS = [
 
 
 def _softmax(x: np.ndarray) -> np.ndarray:
+    """Computes numerically stable softmax probabilities from raw model logits."""
     e_x = np.exp(x - np.max(x))
     return e_x / np.sum(e_x)
 
@@ -43,6 +51,7 @@ class MoodEngine:
 
     @staticmethod
     def _init_shared_onnx() -> None:
+        """Lazily initializes a process-wide CPU ONNX Runtime session for FERPlus if present."""
         global _SHARED_ORT_SESSION, _SHARED_INPUT_NAME, _SHARED_BACKEND_NAME
         if not FERPLUS_ONNX_PATH.exists() or FERPLUS_ONNX_PATH.stat().st_size < 1024:
             _SHARED_BACKEND_NAME = "au_geometric"
@@ -64,6 +73,7 @@ class MoodEngine:
             _SHARED_BACKEND_NAME = "au_geometric"
 
     def reset(self) -> None:
+        """Resets the EMA-smoothed emotion probability state."""
         self._ema_probs = None
 
     def update(
@@ -77,6 +87,7 @@ class MoodEngine:
         perclos: float = 0.0,
         bpm: float = 0.0,
     ) -> MoodMetrics:
+        """Evaluates fused emotion probabilities, valence, stress index, and operational mood label."""
         if not face_detected:
             return MoodMetrics(
                 dominant_mood="No Subject Detected",

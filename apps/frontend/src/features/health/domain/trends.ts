@@ -1,3 +1,9 @@
+/**
+ * @module health/domain/trends
+ * Pure time-series transformation utilities for longitudinal telemetry charts:
+ * window filtering, Y-axis domain framing, and threshold background band synthesis.
+ */
+
 import { evaluateIndicator, nominalBounds } from './evaluate';
 import { INDICATORS } from './indicators';
 import type { HealthStatus, IndicatorId, IndicatorReading } from './types';
@@ -22,7 +28,7 @@ export const RANGE_PRESETS = [
 
 export type RangeDays = (typeof RANGE_PRESETS)[number]['days'];
 
-/** Serie temporal de un indicador dentro de los últimos `days` días respecto a `now`. */
+/** Extracts a chronologically sorted series for one indicator within the trailing `days` window ending at `now`. */
 export function buildTrend(
   readings: IndicatorReading[],
   indicator: IndicatorId,
@@ -38,7 +44,7 @@ export function buildTrend(
     .map((p) => ({ ...p, status: evaluateIndicator(indicator, p.value).status }));
 }
 
-/** Dominio Y: datos + rango verde completo, con margen, dentro de los límites físicos. */
+/** Computes the Y-axis domain covering observed data and the full green band with padding, clamped to physical limits. */
 export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [number, number] {
   const def = INDICATORS[indicator];
   const green = nominalBounds(indicator);
@@ -52,8 +58,8 @@ export function trendDomain(indicator: IndicatorId, points: TrendPoint[]): [numb
 }
 
 /**
- * Bandas verde/ámbar/rojo que cubren [lo, hi], calculadas directamente de los tramos
- * del indicador. Como los tramos son contiguos, las bandas tampoco dejan huecos.
+ * Green/amber/red bands covering `[lo, hi]`, computed directly from the indicator segments.
+ * Segments are contiguous, so the bands leave no gaps either.
  */
 export function statusBands(indicator: IndicatorId, [lo, hi]: [number, number]): StatusBand[] {
   const bands: StatusBand[] = [];
@@ -74,6 +80,7 @@ export interface TrendSummary {
   outOfRange: number;
 }
 
+/** Computes latest reading, arithmetic mean, and out-of-range (`amber` or `red`) count for a trend series. */
 export function summarizeTrend(points: TrendPoint[]): TrendSummary {
   if (!points.length) return { last: null, average: null, outOfRange: 0 };
   const average = points.reduce((s, p) => s + p.value, 0) / points.length;

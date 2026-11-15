@@ -11,6 +11,10 @@ import type { CrewMemberTriage } from '../domain/types';
 
 const timeFmt = new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' });
 
+/** Sin lecturas, los signos son null: se muestra un guion y nunca un valor inventado. */
+const NO_VALUE = '—';
+const withUnit = (value: number | null, unit: string) => (value === null ? NO_VALUE : `${value}${unit}`);
+
 /** Color de un valor según la misma tabla clínica del backend (verde = color de texto normal). */
 function valueColor(status: HealthStatus): string | undefined {
   return status === 'amber' || status === 'red' ? STATUS_THEME[status].color : undefined;
@@ -27,7 +31,8 @@ function Vital({ label, value, status = 'green' }: { label: string; value: strin
   );
 }
 
-const statusOf = (id: IndicatorId, value: number) => evaluateIndicator(id, value).status;
+const statusOf = (id: IndicatorId, value: number | null): HealthStatus =>
+  value === null ? 'green' : evaluateIndicator(id, value).status;
 
 interface CrewTriageCardProps {
   member: CrewMemberTriage;
@@ -35,9 +40,10 @@ interface CrewTriageCardProps {
 }
 
 export function CrewTriageCard({ member, onIssueDirective }: CrewTriageCardProps) {
-  const status = API_STATUS[member.status];
-  const [systolic, diastolic] = member.bloodPressure.split('/').map(Number);
-  const borderColor = status === 'green' ? undefined : STATUS_THEME[status].border;
+  const hasNoData = member.status === 'NO_DATA';
+  const status: HealthStatus = member.status === 'NO_DATA' ? 'unknown' : API_STATUS[member.status];
+  const [systolic, diastolic] = member.bloodPressure ? member.bloodPressure.split('/').map(Number) : [null, null];
+  const borderColor = status === 'green' || status === 'unknown' ? undefined : STATUS_THEME[status].border;
 
   return (
     <article
@@ -59,7 +65,7 @@ export function CrewTriageCard({ member, onIssueDirective }: CrewTriageCardProps
               <p className="text-xs text-berry truncate">
                 {member.role} · {member.missionName}
               </p>
-              <span className="mt-0.5 block font-mono text-[11px] text-stem">Habitat: {member.environment}</span>
+              <span className="mt-0.5 block font-mono text-[11px] text-stem">Habitat: {member.environment ?? '—'}</span>
               {member.adaptedProtocol && (
                 <p className="mt-1.5 text-[11px] font-semibold text-rose-800 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1">
                   {member.adaptedProtocol}
@@ -78,22 +84,33 @@ export function CrewTriageCard({ member, onIssueDirective }: CrewTriageCardProps
         </div>
 
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4">
-          <Vital label="HR (bpm)" value={`${member.heartRate} bpm`} status={statusOf('heartRate', member.heartRate)} />
+          <Vital label="HR (bpm)" value={withUnit(member.heartRate, ' bpm')} status={statusOf('heartRate', member.heartRate)} />
           <Vital
             label="BP (mmHg)"
-            value={member.bloodPressure}
+            value={member.bloodPressure ?? NO_VALUE}
             status={worstStatus([statusOf('systolic', systolic), statusOf('diastolic', diastolic)])}
           />
-          <Vital label="SpO₂ (%)" value={`${member.spo2}%`} status={statusOf('spo2', member.spo2)} />
-          <Vital label="Temp (°C)" value={`${member.temperature}°C`} status={statusOf('temperature', member.temperature)} />
-          <Vital label="Glucose" value={`${member.glucose} mg/dL`} status={statusOf('glucose', member.glucose)} />
-          <Vital label="Sleep" value={`${member.sleepHours} hrs`} status={statusOf('sleepHours', member.sleepHours)} />
-          <Vital label="Mood (1–5)" value={`${member.mood}/5`} status={statusOf('mood', member.mood)} />
+          <Vital label="SpO₂ (%)" value={withUnit(member.spo2, '%')} status={statusOf('spo2', member.spo2)} />
+          <Vital label="Temp (°C)" value={withUnit(member.temperature, '°C')} status={statusOf('temperature', member.temperature)} />
+          <Vital label="Glucose" value={withUnit(member.glucose, ' mg/dL')} status={statusOf('glucose', member.glucose)} />
+          <Vital label="Sleep" value={withUnit(member.sleepHours, ' hrs')} status={statusOf('sleepHours', member.sleepHours)} />
+          <Vital label="Mood (1–5)" value={withUnit(member.mood, '/5')} status={statusOf('mood', member.mood)} />
           <div>
             <span className="text-[11px] text-stem block">Last Reading</span>
-            <span className="font-mono text-xs tabular-nums text-berry">{timeFmt.format(new Date(member.lastReadingAt))}</span>
+            <span className="font-mono text-xs tabular-nums text-berry">
+              {member.lastReadingAt ? timeFmt.format(new Date(member.lastReadingAt)) : 'Never'}
+            </span>
+            {member.lastReadingAt && !member.isFresh && (
+              <span className="mt-0.5 block text-[11px] font-semibold text-status-caution">Expired</span>
+            )}
           </div>
         </div>
+
+        {hasNoData && (
+          <p className="mt-6 ui-callout text-xs text-stem">
+            No health readings on record. Status is unknown until this crew member takes a measurement.
+          </p>
+        )}
 
         {member.alerts.length > 0 && (
           <div className="mt-6 space-y-2">

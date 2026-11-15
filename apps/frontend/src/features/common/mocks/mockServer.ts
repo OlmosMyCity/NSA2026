@@ -9,21 +9,27 @@
  *
  * httpClient lo carga con import dinámico solo en modo mock: no llega al bundle de producción.
  */
-import type { Vitals } from '@/features/health/domain/types';
-import type { Mission } from '@/features/missions/domain/types';
+import { toIndicatorReadings } from '@/features/health/domain/api-adapter';
+import { evaluateFreshness } from '@/features/health/domain/freshness';
+import { summarizeZones } from '@/features/health/domain/summary';
+import type { BodyZoneId, HealthStatus, Vitals } from '@/features/health/domain/types';
+import { evaluateOperatorReadiness } from '@/features/operator/domain/readiness';
+import { CREW_LOCATIONS, type CrewLocation, type OperatorCrewMember, type OperatorCrewStatus } from '@/features/operator/domain/types';
+import { ENV } from '../config/env';
 import type { Paginated } from '../domain/pagination';
 import {
   buildReading,
   seedState,
   type MockAstronaut,
   type MockDirective,
+  type MockMission,
   type MockReading,
   type MockState,
   type MockUser,
 } from './mockData';
 
 
-const STORAGE_KEY = 'orbvital_mock_db_v3';
+const STORAGE_KEY = 'orbvital_mock_db_v4';
 
 class MockHttpError extends Error {
   constructor(
@@ -140,10 +146,56 @@ const latestDirective = (astronautId: string) =>
     .filter((d) => d.astronautId === astronautId)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
 
-const latestReading = (astronautId: string) =>
+const latestReading = (astronautId: string): MockReading | undefined =>
   db.readings
     .filter((r) => r.astronautId === astronautId)
     .sort((a, b) => Date.parse(b.takenAt) - Date.parse(a.takenAt))[0];
+
+/** Signos vivos de una lectura: vigencia según la ventana de FRESHNESS_WINDOW_MIN (como el backend). */
+const freshnessOf = (latest: MockReading | undefined, nowMs: number) => {
+  const f = evaluateFreshness(latest?.takenAt, nowMs);
+  return { isFresh: f.phase === 'fresh' || f.phase === 'expiring', expiresAt: f.expiresAt ? new Date(f.expiresAt).toISOString() : null };
+};
+
+const readingsOf = (astronautId: string) =>
+  db.readings.filter((r) => r.astronautId === astronautId).sort((a, b) => Date.parse(b.takenAt) - Date.parse(a.takenAt));
+
+const vitalsOf = (r: MockReading) => Object.fromEntries(VITAL_FIELDS.map((f) => [f, r[f]])) as unknown as Vitals;
+
+/** Tripulación de las misiones asignadas a un operador (GetOperatorCrewOverviewUseCase). */
+const operatorCrew = (operatorId: string) => {
+  const own = new Set(db.missions.filter((m) => !m.deletedAt && m.operatorId === operatorId).map((m) => m.id));
+  return db.astronauts.filter((a) => !a.deletedAt && own.has(a.missionId));
+};
+
+function operatorMember(a: MockAstronaut, nowMs: number) {
+  const readings = readingsOf(a.id);
+  const latest = readings[0];
+  const { isFresh, expiresAt } = freshnessOf(latest, nowMs);
+  const flat = latest ? toIndicatorReadings(latest) : [];
+  // Aptitud con vigencia (un dato vencido no da veredicto); las zonas de la ficha, según la última lectura.
+  const currentZones = summarizeZones(flat, null, nowMs);
+  const zoneStatus = Object.fromEntries(Object.values(currentZones).map((z) => [z.zone, z.status])) as Record<BodyZoneId, HealthStatus>;
+  const member: OperatorCrewMember = {
+    astronautId: a.id,
+    name: a.name,
+    crewRole: a.role,
+    photoUrl: a.photoUrl ?? null,
+    missionId: a.missionId,
+    missionName: db.missions.find((m) => m.id === a.missionId)?.name ?? 'Unassigned mission',
+    status: latest && isFresh ? latest.status : 'NO_DATA',
+    location: (a.currentLocation as CrewLocation | undefined) ?? null,
+    locationUpdatedAt: a.locationUpdatedAt ?? null,
+    lastReadingAt: latest?.takenAt ?? null,
+    expiresAt,
+    isFresh,
+    vitals: latest ? vitalsOf(latest) : null,
+    readiness: evaluateOperatorReadiness({ zoneStatus, isFresh, hasReadings: !!latest }),
+  };
+  return { member, readings, latest, lastZones: summarizeZones(flat) };
+}
+
+const OPERATOR_STATUS_PRIORITY: Record<OperatorCrewStatus, number> = { CRITICAL: 0, WARNING: 1, NO_DATA: 2, OK: 3 };
 
 // ---------- Rutas ----------
 
@@ -157,6 +209,11 @@ interface Ctx {
 type Handler = (ctx: Ctx) => unknown;
 
 const requireUser = (ctx: Ctx): TokenUser => ctx.user ?? fail(401, 'Missing or invalid authentication token.');
+const requireOperator = (ctx: Ctx): TokenUser => {
+  const user = requireUser(ctx);
+  if (user.role !== 'OPERATOR') fail(403, 'You do not have permission to perform this action.');
+  return user;
+};
 const requireAdmin = (ctx: Ctx): TokenUser => {
   const user = requireUser(ctx);
   if (user.role !== 'ADMIN') fail(403, 'You do not have permission to perform this action.');
@@ -218,16 +275,17 @@ const routes: Array<[string, RegExp, Handler]> = [
       const admin = requireAdmin(ctx);
       const { body } = ctx;
       if (!body.name || !body.description || !body.environment || !body.startDate) fail(400, 'name, description, environment and startDate are required.');
-      const mission: Mission = {
+      const mission: MockMission = {
         id: newId('mission'),
         name: str(body.name)!,
         description: str(body.description)!,
-        environment: body.environment as Mission['environment'],
-        status: (body.status as Mission['status']) ?? 'PLANNING',
+        environment: body.environment as MockMission['environment'],
+        status: (body.status as MockMission['status']) ?? 'PLANNING',
         startDate: new Date(String(body.startDate)).toISOString(),
         endDate: dateOrNull(body.endDate) ?? null,
         patchUrl: str(body.patchUrl) || null,
         createdById: admin.id,
+        operatorId: null,
         createdAt: now(),
         updatedAt: now(),
       };
@@ -334,6 +392,33 @@ const routes: Array<[string, RegExp, Handler]> = [
     },
   ],
 
+  // Ubicación del tripulante: solo él mismo o el Flight Surgeon (GetCrewLocationUseCase / UpdateCrewLocationUseCase)
+  [
+    'GET',
+    /^\/astronauts\/([^/]+)\/location$/,
+    (ctx) => {
+      const user = requireUser(ctx);
+      if (user.role !== 'ADMIN' && ownAstronautId(user.id) !== ctx.params[0]) fail(403, 'You can only view or update your own location.');
+      const a = findActive(db.astronauts, ctx.params[0], 'Astronaut');
+      return { currentLocation: a.currentLocation ?? null, locationUpdatedAt: a.locationUpdatedAt ?? null };
+    },
+  ],
+  [
+    'PATCH',
+    /^\/astronauts\/([^/]+)\/location$/,
+    (ctx) => {
+      const user = requireUser(ctx);
+      if (user.role !== 'ADMIN' && ownAstronautId(user.id) !== ctx.params[0]) fail(403, 'You can only view or update your own location.');
+      const location = str(ctx.body.location);
+      if (!location || !(CREW_LOCATIONS as readonly string[]).includes(location)) fail(400, "The 'location' field is not a valid location.");
+      const a = findActive(db.astronauts, ctx.params[0], 'Astronaut');
+      a.currentLocation = location!;
+      a.locationUpdatedAt = now();
+      persist();
+      return { currentLocation: a.currentLocation, locationUpdatedAt: a.locationUpdatedAt };
+    },
+  ],
+
   // Lecturas de salud (un USER solo ve y registra las suyas, como en el backend)
   [
     'GET',
@@ -422,14 +507,16 @@ const routes: Array<[string, RegExp, Handler]> = [
     /^\/admin\/triage$/,
     (ctx) => {
       requireAdmin(ctx);
-      const priority = { CRITICAL: 0, WARNING: 1, OK: 2 } as const;
-      const label = { CRITICAL: 'Critical', WARNING: 'Watch', OK: 'Nominal' } as const;
+      // Sin lecturas: NO_DATA, entre WARNING y OK, y nunca se presenta como OK (GetTriageOverviewUseCase).
+      const priority = { CRITICAL: 0, WARNING: 1, NO_DATA: 1.5, OK: 2 } as const;
+      const label = { CRITICAL: 'Critical', WARNING: 'Watch', NO_DATA: 'NO_DATA', OK: 'Nominal' } as const;
+      const nowMs = Date.now();
       const crew = db.astronauts
         .filter((a) => !a.deletedAt)
         .map((a) => {
           const m = db.missions.find((x) => x.id === a.missionId);
           const latest = latestReading(a.id);
-          const status = latest?.status ?? 'OK';
+          const status: keyof typeof priority = latest?.status ?? 'NO_DATA';
           const directive = latestDirective(a.id);
           return {
             astronautId: a.id,
@@ -437,15 +524,15 @@ const routes: Array<[string, RegExp, Handler]> = [
             missionId: a.missionId,
             missionName: m?.name ?? 'Unassigned mission',
             role: a.role,
-            environment: m?.environment ?? 'LUNAR_BASE',
+            environment: m?.environment ?? null,
             status,
-            heartRate: latest?.heartRateBpm ?? 70,
-            bloodPressure: latest ? `${latest.systolicMmHg}/${latest.diastolicMmHg}` : '118/76',
-            spo2: latest?.spo2Pct ?? 98,
-            glucose: latest?.glucoseMgDl ?? 95,
-            temperature: latest?.temperatureC ?? 36.6,
-            sleepHours: latest?.sleepHours ?? 7.5,
-            mood: latest?.mood ?? 4,
+            heartRate: latest?.heartRateBpm ?? null,
+            bloodPressure: latest ? `${latest.systolicMmHg}/${latest.diastolicMmHg}` : null,
+            spo2: latest?.spo2Pct ?? null,
+            glucose: latest?.glucoseMgDl ?? null,
+            temperature: latest?.temperatureC ?? null,
+            sleepHours: latest?.sleepHours ?? null,
+            mood: latest?.mood ?? null,
             alerts: latest?.alerts.map((x) => x.message) ?? [],
             recommendation: latest?.recommendation ?? null,
             priorityBoosted: false,
@@ -455,7 +542,8 @@ const routes: Array<[string, RegExp, Handler]> = [
             latestDirective: directive
               ? { id: directive.id, content: directive.content, incidentId: directive.incidentId, acknowledgedAt: directive.acknowledgedAt, createdAt: directive.createdAt }
               : null,
-            lastReadingAt: latest?.takenAt ?? a.createdAt,
+            lastReadingAt: latest?.takenAt ?? null,
+            ...freshnessOf(latest, nowMs),
             photoUrl: a.photoUrl,
           };
         })
@@ -467,6 +555,7 @@ const routes: Array<[string, RegExp, Handler]> = [
           criticalCount: crew.filter((c) => c.status === 'CRITICAL').length,
           warningCount: crew.filter((c) => c.status === 'WARNING').length,
           nominalCount: crew.filter((c) => c.status === 'OK').length,
+          noDataCount: crew.filter((c) => c.status === 'NO_DATA').length,
         },
         // Sin telemetría solar simulada: sin tormenta ni incidente de radiación activo.
         stormScale: 'S0_NOMINAL',
@@ -503,6 +592,94 @@ const routes: Array<[string, RegExp, Handler]> = [
       db.directives.push(directive);
       persist();
       return [201, { success: true, directive, message: `Clinical directive transmitted to ${astronaut.name}'s console.` }];
+    },
+  ],
+
+  // Operadores de tierra (AdminTriageController: listOperatorAccess, createUser, assignMissionOperator)
+  [
+    'GET',
+    /^\/admin\/operators$/,
+    (ctx) => {
+      requireAdmin(ctx);
+      return {
+        operators: db.users.filter((u) => u.role === 'OPERATOR').map(({ id, name, email }) => ({ id, name, email })),
+        missions: db.missions.filter((m) => !m.deletedAt).map((m) => ({ id: m.id, name: m.name, operatorId: m.operatorId ?? null })),
+      };
+    },
+  ],
+  [
+    'POST',
+    /^\/admin\/users$/,
+    (ctx) => {
+      requireAdmin(ctx);
+      const { body } = ctx;
+      const email = str(body.email)?.trim().toLowerCase();
+      const name = str(body.name)?.trim();
+      const password = str(body.password) ?? '';
+      const role = str(body.role) as MockUser['role'] | undefined;
+      if (!email || !name || password.length < 10 || !role || !['ADMIN', 'USER', 'OPERATOR'].includes(role)) {
+        fail(400, 'Name, email, a password of at least 10 characters and a valid role are required.');
+      }
+      if (db.users.some((u) => u.email === email)) fail(409, 'An account with that email already exists.');
+      const user: MockUser = { id: newId('user'), email: email!, name: name!, role: role!, password };
+      db.users.push(user);
+      persist();
+      return [201, { id: user.id, name: user.name, email: user.email, role: user.role }];
+    },
+  ],
+  [
+    'PUT',
+    /^\/admin\/missions\/([^/]+)\/operator$/,
+    (ctx) => {
+      requireAdmin(ctx);
+      const operatorId = ctx.body.operatorId === null ? null : str(ctx.body.operatorId);
+      if (operatorId === undefined) fail(400, "The 'operatorId' field must be a user id or null.");
+      if (operatorId !== null) {
+        const user = db.users.find((u) => u.id === operatorId) ?? fail(404, 'User not found.');
+        if (user.role !== 'OPERATOR') fail(400, 'The selected user does not have the operator role.');
+      }
+      findActive(db.missions, ctx.params[0], 'Mission').operatorId = operatorId ?? null;
+      persist();
+      return [204, null];
+    },
+  ],
+
+  // Vista del operador de tierra (OperatorController): solo la tripulación de sus misiones
+  [
+    'GET',
+    /^\/operator\/crew$/,
+    (ctx) => {
+      const operator = requireOperator(ctx);
+      const nowMs = Date.now();
+      return {
+        crew: operatorCrew(operator.id)
+          .map((a) => operatorMember(a, nowMs).member)
+          .sort((x, y) => OPERATOR_STATUS_PRIORITY[x.status] - OPERATOR_STATUS_PRIORITY[y.status]),
+        serverTime: new Date(nowMs).toISOString(),
+        freshnessWindowMin: ENV.FRESHNESS_WINDOW_MIN,
+      };
+    },
+  ],
+  [
+    'GET',
+    /^\/operator\/crew\/([^/]+)$/,
+    (ctx) => {
+      const operator = requireOperator(ctx);
+      // Un tripulante de otra misión responde como inexistente.
+      const a = operatorCrew(operator.id).find((x) => x.id === ctx.params[0]) ?? fail(404, 'Crew member not found.');
+      const nowMs = Date.now();
+      const { member, readings, latest, lastZones } = operatorMember(a, nowMs);
+      return {
+        ...member,
+        lastReadingStatus: latest?.status ?? null,
+        alerts: latest?.alerts ?? [],
+        recommendation: latest?.recommendation ?? null,
+        zones: Object.values(lastZones).map((z) => ({ zone: z.zone, status: z.status, trend: 'stable' as const })),
+        latestDirective: null,
+        history: readings.slice(0, 30).map((r) => ({ id: r.id, takenAt: r.takenAt, status: r.status, ...vitalsOf(r) })),
+        serverTime: new Date(nowMs).toISOString(),
+        freshnessWindowMin: ENV.FRESHNESS_WINDOW_MIN,
+      };
     },
   ],
 
