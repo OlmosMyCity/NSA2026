@@ -44,7 +44,10 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
   const [temperatureC, setTemperatureC] = useState<number>(36.6);
   const [spo2Pct, setSpo2Pct] = useState<number>(98);
   const [sleepHours, setSleepHours] = useState<number>(7.5);
-  const [mood, setMood] = useState<number>(4);
+  const [moodEnergy, setMoodEnergy] = useState<number>(4);
+  const [moodFocus, setMoodFocus] = useState<number>(4);
+  const [moodCalm, setMoodCalm] = useState<number>(4);
+  const mood = Math.round((moodEnergy + moodFocus + moodCalm) / 3);
   const [notes, setNotes] = useState<string>('');
 
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -413,23 +416,80 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
                 </span>
               </div>
 
-              <div>
-                <label htmlFor="mood" className="block text-xs font-semibold text-blueberry">
-                  Mood State (1 – 5) *
-                </label>
-                <select
-                  id="mood"
-                  value={mood}
-                  onChange={(e) => setMood(Number(e.target.value))}
-                  className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-xs text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
-                >
-                  <option value={5}>5 - Excellent (High motivation)</option>
-                  <option value={4}>4 - Good (Nominal focus)</option>
-                  <option value={3}>3 - Fair (Moderate fatigue)</option>
-                  <option value={2}>2 - Low (Mood decline)</option>
-                  <option value={1}>1 - Critical (Severe stress)</option>
-                </select>
-                <span className="text-[11px] text-stem mt-1.5 block">Nominal: 4 or 5</span>
+              <div className="sm:col-span-2 space-y-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="block text-xs font-semibold text-blueberry">
+                    Mood &amp; Behavioral Check-In (classified 1 – 5) *
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-blueberry">
+                    Score: {mood}/5 ·{' '}
+                    {mood === 5
+                      ? 'Excellent'
+                      : mood === 4
+                        ? 'Good'
+                        : mood === 3
+                          ? 'Fair'
+                          : mood === 2
+                            ? 'Low'
+                            : 'Critical'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <label className="block text-[11px] text-stem">
+                    <span className="block font-semibold text-blueberry mb-1">
+                      1. Energy &amp; Rest
+                    </span>
+                    <select
+                      value={moodEnergy}
+                      onChange={(e) => setMoodEnergy(Number(e.target.value))}
+                      className="w-full border-0 border-b border-line bg-transparent py-1.5 px-0 text-xs text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
+                    >
+                      <option value={5}>5 - Fully energized</option>
+                      <option value={4}>4 - Rested</option>
+                      <option value={3}>3 - Moderate fatigue</option>
+                      <option value={2}>2 - Tired</option>
+                      <option value={1}>1 - Exhausted</option>
+                    </select>
+                  </label>
+
+                  <label className="block text-[11px] text-stem">
+                    <span className="block font-semibold text-blueberry mb-1">
+                      2. Cognitive Focus
+                    </span>
+                    <select
+                      value={moodFocus}
+                      onChange={(e) => setMoodFocus(Number(e.target.value))}
+                      className="w-full border-0 border-b border-line bg-transparent py-1.5 px-0 text-xs text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
+                    >
+                      <option value={5}>5 - Sharp &amp; clear</option>
+                      <option value={4}>4 - Nominal focus</option>
+                      <option value={3}>3 - Slightly distracted</option>
+                      <option value={2}>2 - Brain fog</option>
+                      <option value={1}>1 - Disoriented</option>
+                    </select>
+                  </label>
+
+                  <label className="block text-[11px] text-stem">
+                    <span className="block font-semibold text-blueberry mb-1">
+                      3. Stress &amp; Isolation
+                    </span>
+                    <select
+                      value={moodCalm}
+                      onChange={(e) => setMoodCalm(Number(e.target.value))}
+                      className="w-full border-0 border-b border-line bg-transparent py-1.5 px-0 text-xs text-blueberry focus:border-blueberry focus:outline-none [&>option]:bg-canvas [&>option]:text-blueberry"
+                    >
+                      <option value={5}>5 - Calm &amp; motivated</option>
+                      <option value={4}>4 - Steady</option>
+                      <option value={3}>3 - Mild tension</option>
+                      <option value={2}>2 - Anxious / isolated</option>
+                      <option value={1}>1 - Overwhelmed</option>
+                    </select>
+                  </label>
+                </div>
+                <span className="text-[11px] text-stem block">
+                  Nominal: composite score 4 or 5 (NASA HRP behavioral health check-in)
+                </span>
               </div>
             </div>
 
