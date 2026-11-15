@@ -8,15 +8,19 @@ import { getCustomBlobUrl, getMissionSimConfig } from './missionSimulationConfig
  * and supports custom uploaded trajectory JSONs and launch vehicles.
  */
 const TRAJECTORIES_BY_ID: Record<string, string> = {
-  'mission-01': 'data/artemis_ii.json',
+  'mission-01': 'data/apollo_11.json',
   'mission-02': 'data/iss.json',
-  'mission-03': 'data/lro.json',
-  'mission-04': 'data/mars2020.json',
-  'mission-05': 'data/europa_clipper.json',
-  'mission-06': 'data/parker_solar_probe.json',
+  'mission-03': 'data/apollo_13.json',
+  'mission-04': 'data/apollo_17.json',
+  'mission-05': 'data/artemis_ii.json',
+  'mission-06': 'data/apollo_8.json',
 };
 
 const DATA_FILES = {
+  apollo11: 'data/apollo_11.json',
+  apollo13: 'data/apollo_13.json',
+  apollo17: 'data/apollo_17.json',
+  apollo8: 'data/apollo_8.json',
   cislunar: 'data/artemis_ii.json',
   leo: 'data/iss.json',
   lunarBase: 'data/lro.json',
@@ -44,6 +48,12 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
   }
 
   const text = `${missionOrId.name} ${missionOrId.description ?? ''}`.toLowerCase();
+
+  if (/\bapollo\s*11\b/.test(text)) return DATA_FILES.apollo11;
+  if (/\bapollo\s*13\b/.test(text)) return DATA_FILES.apollo13;
+  if (/\bapollo\s*17\b/.test(text)) return DATA_FILES.apollo17;
+  if (/\bapollo\s*8\b/.test(text)) return DATA_FILES.apollo8;
+  if (/\bartemis\b/.test(text)) return DATA_FILES.cislunar;
 
   if (/\b(jupiter|europa|jovian|outer system|saturn|clipper)\b/.test(text)) {
     return DATA_FILES.jupiter;

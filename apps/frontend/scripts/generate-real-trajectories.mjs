@@ -709,6 +709,196 @@ function parker() {
   });
 }
 
+// 7) Crewed Apollo Lunar Missions (Apollo 8, 11, 13, 17) — 100% real NASA UTC milestones.
+function buildApolloMission({
+  missionName,
+  epoch,
+  tTLI,
+  tLOI,
+  tTEI,
+  tSplash,
+  lunarAltKm = 111,
+  leoAltKm = 185,
+  mass_t = 45,
+  landing = null,
+}) {
+  const { h } = moonBasis;
+  const rLeo = R_E + leoAltKm;
+  const wLeo = Math.sqrt(MU_E / rLeo ** 3);
+  const M = moonPos(tLOI);
+  const sDir = mul(unit(M), -1); // near-side lunar approach so outbound leg never passes through the Moon
+  const tDir = unit(cross(h, sDir));
+  const rL = R_MOON + lunarAltKm;
+  const A_loi = add(M, mul(sDir, rL));
+  const Pdir = rotate(sDir, h, 8 * DEG);
+  const P = mul(Pdir, rLeo);
+  const Pperp = cross(h, Pdir);
+
+  const states = [];
+  const leoSteps = 90;
+  for (let i = 0; i <= leoSteps; i++) {
+    const t = (i / leoSteps) * tTLI;
+    const ang = wLeo * (t - tTLI);
+    states.push({
+      t,
+      r: add(mul(Pdir, rLeo * Math.cos(ang)), mul(Pperp, rLeo * Math.sin(ang))),
+      v: add(mul(Pdir, -rLeo * wLeo * Math.sin(ang)), mul(Pperp, rLeo * wLeo * Math.cos(ang))),
+    });
+  }
+  const out = lambert(P, A_loi, tLOI - tTLI, MU_E, h);
+  states.push(...propagateLeg(P, out.v1, tTLI, tLOI, MU_E, geoDt));
+
+  let D_tei = A_loi;
+  if (tTEI > tLOI) {
+    const wMoon = Math.sqrt(4902.800066 / rL ** 3);
+    const orbitSteps = Math.max(180, Math.round(((tTEI - tLOI) / 3600) * 18));
+    for (let i = 1; i <= orbitSteps; i++) {
+      const t = tLOI + (i / orbitSteps) * (tTEI - tLOI);
+      const u = wMoon * (t - tLOI);
+      const r = add(moonPos(t), mul(add(mul(sDir, Math.cos(u)), mul(tDir, Math.sin(u))), rL));
+      const v = add(moonVel(t), mul(add(mul(sDir, -Math.sin(u)), mul(tDir, Math.cos(u))), rL * wMoon));
+      states.push({ t, r, v });
+      if (i === orbitSteps) D_tei = r;
+    }
+  }
+
+  // Pick splashdown azimuth so return trajectory stays outside Earth's surface (min |r| >= R_E + 110 km)
+  let bestBack = null;
+  for (let deg = -180; deg < 180; deg += 15) {
+    const Edir = rotate(unit(moonPos(tTEI)), h, deg * DEG);
+    const candR = mul(Edir, R_E + 122);
+    const cand = lambert(D_tei, candR, tSplash - tTEI, MU_E, h);
+    const leg = propagateLeg(D_tei, cand.v1, tTEI, tSplash, MU_E, geoDt);
+    let minR = Infinity;
+    for (const s of leg) minR = Math.min(minR, norm(s.r));
+    if (!bestBack || minR > bestBack.minR) bestBack = { minR, leg };
+    if (minR >= R_E + 110) break;
+  }
+  states.push(...bestBack.leg);
+
+  const phases = [{ id: "parking", name: "Earth Parking Orbit (LEO 185 km)", t_start: 0, t_end: tTLI, trail_s: 2400 }];
+  const events = [
+    { t: 0, label: "Launch · Saturn V · LC-39A" },
+    { t: tTLI, label: "Trans-Lunar Injection (TLI)" },
+  ];
+
+  if (tTEI > tLOI) {
+    phases.push({ id: "outbound", name: "Trans-Lunar Coast", t_start: tTLI, t_end: tLOI, trail_s: 8 * 3600 });
+    events.push({ t: tLOI, label: `Lunar Orbit Insertion (${lunarAltKm} km)` });
+    if (landing) {
+      phases.push({ id: "lunar_orbit", name: "Lunar Orbit & Rendezvous", t_start: tLOI, t_end: landing.tTouchdown - 1800, trail_s: 3600 });
+      phases.push({ id: "landing", name: landing.phaseName, t_start: landing.tTouchdown - 1800, t_end: landing.tAscent, trail_s: 1800 });
+      phases.push({ id: "lunar_orbit", name: "Lunar Orbit & TEI Prep", t_start: landing.tAscent, t_end: tTEI, trail_s: 3600 });
+      events.push({ t: landing.tTouchdown, label: landing.eventLabel });
+    } else {
+      phases.push({ id: "lunar_orbit", name: `Lunar Orbit (${lunarAltKm} km)`, t_start: tLOI, t_end: tTEI, trail_s: 3600 });
+    }
+    events.push({ t: tTEI, label: "Trans-Earth Injection (TEI)" });
+    phases.push({ id: "return", name: "Trans-Earth Coast & Reentry", t_start: tTEI, t_end: tSplash, trail_s: 8 * 3600 });
+  } else {
+    const fb0 = tLOI - 10 * 3600;
+    const fb1 = tLOI + 10 * 3600;
+    phases.push({ id: "outbound", name: "Trans-Lunar Coast", t_start: tTLI, t_end: fb0, trail_s: 8 * 3600 });
+    phases.push({ id: "flyby", name: `Lunar Pericynthion Flyby (${lunarAltKm} km)`, t_start: fb0, t_end: fb1, trail_s: 4 * 3600 });
+    phases.push({ id: "return", name: "Free-Return Coast & Splashdown", t_start: fb1, t_end: tSplash, trail_s: 8 * 3600 });
+    events.push({ t: tLOI, label: `Lunar Pericynthion (${lunarAltKm} km)` });
+  }
+  events.push({ t: tSplash, label: "Pacific Splashdown" });
+
+  return assemble({
+    meta: {
+      mission_name: missionName,
+      epoch_utc: epoch,
+      vehicle: "apollo",
+      launch_site: { name: "LC-39A" },
+    },
+    jd0: jdOf(epoch),
+    mass_t,
+    states,
+    extraIds: ["sun"],
+    waypoints: [
+      { t: 0, body: "moon" },
+      { t: tTEI, body: "earth" },
+    ],
+    phases,
+    events,
+  });
+}
+
+function apollo8() {
+  const epoch = "1968-12-21T12:51:00Z";
+  const at = (iso) => (Date.parse(iso) - Date.parse(epoch)) / 1000;
+  return buildApolloMission({
+    missionName: "Apollo 8",
+    epoch,
+    tTLI: at("1968-12-21T15:41:30Z"),
+    tLOI: at("1968-12-24T09:59:20Z"),
+    tTEI: at("1968-12-25T06:10:00Z"),
+    tSplash: at("1968-12-27T15:51:42Z"),
+    lunarAltKm: 111,
+    mass_t: 28.8,
+  });
+}
+
+function apollo11() {
+  const epoch = "1969-07-16T13:32:00Z";
+  const at = (iso) => (Date.parse(iso) - Date.parse(epoch)) / 1000;
+  return buildApolloMission({
+    missionName: "Apollo 11",
+    epoch,
+    tTLI: at("1969-07-16T16:16:16Z"),
+    tLOI: at("1969-07-19T17:21:50Z"),
+    tTEI: at("1969-07-22T04:55:42Z"),
+    tSplash: at("1969-07-24T16:50:35Z"),
+    lunarAltKm: 111,
+    mass_t: 43.9,
+    landing: {
+      tTouchdown: at("1969-07-20T20:17:39Z"),
+      tAscent: at("1969-07-21T17:54:00Z"),
+      phaseName: "LM Eagle · Sea of Tranquility Surface EVA",
+      eventLabel: "Touchdown · Mare Tranquillitatis",
+    },
+  });
+}
+
+function apollo13() {
+  const epoch = "1970-04-11T19:13:00Z";
+  const at = (iso) => (Date.parse(iso) - Date.parse(epoch)) / 1000;
+  const tPeri = at("1970-04-15T00:21:00Z");
+  return buildApolloMission({
+    missionName: "Apollo 13",
+    epoch,
+    tTLI: at("1970-04-11T21:48:00Z"),
+    tLOI: tPeri,
+    tTEI: tPeri,
+    tSplash: at("1970-04-17T18:07:41Z"),
+    lunarAltKm: 254,
+    mass_t: 43.9,
+  });
+}
+
+function apollo17() {
+  const epoch = "1972-12-07T05:33:00Z";
+  const at = (iso) => (Date.parse(iso) - Date.parse(epoch)) / 1000;
+  return buildApolloMission({
+    missionName: "Apollo 17",
+    epoch,
+    tTLI: at("1972-12-07T08:45:00Z"),
+    tLOI: at("1972-12-10T19:47:23Z"),
+    tTEI: at("1972-12-16T23:35:09Z"),
+    tSplash: at("1972-12-19T19:24:59Z"),
+    lunarAltKm: 111,
+    leoAltKm: 170,
+    mass_t: 46.8,
+    landing: {
+      tTouchdown: at("1972-12-11T19:54:58Z"),
+      tAscent: at("1972-12-14T22:54:37Z"),
+      phaseName: "LM Challenger & LRV · Taurus-Littrow EVA",
+      eventLabel: "Touchdown · Taurus-Littrow Valley",
+    },
+  });
+}
+
 const OUTPUTS = {
   "artemis_ii.json": artemisII,
   "iss.json": iss,
@@ -716,6 +906,10 @@ const OUTPUTS = {
   "mars2020.json": mars2020,
   "europa_clipper.json": europaClipper,
   "parker_solar_probe.json": parker,
+  "apollo_8.json": apollo8,
+  "apollo_11.json": apollo11,
+  "apollo_13.json": apollo13,
+  "apollo_17.json": apollo17,
 };
 
 for (const [file, build] of Object.entries(OUTPUTS)) {

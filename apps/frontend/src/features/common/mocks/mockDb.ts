@@ -93,10 +93,10 @@ const INITIAL_USERS: MockUser[] = [
 const INITIAL_MISSIONS: MockMission[] = [
   {
     id: 'mission-01',
-    name: 'Artemis II — Crewed Lunar Free-Return',
+    name: 'Apollo 11 — First Lunar Landing',
     description:
-      '9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.',
-    environment: 'SPACECRAFT',
+      '8-day crewed lunar landing mission (July 16–24, 1969) aboard Saturn V SA-506, CSM Columbia, and LM Eagle with Neil Armstrong, Buzz Aldrin, and Michael Collins touching down at Mare Tranquillitatis.',
+    environment: 'LUNAR_BASE',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
     patchUrl: null,
@@ -108,7 +108,7 @@ const INITIAL_MISSIONS: MockMission[] = [
     id: 'mission-02',
     name: 'ISS Expedition 72 — Low Earth Orbit',
     description:
-      'Orbital science aboard the International Space Station at 408–420 km LEO, 51.6° inclination, and 7.66 km/s (~90 min orbital period) with Crew Dragon and Soyuz MS crew rotations.',
+      'Crewed orbital science aboard the International Space Station at 415 km LEO, 51.64° inclination, and 7.66 km/s (~92.9 min orbital period) with Crew Dragon and Soyuz MS crew rotations.',
     environment: 'STATION',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 3 * 3600000).toISOString(),
@@ -119,12 +119,12 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-03',
-    name: 'Lunar Reconnaissance Orbiter (LRO)',
+    name: 'Apollo 13 — Cislunar Free-Return Abort',
     description:
-      'Launched June 18, 2009 on Atlas V 401 into a 50 km circular lunar polar mapping orbit over Shackleton Crater and the lunar south pole.',
-    environment: 'LUNAR_BASE',
+      '6-day crewed lunar free-return mission (April 11–17, 1970) with Jim Lovell, Jack Swigert, and Fred Haise rounding the lunar far side at 254 km pericynthion after the O2 tank #2 anomaly.',
+    environment: 'SPACECRAFT',
     status: 'IN_PROGRESS',
-    startDate: new Date(Date.now() - 5 * 3600000).toISOString(),
+    startDate: new Date(Date.now() - 3 * 86400000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
     createdAt: new Date().toISOString(),
@@ -132,23 +132,10 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-04',
-    name: 'Mars 2020 Perseverance — Jezero Crater',
+    name: 'Apollo 17 — Taurus-Littrow Lunar Expedition',
     description:
-      'Launched July 30, 2020 on ULA Atlas V 541 on a 202-day interplanetary cruise to Jezero Crater, Mars, monitoring deep-space GCR/SPE radiation exposure.',
-    environment: 'MARS_BASE',
-    status: 'IN_PROGRESS',
-    startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
-    patchUrl: null,
-    createdById: 'user-admin-01',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'mission-05',
-    name: 'Europa Clipper — Jupiter Orbit Cruise',
-    description:
-      'Launched Oct 14, 2024 on SpaceX Falcon Heavy on a 5.5-year trajectory with Mars and Earth gravity assists toward Jupiter arrival in April 2030.',
-    environment: 'SPACECRAFT',
+      '12.6-day crewed lunar mission (Dec 7–19, 1972) with Gene Cernan, Harrison Schmitt, and Ron Evans conducting 22 h of Lunar Roving Vehicle EVA at Taurus-Littrow Valley.',
+    environment: 'ROVER',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 5 * 86400000).toISOString(),
     patchUrl: null,
@@ -157,13 +144,26 @@ const INITIAL_MISSIONS: MockMission[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'mission-06',
-    name: 'Parker Solar Probe — Venus Gravity Assist',
+    id: 'mission-05',
+    name: 'Artemis II — Crewed Lunar Free-Return',
     description:
-      'Launched Aug 12, 2018 on ULA Delta IV Heavy executing seven Venus gravity-assist flybys to tighten its inner-system solar perihelion.',
+      '9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.',
     environment: 'SPACECRAFT',
     status: 'IN_PROGRESS',
-    startDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+    startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
+    patchUrl: null,
+    createdById: 'user-admin-01',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'mission-06',
+    name: 'Apollo 8 — First Crewed Lunar Orbit',
+    description:
+      '6.1-day historic flight (Dec 21–27, 1968) with Frank Borman, Jim Lovell, and Bill Anders completing 10 lunar orbits at 111 km altitude aboard Saturn V SA-503.',
+    environment: 'SPACECRAFT',
+    status: 'IN_PROGRESS',
+    startDate: new Date(Date.now() - 3 * 86400000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
     createdAt: new Date().toISOString(),
