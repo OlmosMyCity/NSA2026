@@ -113,6 +113,12 @@ Vital signs that appear abnormal relative to a resting 1-G Earth baseline can be
 
 ---
 
+## 🤖 AI Usage Declaration
+
+AI tools were used to build this project, and the product itself uses AI models (Gemini decision layer, FER+ and MediaPipe for contactless vitals). As required by NASA Space Apps, where and how AI was used is declared in [`AI_DECLARATION/`](AI_DECLARATION/README.md), with machine-readable metadata in [`ai-usage.json`](AI_DECLARATION/ai-usage.json). AI-assisted commits are marked with a `Co-Authored-By: Claude …` trailer.
+
+---
+
 ## 📚 References & Standards
 - **NASA-STD-3001, Volume 1 (Crew Health):** *NASA Spaceflight Human-System Standard — Pre-flight, In-flight, and Post-flight Physiological & Medical Standards* (<https://www.nasa.gov/ochmo/human-system-standards/>)
 - **NASA-STD-3001, Volume 2 (Human Factors, Habitability, and Environmental Health):** *Translational Acceleration Limits, Launch/Entry/Landing (LEL) Tolerances, and Cabin Atmosphere* (<https://www.nasa.gov/ochmo/human-system-standards/>)

@@ -1,0 +1,86 @@
+{
+  "$comment": "Machine-readable AI usage metadata required by NASA Space Apps (https://github.com/nasa/spaceapps/discussions/2123). Keep in sync with README.md. Entries with \"status\": \"to_confirm\" must be completed by the team before submission.",
+  "project": "OrbVital — Artemis Crew Health & Deep Space Radiation Engine",
+  "event": "NASA International Space Apps Challenge 2026",
+  "repository": "https://github.com/OlmosMyCity/NSA2026",
+  "last_updated": "2026-11-15",
+  "nasa_branding_in_generated_content": false,
+  "development_tools": [
+    {
+      "tool": "Claude Code",
+      "vendor": "Anthropic",
+      "model": "Claude Opus 5.5",
+      "type": "AI coding assistant (LLM)",
+      "used_for": [
+        "frontend and backend code audit (security, correctness, code quality)",
+        "bug fixes and refactoring",
+        "unit, parity and end-to-end tests",
+        "documentation, including this declaration"
+      ],
+      "paths": ["apps/frontend", "apps/backend", "ai/vision", "AI_DECLARATION"],
+      "traceability": {
+        "commit_author": "Claude",
+        "commit_trailers": [
+          "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "Claude-Session: https://claude.ai/code/session_<id>"
+        ],
+        "branch_prefix": "claude/",
+        "pull_requests": [
+          "https://github.com/OlmosMyCity/NSA2026/pull/1",
+          "https://github.com/OlmosMyCity/NSA2026/pull/2",
+          "https://github.com/OlmosMyCity/NSA2026/pull/3"
+        ],
+        "commits_in_main": [
+          "c9abc14", "293a91e", "edf9c9a", "f40204b", "f9491a0",
+          "721fdff", "88b98a0", "b992a7a", "6f6d028", "363f641", "8aec459"
+        ],
+        "list_command": "git log --format='%h %an %s %(trailers:key=Co-Authored-By,valueonly)' | grep -i claude"
+      },
+      "human_oversight": "Team members defined the problem, architecture and clinical decisions, and reviewed and merged every AI change through pull requests. AI code was verified with automated tests, type checks, production builds and browser tests.",
+      "status": "confirmed"
+    },
+    {
+      "tool": "Other AI assistants used outside Git (e.g. ChatGPT, GitHub Copilot, Gemini, Cursor)",
+      "used_for": [],
+      "paths": [],
+      "status": "to_confirm"
+    }
+  ],
+  "runtime_ai_features": [
+    {
+      "component": "Clinical decision layer (escalation second opinion)",
+      "vendor": "Google",
+      "model": "gemini-decision-1",
+      "execution": "server-side only (GEMINI_API_KEY); offline fallback with DEMO_OFFLINE",
+      "paths": ["apps/backend/src/application/health/decisionService.ts"],
+      "note": "Stored clinical status comes from the deterministic HEALTH_BANDS rule table, not from a generative model."
+    },
+    {
+      "component": "Contactless mood and stress estimation",
+      "model": "FER+ emotion-ferplus-8.onnx (ONNX Runtime)",
+      "paths": ["ai/vision"]
+    },
+    {
+      "component": "Face landmarks for rPPG heart rate, PERCLOS fatigue and sleep",
+      "vendor": "Google",
+      "model": "MediaPipe Face Landmarker (face_landmarker.task)",
+      "paths": ["ai/vision"]
+    },
+    {
+      "component": "Signal vs. noise attribution",
+      "model": "scikit-learn model trained by the team",
+      "paths": ["ai/biology/signal_noise_engine/train_model.py"]
+    }
+  ],
+  "generated_media": {
+    "status": "to_confirm",
+    "rule": "Every AI-generated image, video or slide must carry a visible watermark or metadata and must not contain NASA logos, flags, insignia or mission identifiers.",
+    "candidates_to_review": [
+      "apps/frontend/public/images/web1.jpg",
+      "apps/frontend/public/icon.svg",
+      "project demo video",
+      "presentation slides"
+    ],
+    "files": []
+  }
+}
