@@ -1,10 +1,20 @@
 'use client';
 
+/**
+ * @module health/hooks/useHealthReadings
+ * Fetches chronological biomedical telemetry for an astronaut and derives
+ * flattened indicator readings and 5-zone Digital Twin summaries.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { healthService } from '../services/healthService';
 import { toIndicatorReadings, type ApiHealthReading } from '../domain/api-adapter';
 import { summarizeZones } from '../domain/summary';
 
+/**
+ * Loads an astronaut's reading history and memoizes flattened indicator points,
+ * deterministic 5-zone summaries (`summarizeZones`), and the latest reading.
+ */
 export function useHealthReadings(astronautId: string | undefined) {
   const [rows, setRows] = useState<ApiHealthReading[]>([]);
   const [isLoading, setIsLoading] = useState(true);

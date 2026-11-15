@@ -1,3 +1,10 @@
+/**
+ * Phase-adjusted physiological thresholds calibrated against NASA-STD-3001 Vol. 1/2
+ * and NASA Human Research Program studies across launch, microgravity, and reentry.
+ *
+ * @module features/health/domain/phaseNorms
+ */
+
 import { INDICATORS } from './indicators';
 import type { IndicatorId, IndicatorThresholds } from './types';
 

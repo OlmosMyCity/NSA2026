@@ -1,3 +1,8 @@
+/**
+ * @module authRouter
+ * Express router wiring user registration, login, and authenticated profile endpoints.
+ */
+
 import { Router } from "express";
 import { AuthController } from "../controllers/AuthController.js";
 import { PrismaUserRepository } from "../../infrastructure/repository/PrismaUserRepository.js";
@@ -16,6 +21,7 @@ const controller = new AuthController(
   new GetCurrentUserUseCase(userRepo)
 );
 
+/** Router mounted at `/api/auth` (`/register`, `/login`, and authenticated `/me`). */
 export const authRouter = Router();
 
 authRouter.post("/register", controller.register);

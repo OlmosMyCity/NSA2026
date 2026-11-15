@@ -40,6 +40,8 @@ const SHIP_LABEL = {
   mars2020: "Perseverance",
   clipper: "Europa Clipper",
   parker: "Parker Solar Probe",
+  apollo: "Apollo CSM",
+  saturnv: "Saturn V",
 };
 const VEHICLE_FULL_LABEL = {
   sls: "SLS Block 1B + Orion",
@@ -57,6 +59,8 @@ const VEHICLE_FULL_LABEL = {
   mars2020: "Mars 2020 Perseverance",
   clipper: "Europa Clipper",
   parker: "Parker Solar Probe",
+  apollo: "Apollo Command/Service Module",
+  saturnv: "Saturn V + Apollo CSM/LM",
 };
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */

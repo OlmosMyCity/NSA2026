@@ -1,4 +1,11 @@
-"""Unified Astronaut Biometrics Pipeline orchestrating FaceTracker, rPPG, Sleep, and Mood engines."""
+"""Unified Astronaut Biometrics Pipeline orchestrating FaceTracker, rPPG, Sleep, and Mood engines.
+
+Coordinates per-frame contactless biometric inference across four subsystems:
+1. Facial landmarking, geometric Action Units, and forehead/cheek skin ROI extraction (`FaceTracker`).
+2. Multi-camera rPPG cardiovascular estimation (`RPPGEngine`: POS, CHROM, and NIR single-channel).
+3. Ocular fatigue & video actigraphy (`SleepQualityEngine`: EAR, PERCLOS, MAR, head nod, motion).
+4. Affective state & psychological stress (`MoodEngine`: ONNX FERPlus + geometric Action Units + HR).
+"""
 
 import base64
 import time
@@ -25,7 +32,11 @@ from src.vision.face_tracker import FaceExtractionResult, FaceTracker
 
 
 class AstronautBiometricsPipeline:
-    """Real-time contactless biometric monitor for astronauts."""
+    """Real-time contactless biometric monitor for astronauts.
+
+    Maintains temporal buffers across the rPPG, sleep/fatigue, and mood subsystems to emit
+    a composite `AstronautTelemetryFrame` and optional annotated HUD JPEG for each video frame.
+    """
 
     def __init__(self) -> None:
         self.face_tracker = FaceTracker()
@@ -39,6 +50,7 @@ class AstronautBiometricsPipeline:
         self.latest_telemetry: Optional[AstronautTelemetryFrame] = None
 
     def reset(self) -> None:
+        """Clears temporal sliding windows and resets frame counters across all biometric engines."""
         self.rppg_engine.reset()
         self.sleep_engine.reset()
         self.mood_engine.reset()
@@ -61,6 +73,7 @@ class AstronautBiometricsPipeline:
         context: MonitoringContext = MonitoringContext.CABIN_ACTIVE,
         include_annotated_frame: bool = False,
     ) -> AstronautTelemetryFrame:
+        """Processes a single BGR video frame through tracking, rPPG, sleep, and mood engines."""
         now = timestamp if timestamp is not None else time.time()
         if self._last_ts is not None and now > self._last_ts:
             inst_fps = 1.0 / (now - self._last_ts)
@@ -149,6 +162,7 @@ class AstronautBiometricsPipeline:
         mood: MoodMetrics,
         context: MonitoringContext,
     ) -> tuple[float, List[str]]:
+        """Computes composite health index (0-100) and mission alerts from biometric thresholds."""
         alerts: List[str] = []
         if not face_detected:
             alerts.append("NO SUBJECT IN FIELD OF VIEW")
@@ -191,6 +205,7 @@ class AstronautBiometricsPipeline:
         camera_mode: CameraMode,
         identity: Optional[IdentityMetrics] = None,
     ) -> np.ndarray:
+        """Draws biometric bounding brackets, rPPG skin ROI polygons, and top HUD banner on a copy of the frame."""
         vis = frame_bgr.copy()
         h, w = vis.shape[:2]
 

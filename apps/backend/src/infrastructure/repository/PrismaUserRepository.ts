@@ -1,11 +1,25 @@
+/**
+ * @module PrismaUserRepository
+ * PostgreSQL/Prisma implementation of `IUserRepository`. Enforces `passwordHash` omission on
+ * public queries and auto-provisions an `Astronaut` profile on the earliest active mission for
+ * standard `USER` accounts.
+ */
+
 import { IUserRepository } from "../../domain/repository/IUserRepository.js";
 import { CreateUserDTO, PublicUserWithAstronaut, UserWithAstronaut } from "../../domain/models/User.js";
 import { prisma } from "../database/prismaClient.js";
 
-// Prisma `omit` garantiza que el hash nunca salga de esta capa en las consultas públicas.
+// Prisma `omit` ensures password hashes never leak from this layer in public queries.
 const withoutPassword = { passwordHash: true } as const;
 
+/**
+ * Prisma-backed repository for user credentials and linked crew-member records.
+ */
 export class PrismaUserRepository implements IUserRepository {
+  /**
+   * Looks up an active user by normalized email (including `passwordHash` for login verification).
+   * Lazily provisions an `Astronaut` record on the earliest active mission if a standard `USER` lacks one.
+   */
   async findByEmail(email: string): Promise<UserWithAstronaut | null> {
     const user = await prisma.user.findFirst({
       where: { email: email.trim().toLowerCase(), deletedAt: null },
@@ -37,6 +51,7 @@ export class PrismaUserRepository implements IUserRepository {
     return user;
   }
 
+  /** Fetches a public user profile (`passwordHash` omitted) with its linked astronaut ID. */
   async findById(id: string): Promise<PublicUserWithAstronaut | null> {
     return prisma.user.findFirst({
       where: { id, deletedAt: null },
@@ -45,6 +60,10 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
+  /**
+   * Creates a new user inside a transaction and, for standard `USER` accounts,
+   * automatically links a newly created `Astronaut` profile to the earliest active mission.
+   */
   async create(data: CreateUserDTO): Promise<PublicUserWithAstronaut> {
     return prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -57,7 +76,7 @@ export class PrismaUserRepository implements IUserRepository {
         omit: withoutPassword,
       });
 
-      // Si es un usuario estándar (astronauta), vincularlo automáticamente a la misión activa
+      // Standard user (astronaut): automatically link to the active mission
       if (!data.role || data.role === "USER") {
         const activeMission = await tx.mission.findFirst({
           where: { deletedAt: null },

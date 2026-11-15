@@ -41,15 +41,14 @@ export function evaluateOperatorReadiness(input: {
   hasReadings: boolean;
 }): OperatorDestinationReadiness[] {
   return DESTINATIONS.map((destination) => {
-    if (destination === 'STORM_SHELTER') return { destination, verdict: 'FIT', note: 'PROTECTIVE_SHELTER' };
+    if (destination === 'STORM_SHELTER') return { destination, verdict: 'FIT', reasonCode: 'PROTECTIVE_SHELTER' };
 
     const lacksVitalData = VITAL_ZONES.some((zone) => input.zoneStatus[zone] === 'unknown');
     if (!input.isFresh || lacksVitalData) {
-      return { destination, verdict: 'NO_DATA', note: input.hasReadings ? 'READING_EXPIRED' : 'NO_READINGS' };
+      return { destination, verdict: 'NO_DATA', reasonCode: input.hasReadings ? 'READING_EXPIRED' : 'NO_READINGS' };
     }
 
-    const verdict = DESTINATION_PROFILES[destination][classify(input.zoneStatus)];
-    const note = verdict === 'NOT_FIT' ? 'MEDICAL_HOLD' : verdict === 'FIT_WITH_CAUTION' ? 'MEDICAL_CAUTION' : 'CLEARED';
-    return { destination, verdict, note };
+    const condition = classify(input.zoneStatus);
+    return { destination, verdict: DESTINATION_PROFILES[destination][condition], reasonCode: condition };
   });
 }

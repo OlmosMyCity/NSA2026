@@ -2,6 +2,8 @@
 
 > Propuesta de diseño. Organiza la idea del rol "empresario" y del recordatorio de 15 minutos, la aterriza sobre el código real del repositorio y lista las correcciones que necesita `ZeroG_Vitals_Arquitectura_y_Reglas.md`.
 > Estado: decisiones D1–D7 **resueltas según la recomendación** de la sección 9. Bloques 0 a 3 implementados (base, vigencia, aptitud, rol operador y alta de operadores). El esquema se maneja con **Prisma Migrate** (no Flyway); el cambio del operador es la migración `20261116000000_operator_role_and_crew_location`, pendiente de aplicar con `prisma migrate deploy`. Pendiente también el bloque 4 (pulido).
+>
+> **Cambio de decisión (D3 y R8):** por decisión del producto, el operador **sí ve la información clínica completa** de la tripulación de sus misiones: valores, alertas, recomendación, directiva, zonas e historial, además de estado, ubicación y aptitud. Se mantiene el alcance por misión (no ve a nadie de misiones ajenas) y la regla de vigencia (un valor vencido se muestra como histórico, no como estado actual). Donde este documento diga que el operador no ve valores clínicos (secciones 1, 3.4, 3.7, 4.2 punto 5, 8.2 R8 y 9 D3), prevalece esta nota.
 
 ## Índice
 

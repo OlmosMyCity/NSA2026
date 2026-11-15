@@ -1,4 +1,4 @@
-import { CrewLocation, Role } from "@prisma/client";
+import { CrewLocation, Prisma, Role } from "@prisma/client";
 import { prisma } from "../database/prismaClient.js";
 import {
   CrewLocationState,
@@ -10,33 +10,59 @@ import {
 /** Lecturas que necesita el gemelo digital para estimar estado y tendencia por zona. */
 const RECENT_READINGS = 10;
 
+/** Lecturas que se muestran en la ficha individual del tripulante. */
+const DETAIL_READINGS = 30;
+
+function crewInclude(readings: number) {
+  return {
+    mission: { select: { id: true, name: true, environment: true } },
+    readings: {
+      where: { isValid: true },
+      orderBy: { takenAt: "desc" },
+      take: readings,
+    },
+    directives: {
+      orderBy: { createdAt: "desc" },
+      take: 1,
+    },
+  } satisfies Prisma.AstronautInclude;
+}
+
+type AstronautWithCrewData = Prisma.AstronautGetPayload<{ include: ReturnType<typeof crewInclude> }>;
+
+function toRecord(astro: AstronautWithCrewData): OperatorCrewRecord {
+  return {
+    astronautId: astro.id,
+    astronautName: astro.name,
+    crewRole: astro.role,
+    photoUrl: astro.photoUrl,
+    missionId: astro.mission.id,
+    missionName: astro.mission.name,
+    environment: astro.mission.environment,
+    currentLocation: astro.currentLocation,
+    locationUpdatedAt: astro.locationUpdatedAt,
+    recentReadings: astro.readings,
+    latestDirective: astro.directives[0] ?? null,
+  };
+}
+
 export class PrismaOperatorCrewRepository implements IOperatorCrewRepository {
   async listCrewForOperator(operatorId: string): Promise<OperatorCrewRecord[]> {
     const astronauts = await prisma.astronaut.findMany({
       where: { deletedAt: null, mission: { operatorId, deletedAt: null } },
-      include: {
-        mission: { select: { id: true, name: true, environment: true } },
-        readings: {
-          where: { isValid: true },
-          orderBy: { takenAt: "desc" },
-          take: RECENT_READINGS,
-        },
-      },
+      include: crewInclude(RECENT_READINGS),
       orderBy: { createdAt: "asc" },
     });
+    return astronauts.map(toRecord);
+  }
 
-    return astronauts.map((astro) => ({
-      astronautId: astro.id,
-      astronautName: astro.name,
-      crewRole: astro.role,
-      photoUrl: astro.photoUrl,
-      missionId: astro.mission.id,
-      missionName: astro.mission.name,
-      environment: astro.mission.environment,
-      currentLocation: astro.currentLocation,
-      locationUpdatedAt: astro.locationUpdatedAt,
-      recentReadings: astro.readings,
-    }));
+  async findCrewMemberForOperator(operatorId: string, astronautId: string): Promise<OperatorCrewRecord | null> {
+    // El filtro por operador va en la consulta: un id ajeno simplemente no se encuentra.
+    const astronaut = await prisma.astronaut.findFirst({
+      where: { id: astronautId, deletedAt: null, mission: { operatorId, deletedAt: null } },
+      include: crewInclude(DETAIL_READINGS),
+    });
+    return astronaut ? toRecord(astronaut) : null;
   }
 
   async listOperatorAccess(): Promise<OperatorAccess> {

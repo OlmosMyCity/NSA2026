@@ -86,8 +86,8 @@ export function OperatorAccessPanel() {
         Ground operator access
       </h2>
       <p className="mt-1.5 max-w-2xl text-sm text-stem">
-        Operators see crew status, location, readiness and last reading time for the missions assigned to
-        them. They never see clinical values.
+        Operators see the full record of the crew on the missions assigned to them: status, location,
+        readiness and clinical values. They see nothing from other missions.
       </p>
 
       {loadError ? (

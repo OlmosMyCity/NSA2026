@@ -90,49 +90,49 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
 const MISSIONS = [
   {
     id: "mission-01",
-    name: "Artemis II — Crewed Lunar Free-Return",
+    name: "Apollo 11 — First Lunar Landing",
     description:
-      "9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.",
-    environment: Environment.SPACECRAFT,
+      "8-day crewed lunar landing mission (July 16–24, 1969) aboard Saturn V SA-506, CSM Columbia, and LM Eagle with Neil Armstrong, Buzz Aldrin, and Michael Collins touching down at Mare Tranquillitatis.",
+    environment: Environment.LUNAR_BASE,
     startDate: at(4 * DAY),
   },
   {
     id: "mission-02",
     name: "ISS Expedition 72 — Low Earth Orbit",
     description:
-      "Orbital science aboard the International Space Station at 408–420 km LEO, 51.6° inclination, and 7.66 km/s (~90 min orbital period) with Crew Dragon and Soyuz MS crew rotations.",
+      "Crewed orbital science aboard the International Space Station at 415 km LEO, 51.64° inclination, and 7.66 km/s (~92.9 min orbital period) with Crew Dragon and Soyuz MS crew rotations.",
     environment: Environment.STATION,
     startDate: at(3 * HOUR),
   },
   {
     id: "mission-03",
-    name: "Lunar Reconnaissance Orbiter (LRO)",
+    name: "Apollo 13 — Cislunar Free-Return Abort",
     description:
-      "Launched June 18, 2009 on Atlas V 401 into a 50 km circular lunar polar mapping orbit over Shackleton Crater and the lunar south pole.",
-    environment: Environment.LUNAR_BASE,
+      "6-day crewed lunar free-return mission (April 11–17, 1970) with Jim Lovell, Jack Swigert, and Fred Haise rounding the lunar far side at 254 km pericynthion after the O2 tank #2 anomaly.",
+    environment: Environment.SPACECRAFT,
     startDate: at(5 * HOUR),
   },
   {
     id: "mission-04",
-    name: "Mars 2020 Perseverance — Jezero Crater",
+    name: "Apollo 17 — Taurus-Littrow Lunar Expedition",
     description:
-      "Launched July 30, 2020 on ULA Atlas V 541 on a 202-day interplanetary cruise to Jezero Crater, Mars, monitoring deep-space GCR/SPE radiation exposure.",
-    environment: Environment.MARS_BASE,
+      "12.6-day crewed lunar mission (Dec 7–19, 1972) with Gene Cernan, Harrison Schmitt, and Ron Evans conducting 22 h of Lunar Roving Vehicle EVA at Taurus-Littrow Valley.",
+    environment: Environment.ROVER,
     startDate: at(4 * DAY),
   },
   {
     id: "mission-05",
-    name: "Europa Clipper — Jupiter Orbit Cruise",
+    name: "Artemis II — Crewed Lunar Free-Return",
     description:
-      "Launched Oct 14, 2024 on SpaceX Falcon Heavy on a 5.5-year trajectory with Mars and Earth gravity assists toward Jupiter arrival in April 2030.",
+      "9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.",
     environment: Environment.SPACECRAFT,
     startDate: at(5 * DAY),
   },
   {
     id: "mission-06",
-    name: "Parker Solar Probe — Venus Gravity Assist",
+    name: "Apollo 8 — First Crewed Lunar Orbit",
     description:
-      "Launched Aug 12, 2018 on ULA Delta IV Heavy executing seven Venus gravity-assist flybys to tighten its inner-system solar perihelion.",
+      "6.1-day historic flight (Dec 21–27, 1968) with Frank Borman, Jim Lovell, and Bill Anders completing 10 lunar orbits at 111 km altitude aboard Saturn V SA-503.",
     environment: Environment.SPACECRAFT,
     startDate: at(2 * DAY),
   },
@@ -155,14 +155,13 @@ interface CrewProfile {
 }
 
 const CREW: CrewProfile[] = [
-  { id: "astro-01", missionId: "mission-01", name: "Reid Wiseman", role: "Mission Commander", age: 49, linkCommanderUser: true, hr: 66, sys: 118, dia: 76, glucose: 96, sleep: 7.9, mood: 4.6 },
-  { id: "astro-02", missionId: "mission-01", name: "Victor Glover", role: "Pilot", age: 48, hr: 62, sys: 121, dia: 78, glucose: 92, sleep: 8.0, mood: 4.7 },
-  { id: "astro-03", missionId: "mission-01", name: "Christina Koch", role: "Mission Specialist (Science)", age: 46, hr: 64, sys: 112, dia: 72, glucose: 90, sleep: 8.1, mood: 4.7 },
-  { id: "astro-04", missionId: "mission-01", name: "Jeremy Hansen", role: "Mission Specialist (Systems)", age: 50, hr: 70, sys: 121, dia: 78, glucose: 101, sleep: 7.8, mood: 4.5 },
-  // Tripulación de larga duración en la ISS (aporta tendencias de 90 días)
-  { id: "astro-05", missionId: "mission-02", name: "Sunita Williams", role: "ISS Commander", age: 59, hr: 63, sys: 116, dia: 74, glucose: 94, sleep: 8.0, mood: 4.7 },
-  { id: "astro-06", missionId: "mission-02", name: "Butch Wilmore", role: "Flight Engineer", age: 61, hr: 67, sys: 122, dia: 79, glucose: 99, sleep: 7.9, mood: 4.6 },
-  { id: "astro-07", missionId: "mission-02", name: "Don Pettit", role: "Flight Engineer (Science)", age: 69, hr: 69, sys: 122, dia: 78, glucose: 103, sleep: 7.8, mood: 4.6 },
+  { id: "astro-01", missionId: "mission-01", name: "Cmdr. Elena Vance", role: "Mission Commander", age: 42, linkCommanderUser: true, hr: 66, sys: 118, dia: 76, glucose: 96, sleep: 7.9, mood: 4.6 },
+  { id: "astro-02", missionId: "mission-01", name: "Dr. Marcus Thorne", role: "Lunar Module Pilot", age: 39, hr: 62, sys: 121, dia: 78, glucose: 92, sleep: 8.0, mood: 4.7 },
+  { id: "astro-03", missionId: "mission-02", name: "Maj. Kenji Takahashi", role: "Flight Engineer (ISS)", age: 44, hr: 64, sys: 112, dia: 72, glucose: 90, sleep: 8.1, mood: 4.7 },
+  { id: "astro-04", missionId: "mission-03", name: "Capt. Sofia Navarro", role: "Command Module Pilot", age: 37, hr: 70, sys: 121, dia: 78, glucose: 101, sleep: 7.8, mood: 4.5 },
+  { id: "astro-05", missionId: "mission-04", name: "Dr. Liam O'Connor", role: "Lunar Surface Geologist", age: 41, hr: 63, sys: 116, dia: 74, glucose: 94, sleep: 8.0, mood: 4.7 },
+  { id: "astro-06", missionId: "mission-05", name: "Cmdr. Nadia Al-Mansoor", role: "Artemis Flight Specialist", age: 40, hr: 67, sys: 122, dia: 79, glucose: 99, sleep: 7.9, mood: 4.6 },
+  { id: "astro-07", missionId: "mission-06", name: "Lt. Col. Mateo Silva", role: "Lunar Orbit Navigator", age: 45, hr: 69, sys: 122, dia: 78, glucose: 103, sleep: 7.8, mood: 4.6 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -397,7 +396,7 @@ async function main() {
   // 4. Lecturas
   const byCrew = new Map<string, PlannedReading[]>();
   for (const c of CREW) {
-    byCrew.set(c.id, c.missionId === "mission-01" ? planArtemisCrew(c) : planIssCrew(c));
+    byCrew.set(c.id, c.missionId === "mission-02" ? planIssCrew(c) : planArtemisCrew(c));
   }
   applyScriptedEvents(byCrew);
 

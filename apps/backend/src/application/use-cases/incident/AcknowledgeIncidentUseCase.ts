@@ -1,9 +1,18 @@
+/**
+ * @module application/use-cases/incident/AcknowledgeIncidentUseCase
+ * Use case for acknowledging an active incident and notifying real-time subscribers.
+ */
+
 import { Incident, IncidentStatus } from "@prisma/client";
 import { AcknowledgeIncidentDTO } from "../../../domain/models/Incident.js";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
 import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
+/**
+ * Transitions an `OPEN` incident to `ACKNOWLEDGED` and emits `incident:acknowledged`.
+ * Returns idempotently if already `ACKNOWLEDGED`; rejects `CLOSED` incidents with `ValidationError`.
+ */
 export class AcknowledgeIncidentUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
 

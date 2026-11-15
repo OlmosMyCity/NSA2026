@@ -67,94 +67,99 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
     ],
   },
   {
-    id: 'lro-lunar',
-    label: 'LRO · Lunar Polar Orbit',
-    environment: 'LUNAR ORBITER · 50 KM',
-    dataFile: 'data/lro.json',
-    subtitle: 'Lunar Polar Orbit (50 km, 90°)',
+    id: 'apollo-11',
+    label: 'Apollo 11 · Lunar Landing',
+    environment: 'LUNAR BASE · CREWED',
+    dataFile: 'data/apollo_11.json',
+    subtitle: 'Sea of Tranquility (July 16–24, 1969)',
     cards: [
       {
-        title: 'Lunar Orbit Insertion (LOI)',
-        body: '4.5-day cislunar transfer into a 50 km circular polar mapping orbit around the Moon.',
+        title: 'Trans-Lunar Injection (TLI)',
+        body: 'Saturn V S-IVB accelerated Columbia & Eagle out of 185 km LEO toward the Moon.',
       },
       {
-        title: 'Polar Illumination & Shadow',
-        body: 'Continuous polar passes mapping permanently shadowed craters and Shackleton Crater rim.',
+        title: 'LM Eagle Powered Descent',
+        body: 'Neil Armstrong and Buzz Aldrin landed in Mare Tranquillitatis on July 20, 1969 at 20:17:39 UTC.',
       },
       {
         title: 'HRP Health Focus',
-        body: 'Partial-gravity & lunar radiation dosimetry baseline for future surface crews.',
+        body: 'Apollo biomedical telemetry: launch tachycardia, 1/6 g EVA heart rate spikes, and fluid-shift diuresis.',
       },
     ],
   },
   {
-    id: 'mars-2020',
-    label: 'Mars 2020 · Perseverance',
-    environment: 'DEEP SPACE · MARS',
-    dataFile: 'data/mars2020.json',
-    subtitle: 'Heliocentric Type-I Transfer (203 days)',
+    id: 'apollo-13',
+    label: 'Apollo 13 · Free-Return',
+    environment: 'SPACECRAFT · CREWED',
+    dataFile: 'data/apollo_13.json',
+    subtitle: 'Cislunar Free-Return Abort (254 km)',
     cards: [
       {
-        title: 'Trans-Mars Injection (TMI)',
-        body: 'High-energy escape burn from LEO staging orbit onto a heliocentric interplanetary transfer trajectory.',
+        title: '254 km Pericynthion Flyby',
+        body: 'After O2 tank #2 ruptured, LM Aquarius served as a lifeboat around the lunar far side.',
       },
       {
-        title: 'Distance from Earth',
-        body: 'Up to 22-minute one-way communication latency requires 100% autonomous crew self-triage and medical guidance.',
+        title: 'Hypothermia & CO₂ Scrubbing',
+        body: 'Cabin power-down dropped temperatures to 3°C while crew built square-to-round CO₂ scrubber adapters.',
       },
       {
         title: 'HRP Health Focus',
-        body: 'Chronic GCR & SPE exposure, isolation/confinement mood tracking, and preventive oral radioprotectors.',
+        body: 'Sleep deprivation, dehydration, and cold-stress cardiovascular monitoring during 5.95-day abort.',
       },
     ],
   },
   {
-    id: 'europa-clipper',
-    label: 'Europa Clipper · Jupiter',
-    environment: 'OUTER SYSTEM · JUPITER',
-    dataFile: 'data/europa_clipper.json',
-    subtitle: 'Mars & Earth Gravity Assists (2024–2030)',
+    id: 'apollo-17',
+    label: 'Apollo 17 · Taurus-Littrow',
+    environment: 'LUNAR ROVER · CREWED',
+    dataFile: 'data/apollo_17.json',
+    subtitle: 'Taurus-Littrow Valley (Dec 7–19, 1972)',
     cards: [
       {
-        title: 'Mars & Earth Gravity Assists',
-        body: 'Launched Oct 14, 2024 on Falcon Heavy; uses Mars (Mar 2025) and Earth (Dec 2026) flybys to reach Jupiter.',
+        title: '3 EVAs with Lunar Roving Vehicle',
+        body: 'Gene Cernan and Harrison Schmitt traversed 35.9 km across Taurus-Littrow Valley over 22 h of EVA.',
       },
       {
-        title: 'Jovian Radiation Belt',
-        body: 'Extreme trapped-particle radiation environment at Jupiter (~42,000 km closest approach in this cruise).',
+        title: '12.58-Day Mission Duration',
+        body: 'Longest Apollo lunar surface expedition with full orbital & surface physiological telemetry.',
       },
       {
         title: 'HRP Health Focus',
-        body: 'Deep-space radiation shielding benchmarks and multi-year autonomous telemetry resilience.',
+        body: '1/6 g musculoskeletal workload, lunar dust exposure, and post-EVA rehydration recovery.',
       },
     ],
   },
   {
-    id: 'parker-solar-probe',
-    label: 'Parker Solar Probe · Sun',
-    environment: 'INNER SYSTEM · HELIOPHYSICS',
-    dataFile: 'data/parker_solar_probe.json',
-    subtitle: 'Venus Gravity Assist & Perihelion 1 (2018)',
+    id: 'apollo-8',
+    label: 'Apollo 8 · Lunar Orbit',
+    environment: 'SPACECRAFT · CREWED',
+    dataFile: 'data/apollo_8.json',
+    subtitle: 'First Crewed Lunar Orbit (111 km)',
     cards: [
       {
-        title: 'Venus Gravity Assist',
-        body: 'Launched Aug 12, 2018 on Delta IV Heavy; uses Venus flyby (~2,720 km altitude) to shed orbital angular momentum.',
+        title: '10 Lunar Orbits at 111 km',
+        body: 'Frank Borman, Jim Lovell, and Bill Anders became the first humans to leave Earth orbit (Dec 1968).',
       },
       {
-        title: 'Perihelion 1 (24.8M km)',
-        body: 'Reaches 24.8 million km from the Sun behind a 11.4 cm carbon-composite Thermal Protection System.',
+        title: 'Trans-Earth Injection (TEI)',
+        body: 'SPS burn behind the lunar far side returned Apollo 8 to a Pacific splashdown on Dec 27, 1968.',
       },
       {
         title: 'HRP Health Focus',
-        body: 'Solar Particle Event (SPE) early-warning telemetry and inner-heliosphere flux modeling.',
+        body: 'First human deep-space radiation and space adaptation syndrome telemetry outside Van Allen belts.',
       },
     ],
   },
 ];
 
+/**
+ * Standalone 3D orbital trajectory explorer component.
+ * Provides mission preset switching, vehicle overrides, custom `schema_version: 1`
+ * trajectory JSON uploads via object URLs, fullscreen toggling, and HRP context cards.
+ */
 export function OrbitTrajectoryViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>('artemis-ii');
+  const [selectedId, setSelectedId] = useState<string>('apollo-11');
   const [vehicleId, setVehicleId] = useState<string>('auto');
   const [customBlobUrl, setCustomBlobUrl] = useState<string | null>(null);
   const [customName, setCustomName] = useState<string | null>(null);

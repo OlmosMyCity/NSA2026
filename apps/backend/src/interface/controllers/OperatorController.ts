@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { GetOperatorCrewOverviewUseCase } from "../../application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
+import {
+  GetOperatorCrewMemberUseCase,
+  GetOperatorCrewOverviewUseCase,
+} from "../../application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
 import {
   GetCrewLocationUseCase,
   UpdateCrewLocationUseCase,
@@ -11,8 +14,18 @@ export class OperatorController {
   constructor(
     private readonly getOperatorCrewOverviewUseCase: GetOperatorCrewOverviewUseCase,
     private readonly updateCrewLocationUseCase: UpdateCrewLocationUseCase,
-    private readonly getCrewLocationUseCase: GetCrewLocationUseCase
+    private readonly getCrewLocationUseCase: GetCrewLocationUseCase,
+    private readonly getOperatorCrewMemberUseCase: GetOperatorCrewMemberUseCase
   ) {}
+
+  getCrewMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      res.status(200).json(await this.getOperatorCrewMemberUseCase.execute(req.user.id, req.params.astronautId));
+    } catch (error) {
+      next(error);
+    }
+  };
 
   getLocation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

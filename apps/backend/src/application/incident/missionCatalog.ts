@@ -1,5 +1,15 @@
+/**
+ * @module application/incident/missionCatalog
+ * Standardized mission contingency catalog (`CONT-01`..`CONT-05`) providing default severity,
+ * protocol identifiers, EVA-abort / module-evacuation flags, and checklists for `OpenIncidentUseCase`.
+ *
+ * Note: Contingency titles, descriptions, and action checklists are preserved in Spanish for
+ * operational UI and unit-test contracts.
+ */
+
 import { IncidentCategory, IncidentSeverity } from "@prisma/client";
 
+/** Canonical spacecraft/habitat emergency contingency identifiers. */
 export type MissionContingencyType =
   | "DEPRESSURIZATION"
   | "FIRE_TOXIC_ATMOSPHERE"
@@ -7,6 +17,7 @@ export type MissionContingencyType =
   | "COMMS_LOSS"
   | "MISSION_ABORT";
 
+/** Default incident template and operational response metadata for a mission contingency. */
 export interface MissionContingencySpec {
   type: MissionContingencyType;
   code: string;
@@ -20,6 +31,7 @@ export interface MissionContingencySpec {
   immediateActions: string[];
 }
 
+/** Lookup registry of standardized mission contingency specifications. */
 export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, MissionContingencySpec> = {
   DEPRESSURIZATION: {
     type: "DEPRESSURIZATION",
@@ -108,10 +120,12 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
   },
 };
 
+/** Resolves a mission contingency specification by `type`, returning `null` for non-catalog types. */
 export function getMissionContingencySpec(type: string): MissionContingencySpec | null {
   return (MISSION_CONTINGENCY_CATALOG as Record<string, MissionContingencySpec>)[type] ?? null;
 }
 
+/** Lists all standardized mission contingency specifications. */
 export function listMissionContingencies(): MissionContingencySpec[] {
   return Object.values(MISSION_CONTINGENCY_CATALOG);
 }

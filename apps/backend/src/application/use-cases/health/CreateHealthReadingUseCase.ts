@@ -1,3 +1,9 @@
+/**
+ * @module application/use-cases/health/CreateHealthReadingUseCase
+ * Use case for validating, deterministically evaluating, persisting, and alerting on
+ * new astronaut biomedical health readings.
+ */
+
 import { HealthReading } from "@prisma/client";
 import { IHealthReadingRepository } from "../../../domain/repository/IHealthReadingRepository.js";
 import { CreateHealthReadingDTO } from "../../../domain/models/HealthReading.js";
@@ -6,6 +12,10 @@ import { ValidationError } from "../../../domain/errors/AppError.js";
 import { OpenIncidentUseCase } from "../incident/OpenIncidentUseCase.js";
 import { openMedicalIncidentsFromReading } from "../incident/syncSystemIncidents.js";
 
+/**
+ * Validates that all 8 physiological/behavioral metrics are finite numbers, cardiovascular
+ * vitals (`heartRateBpm`, `systolicMmHg`, `diastolicMmHg`) are positive, and `mood` is in `1..5`.
+ */
 export function assertValidVitals(metrics: {
   heartRateBpm: number;
   systolicMmHg: number;
@@ -40,6 +50,10 @@ export function assertValidVitals(metrics: {
   }
 }
 
+/**
+ * Validates incoming vital metrics, runs deterministic NASA HRP rule evaluation (`evaluateReading`),
+ * persists the annotated `HealthReading`, and opens deduplicated medical incidents for any alerts.
+ */
 export class CreateHealthReadingUseCase {
   constructor(
     private readonly readingRepo: IHealthReadingRepository,
@@ -53,7 +67,7 @@ export class CreateHealthReadingUseCase {
 
     assertValidVitals(dto);
 
-    // 1. Evaluar clínicamente con la regla pura de la NASA
+    // 1. Evaluate clinically using deterministic NASA HRP rules
     const evaluation = evaluateReading({
       heartRateBpm: dto.heartRateBpm,
       systolicMmHg: dto.systolicMmHg,
@@ -65,7 +79,7 @@ export class CreateHealthReadingUseCase {
       mood: dto.mood,
     });
 
-    // 2. Persistir lectura con diagnóstico y alertas
+    // 2. Persist reading with deterministic clinical status, alerts, and recommendation
     const created = await this.readingRepo.create({
       astronautId: dto.astronautId,
       heartRateBpm: dto.heartRateBpm,
@@ -84,7 +98,7 @@ export class CreateHealthReadingUseCase {
       recordedById: dto.recordedById ?? null,
     });
 
-    // 3. Abrir incidentes médicos por alertas sin duplicar los activos
+    // 3. Open deduplicated medical incidents for triggered alerts
     if (this.openIncidentUseCase && evaluation.alerts.length > 0) {
       await openMedicalIncidentsFromReading(
         this.openIncidentUseCase,

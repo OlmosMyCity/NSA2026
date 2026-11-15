@@ -1,3 +1,9 @@
+/**
+ * @module DigitalTwinController
+ * HTTP controller for physiological digital-twin evaluation, counterfactual "what-if"
+ * mission simulations, and stateless multimodal decision analysis.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { Role } from "@prisma/client";
 import { z } from "zod";
@@ -100,6 +106,7 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
   return parsed.data;
 }
 
+/** Enforces crew-member ownership so non-admin users can only query or simulate their own digital twin. */
 async function assertAstronautAccess(req: Request, astronautId: string): Promise<void> {
   if (!req.user || req.user.role === Role.ADMIN) return;
   const own = await prisma.astronaut.findFirst({
@@ -113,6 +120,10 @@ async function assertAstronautAccess(req: Request, astronautId: string): Promise
   }
 }
 
+/**
+ * Loads an astronaut's mission environment, latest 20 vital readings, and live NOAA storm scale
+ * (falling back to `S0_NOMINAL` if live radiation telemetry is unreachable).
+ */
 async function loadAstronautTwinContext(astronautId: string) {
   const astronaut = await prisma.astronaut.findFirst({
     where: { id: astronautId, deletedAt: null },
@@ -165,7 +176,11 @@ async function loadAstronautTwinContext(astronautId: string) {
   };
 }
 
+/**
+ * Controller exposing live digital-twin state, what-if projections, and stateless evaluation endpoints.
+ */
 export class DigitalTwinController {
+  /** `GET /api/astronauts/:id/digital-twin` — Evaluates current physiological zones and AI clinical decision. */
   getDigitalTwin = async (
     req: Request,
     res: Response,
@@ -199,6 +214,7 @@ export class DigitalTwinController {
     }
   };
 
+  /** `POST /api/astronauts/:id/simulate` — Projects counterfactual vital/radiation overrides against baseline. */
   simulate = async (
     req: Request,
     res: Response,
@@ -243,6 +259,7 @@ export class DigitalTwinController {
     }
   };
 
+  /** `POST /api/astronauts/digital-twin/evaluate` — Stateless digital-twin & multimodal evaluation from supplied readings. */
   evaluateStateless = async (
     req: Request,
     res: Response,

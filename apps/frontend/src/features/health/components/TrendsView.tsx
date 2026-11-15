@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * @module health/components/TrendsView
+ * Longitudinal physiological trends view (`/trends`): 7/14/30-day window selector,
+ * primary chart with threshold bands and accessible data table, plus interactive
+ * small-multiples sparklines across all 9 indicators.
+ */
+
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/features/common/components/EmptyState';
@@ -16,6 +23,7 @@ import { TrendChart } from './TrendChart';
 
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 
+/** Historical trends dashboard with primary detail chart and 9-indicator sparkline grid. */
 export function TrendsView() {
   const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
   const { readings, isLoading, error, refetch, latest } = useHealthReadings(astronautId);
@@ -23,7 +31,6 @@ export function TrendsView() {
   const [indicator, setIndicator] = useState<IndicatorId>('heartRate');
 
   const now = latest ? Date.parse(latest.takenAt) + 3_600_000 : Date.now();
-  const xDomain: [number, number] = [now - days * 86_400_000, now];
 
   const series = useMemo(
     () => Object.fromEntries(INDICATOR_IDS.map((id) => [id, buildTrend(readings, id, days, now)])),
@@ -141,7 +148,7 @@ export function TrendsView() {
         </label>
       </div>
 
-      {/* Gráfica principal */}
+      {/* Primary indicator trend chart */}
       <section aria-labelledby="trend-title" className="surface-card p-6 sm:p-8">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -155,7 +162,7 @@ export function TrendsView() {
         </div>
 
         {points.length ? (
-          <TrendChart indicator={indicator} points={points} xDomain={xDomain} />
+          <TrendChart indicator={indicator} points={points} />
         ) : (
           <p className="py-16 text-center text-sm text-stem">
             No readings for this indicator in the selected range.
@@ -223,7 +230,7 @@ export function TrendsView() {
         )}
       </section>
 
-      {/* Múltiplos pequeños */}
+      {/* Small-multiples overview grid */}
       <section aria-labelledby="overview-title">
         <h2 id="overview-title" className="mb-3 text-sm font-semibold text-blueberry">
           All Indicators
@@ -261,7 +268,7 @@ export function TrendsView() {
                 </div>
                 <div className="mt-2">
                   {s.length ? (
-                    <TrendChart indicator={id} points={s} xDomain={xDomain} height={64} compact />
+                    <TrendChart indicator={id} points={s} height={64} compact />
                   ) : (
                     <div className="flex h-16 items-center text-xs text-stem">No data</div>
                   )}

@@ -1,3 +1,9 @@
+/**
+ * @module radiationRouter
+ * Express router exposing live NOAA/NASA space-weather status, CME forecasts,
+ * admin-only deterministic storm simulation scenarios, and custom CME impact prediction.
+ */
+
 import { Router, Request, Response, NextFunction } from "express";
 import { Role } from "@prisma/client";
 import { RadiationEngineState } from "@nsa2026/radiation-engine";
@@ -11,6 +17,10 @@ import { parseWithValidation, radiationSimulateSchema } from "../validation/sche
 
 const openIncidentUseCase = new OpenIncidentUseCase(new PrismaIncidentRepository());
 
+/**
+ * Synchronizes radiation storm state with persistent system incidents on a best-effort basis
+ * so telemetry endpoints still respond if incident persistence fails.
+ */
 async function syncRadiationIncidentSafely(state: RadiationEngineState): Promise<void> {
   try {
     await openRadiationIncidentFromState(openIncidentUseCase, state);
@@ -19,6 +29,7 @@ async function syncRadiationIncidentSafely(state: RadiationEngineState): Promise
   }
 }
 
+/** Router mounted at `/api/radiation`. */
 export const radiationRouter = Router();
 
 radiationRouter.get("/status", async (_req: Request, res: Response) => {

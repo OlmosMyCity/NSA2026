@@ -1,4 +1,10 @@
-"""Sleep Quality, Drowsiness (PERCLOS/EAR/MAR), and Video Actigraphy Engine."""
+"""Sleep Quality, Drowsiness (PERCLOS/EAR/MAR), and Video Actigraphy Engine.
+
+Tracks eye closure duration and PERCLOS (30 s sliding window, EAR < 0.21), blink cadence
+(0.03-0.70 s closures), microsleep events (>= 1.5 s continuous closure), yawns (MAR >= 0.55
+sustained >= 0.6 s), head-nodding pitch (>= 18 deg), and 96x72 grayscale inter-frame motion
+energy (video actigraphy) across `CABIN_ACTIVE` and `SLEEP_POD` monitoring modes.
+"""
 
 from collections import deque
 from typing import Deque, Optional, Tuple
@@ -33,6 +39,7 @@ class SleepQualityEngine:
         self._prev_gray_small: Optional[np.ndarray] = None
 
     def reset(self) -> None:
+        """Clears rolling PERCLOS, blink, yawn, and motion actigraphy history."""
         self._eye_history.clear()
         self._blink_timestamps.clear()
         self._motion_history.clear()
@@ -59,6 +66,7 @@ class SleepQualityEngine:
         context: MonitoringContext = MonitoringContext.CABIN_ACTIVE,
         bpm: float = 0.0,
     ) -> SleepMetrics:
+        """Updates fatigue, PERCLOS, yawn, and sleep-stage actigraphy estimates for the current frame."""
         # 1. Compute video actigraphy (inter-frame optical motion energy)
         instant_motion = self._compute_frame_motion(frame_bgr)
         self._motion_history.append((timestamp, instant_motion))
@@ -85,7 +93,7 @@ class SleepQualityEngine:
         else:
             if self._was_eye_closed and self._eye_closed_since is not None:
                 closed_dur = timestamp - self._eye_closed_since
-                # Standard blink lasts between 0.04s and 0.65s
+                # Standard blink duration window: 0.03s to 0.70s
                 if 0.03 <= closed_dur <= 0.70:
                     self._blink_timestamps.append(timestamp)
             self._was_eye_closed = False
@@ -119,7 +127,7 @@ class SleepQualityEngine:
         )
         blink_rate = len(self._blink_timestamps) * (60.0 / min(60.0, history_span))
 
-        # 3. Track Yawning (sustained high MAR > threshold for >= 0.8s)
+        # 3. Track Yawning (sustained high MAR >= threshold for >= 0.6s)
         if face_detected and mar >= MAR_YAWN_THRESHOLD:
             if self._yawn_active_since is None:
                 self._yawn_active_since = timestamp
@@ -193,6 +201,7 @@ class SleepQualityEngine:
         )
 
     def _compute_frame_motion(self, frame_bgr: np.ndarray) -> float:
+        """Computes inter-frame grayscale pixel difference energy scaled to a 0-100 actigraphy index."""
         if frame_bgr is None or frame_bgr.size == 0:
             return 0.0
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)

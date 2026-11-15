@@ -1,3 +1,11 @@
+/**
+ * Telemetry contracts for the contactless computer-vision AI service (`ai/vision`),
+ * covering rPPG cardiovascular extraction, affective mood/stress inference,
+ * ocular/postural sleep-fatigue metrics (EAR, MAR, PERCLOS), and DB ingest payloads.
+ *
+ * @module features/vision/domain/types
+ */
+
 export type CameraMode = 'rgb_pos' | 'rgb_chrom' | 'nir_ir';
 export type MonitoringContext = 'cabin_active' | 'sleep_pod';
 export type VisionSource = 'simulator' | 'webcam';

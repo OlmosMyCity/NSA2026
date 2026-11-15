@@ -1,3 +1,8 @@
+/**
+ * @module health/components/IndicatorCard
+ * Selectable summary card for a single physiological indicator and its traffic-light status.
+ */
+
 import { INDICATORS } from '../domain/indicators';
 import { STATUS_THEME } from '../domain/status-theme';
 import type { IndicatorEvaluation, IndicatorId } from '../domain/types';
@@ -10,6 +15,7 @@ interface IndicatorCardProps {
   onClick?: () => void;
 }
 
+/** Displays an indicator's current measurement, unit, and compact `StatusBadge`. */
 export function IndicatorCard({
   indicator,
   evaluation,

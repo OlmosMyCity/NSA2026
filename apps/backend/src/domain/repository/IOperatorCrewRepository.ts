@@ -1,4 +1,4 @@
-import { CrewLocation, Environment, HealthReading } from "@prisma/client";
+import { CrewLocation, Directive, Environment, HealthReading } from "@prisma/client";
 
 /** Tripulante de una misión asignada a un operador, con sus lecturas más recientes. */
 export interface OperatorCrewRecord {
@@ -13,6 +13,7 @@ export interface OperatorCrewRecord {
   locationUpdatedAt: Date | null;
   /** De la más reciente a la más antigua. */
   recentReadings: HealthReading[];
+  latestDirective: Directive | null;
 }
 
 export interface CrewLocationState {
@@ -32,6 +33,11 @@ export interface IOperatorCrewRepository {
   findLocation(astronautId: string): Promise<CrewLocationState | null>;
   /** Solo devuelve tripulantes de misiones cuyo operador es `operatorId`. */
   listCrewForOperator(operatorId: string): Promise<OperatorCrewRecord[]>;
+  /**
+   * Ficha de un tripulante con más historial. Devuelve `null` si no existe o si su misión
+   * no está asignada a `operatorId`: para el operador ambos casos son lo mismo.
+   */
+  findCrewMemberForOperator(operatorId: string, astronautId: string): Promise<OperatorCrewRecord | null>;
   /** Devuelve `false` si la misión no existe. */
   setMissionOperator(missionId: string, operatorId: string | null): Promise<boolean>;
   /** Devuelve `null` si el astronauta no existe. */

@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * @module health/components/SignalNoisePanel
+ * Radiobiological Signal-vs.-Noise attribution panel.
+ * Combines physical dosimetry (`doseRateMicroSvPerHour`, NOAA storm scale,
+ * structural shielding) with molecular biomarkers (`γ-H2AX`, `FDXR`, urinary
+ * `8-OHdG`) and vitals to separate acute ionizing radiation exposure from
+ * oxidative stress caused by sleep deprivation or microgravity fluid shifts.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,

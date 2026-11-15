@@ -1,8 +1,17 @@
+/**
+ * @module rateLimiter
+ * Lightweight, bounded in-memory IP rate-limiting middleware for authentication and sensitive mutations.
+ */
+
 import { Request, Response, NextFunction, RequestHandler } from "express";
 
+/** Configuration for a fixed-window rate limiter instance. */
 interface RateLimitOptions {
+  /** Window duration in milliseconds. */
   windowMs: number;
+  /** Maximum permitted requests per IP within `windowMs`. */
   max: number;
+  /** Localized HTTP 429 error payload message returned once `max` is exceeded. */
   message: string;
 }
 
@@ -11,10 +20,12 @@ interface Bucket {
   resetAt: number;
 }
 
+/** Upper bound on tracked client buckets before sweeping expired entries to prevent unbounded memory growth. */
 const MAX_TRACKED_KEYS = 2000;
 
 /**
- * Limitador de tasa en memoria con ventana fija acotada por IP.
+ * Creates an in-memory fixed-window rate limiter keyed by client IP.
+ * Sets `Retry-After` on HTTP 429 responses and automatically bypasses enforcement when `NODE_ENV === "test"`.
  */
 export function createRateLimiter(options: RateLimitOptions): RequestHandler {
   const store = new Map<string, Bucket>();

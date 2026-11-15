@@ -1,3 +1,19 @@
+/**
+ * @module application/health/decisionService
+ * Gemini Decision 1 (`gemini-decision-1`) second-opinion integration layered on top of
+ * the deterministic `decideByRules` clinical engine.
+ *
+ * Architectural invariants:
+ * 1. Deterministic rules (`decideByRules`) always retain official clinical authority for
+ *    `score`, `escalar`, and `accion`; Gemini provides an advisory `modelEstimate`,
+ *    confidence scores, optional multimodal estimates (`freeTextMood`, `instrumentImage`),
+ *    and discrepancy tracking (`detectDiscrepancies`).
+ * 2. Requests are deduplicated via a SHA-256 hash that excludes `evaluatedAt`.
+ * 3. `DEMO_OFFLINE=true`, missing credentials, call-budget exhaustion (`maxCalls`), or
+ *    upstream errors fail safe to `rules-fallback` with `official` preserved.
+ * 4. `disclaimer` is locked to `'estimación del modelo, no diagnóstico'` for clinical safety.
+ */
+
 import { createHash } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import { BODY_ZONES, type BodyZoneId } from "./hazards.js";
@@ -15,24 +31,31 @@ export interface InstrumentImageInput {
   dataBase64: string;
 }
 
+/** Optional multimodal inputs appended to the Gemini Decision 1 evaluation request. */
 export interface DecideOptions {
   freeTextMood?: string;
   instrumentImage?: InstrumentImageInput;
 }
 
+/** Mood estimate parsed from free-text astronaut journal notes via Decision 1 scoring. */
 export interface FreeTextMoodEstimate {
-  /** Escala 1..5 mapeada desde score 0..4. */
+  /** 1..5 mood scale mapped from the Gemini `0..4` score rubric. */
   moodScore: number;
   rawScore: number;
   confidence: number;
 }
 
+/** Visual triage classification extracted from a medical instrument screen image. */
 export interface InstrumentImageEstimate {
   status: "green" | "amber" | "red" | "unreadable";
   visibleAlert: boolean;
   confidence: number;
 }
 
+/**
+ * Combined decision contract returned by `DecisionService.decide`.
+ * Top-level `score`, `escalar`, and `accion` always mirror `official` (deterministic rules).
+ */
 export interface DecisionResult {
   score: Record<BodyZoneId, ZoneScoreEstimate>;
   escalar: boolean;
@@ -42,6 +65,7 @@ export interface DecisionResult {
   instrumentEstimate?: InstrumentImageEstimate;
 }
 
+/** Minimal SDK-compatible interface enabling dependency injection of mock Decision 1 clients in tests. */
 export interface DecisionsClientLike {
   decisions: {
     create(params: {
@@ -54,6 +78,7 @@ export interface DecisionsClientLike {
   };
 }
 
+/** Configuration options controlling API credentials, offline mode, call budgets, and client injection. */
 export interface DecisionServiceConfig {
   apiKey?: string;
   demoOffline?: boolean;
@@ -194,6 +219,7 @@ export class DecisionService {
     this.injectedClient = config.client;
   }
 
+  /** Returns current API call usage, configured budget ceiling, and cache entry count. */
   getStats(): { callsUsed: number; maxCalls: number; cacheSize: number } {
     return {
       callsUsed: this.callsUsed,
@@ -211,6 +237,11 @@ export class DecisionService {
     };
   }
 
+  /**
+   * Evaluates a Digital Twin snapshot through deterministic rules first, then optionally queries
+   * `gemini-decision-1` for second-opinion zone scores, action selection, and multimodal estimates.
+   * Official `score`, `escalar`, and `accion` are always governed by `decideByRules`.
+   */
   async decide(
     state: DigitalTwinState,
     options?: DecideOptions
@@ -324,7 +355,7 @@ export class DecisionService {
 const defaultService = new DecisionService();
 
 /**
- * Interfaz única pública: decide(estado) → { score, escalar, accion, confianza, ... }
+ * Public single-entry decision interface: `decide(state, options)` -> `{ score, escalar, accion, confianza, ... }`.
  */
 export async function decide(
   state: DigitalTwinState,

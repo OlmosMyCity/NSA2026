@@ -1,3 +1,10 @@
+/**
+ * @module health/domain
+ * Public barrel for the crew health domain layer: types, indicator catalog,
+ * deterministic threshold evaluation, theme tokens, educational copy, zone summaries,
+ * API adapters, and time-series trend builders.
+ */
+
 export * from './types';
 export * from './indicators';
 export * from './evaluate';

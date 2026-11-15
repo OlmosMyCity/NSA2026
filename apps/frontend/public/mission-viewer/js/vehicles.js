@@ -149,6 +149,21 @@ const DRAW = {
     g.fillRect(28, 56, 24, 8);
     g.fillRect(76, 56, 24, 8);
   },
+  apollo(g) {
+    g.fillStyle = GREY;
+    g.fillRect(50, 52, 28, 42); // Service Module
+    tri(g, 54, 94, 74, 94, 64, 114); // SPS engine bell
+    g.fillStyle = WHITE;
+    tri(g, 48, 52, 80, 52, 64, 24); // Command Module cone
+  },
+  saturnv(g) {
+    g.fillStyle = WHITE;
+    g.fillRect(54, 24, 20, 86);
+    g.fillStyle = "#1e293b";
+    g.fillRect(54, 84, 20, 14);
+    g.fillRect(54, 52, 20, 8);
+    tri(g, 54, 24, 74, 24, 64, 6);
+  },
 };
 
 function tri(g, ax, ay, bx, by, cx, cy) {

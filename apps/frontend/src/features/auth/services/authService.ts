@@ -1,3 +1,11 @@
+/**
+ * Authentication and session management service.
+ * Handles credential sign-in, user registration, and local token/user persistence
+ * across both mock mode (`ENV.USE_MOCKS`) and the backend `/auth` API.
+ *
+ * @module features/auth/services/authService
+ */
+
 import { ENV } from '@/features/common/config/env';
 import { httpClient, ApiError } from '@/features/common/services/httpClient';
 import { authStorage } from '@/features/common/services/storage';
@@ -5,9 +13,10 @@ import { mockDb } from '@/features/common/mocks/mockDb';
 import { AuthResponse, AuthUser, LoginInput, RegisterInput } from '../domain/types';
 
 class AuthService {
+  /** Authenticates a crew member or Flight Surgeon and persists session credentials. */
   async login(credentials: LoginInput): Promise<AuthResponse> {
     if (ENV.USE_MOCKS) {
-      // Simulación con las credenciales de prueba oficiales del seed
+      // Simulate authentication using official seeded test credentials
       const email = credentials.email.trim().toLowerCase();
       const password = credentials.password;
 
@@ -57,7 +66,7 @@ class AuthService {
         return response;
       }
 
-      // Comprobar si es un usuario recién registrado en el mock
+      // Check whether this is a newly registered mock user
       const existingUser = mockDb.users.find((u) => u.email.toLowerCase() === email);
       if (existingUser && password.length >= 6) {
         const response: AuthResponse = {
@@ -91,11 +100,12 @@ class AuthService {
     }
   }
 
+  /** Registers a new crew account (`USER` role) and initializes an active session. */
   async register(input: RegisterInput): Promise<AuthResponse> {
     if (ENV.USE_MOCKS) {
       const email = input.email.trim().toLowerCase();
 
-      // Validación de duplicados
+      // Duplicate email check
       const duplicate = mockDb.users.some((u) => u.email.toLowerCase() === email);
       if (duplicate) {
         throw new ApiError('El correo electrónico ya se encuentra registrado en el centro de control.', 409);

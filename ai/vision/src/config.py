@@ -1,4 +1,9 @@
-"""Configuration constants for the Astronaut Vitals biometric subsystem."""
+"""Configuration constants for the Astronaut Vitals biometric subsystem.
+
+Defines open-source model asset paths (FERPlus ONNX emotion classifier and MediaPipe
+FaceLandmarker), rPPG sliding-window and bandpass parameters (cardiac 0.75-3.00 Hz / 45-180 BPM;
+respiration 0.15-0.45 Hz / 9-27 RPM), EAR/MAR/PERCLOS fatigue thresholds, and mood EMA alpha.
+"""
 
 from pathlib import Path
 

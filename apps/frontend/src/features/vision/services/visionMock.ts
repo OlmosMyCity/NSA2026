@@ -1,14 +1,15 @@
 /**
- * Transporte simulado del servicio ai/vision para NEXT_PUBLIC_USE_MOCKS=true.
+ * In-browser mock transport for the `ai/vision` service when `NEXT_PUBLIC_USE_MOCKS=true`
+ * or when the native Python Vision server (`:8000`) is unreachable.
  *
- * Genera AstronautTelemetryFrame realistas en el navegador (sin WebSocket ni
- * HTTP hacia :8000) replicando los umbrales del pipeline Python:
- *  - mood_engine: etiquetas operativas y stress/alertness 0-100
- *  - sleep_engine: PERCLOS, fatiga y etapas de sueño
- *  - rppg_engine: calibración del buffer (~10 s), BVP y espectro
- *  - pipeline._evaluate_mission_health: alertas e índice de salud global
+ * Synthesizes realistic `AstronautTelemetryFrame` payloads directly in the browser,
+ * mirroring the Python pipeline thresholds:
+ *  - `mood_engine`: operational affect labels and stress/alertness 0–100 scores
+ *  - `sleep_engine`: PERCLOS, drowsiness states, and sleep stages
+ *  - `rppg_engine`: ~10 s rolling calibration buffer, BVP waveform, and Welch spectrum
+ *  - `pipeline._evaluate_mission_health`: clinical alerts and global health index
  *
- * La imagen del sujeto la pinta SyntheticHead3D (modelo 3D), no este simulador.
+ * Visual rendering of the subject is handled separately by `SyntheticHead3D`.
  */
 import type {
   AstronautTelemetryFrame,
@@ -86,18 +87,18 @@ const PROFILES: Record<SimState, StateProfile> = {
 };
 
 const BUFFER_SECONDS = 10;
-const WAVE_SAMPLES = 120; // 4 s a 30 Hz, igual que rppg_engine
+const WAVE_SAMPLES = 120; // 4 s at 30 Hz, matching rppg_engine buffer length
 const SPECTRUM_BINS = 64;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const round = (v: number, d = 1) => Number(v.toFixed(d));
-/** Ruido gaussiano aproximado (Box-Muller). */
+/** Approximate zero-mean Gaussian noise via Box-Muller transform. */
 function gauss(sigma = 1): number {
   const u = 1 - Math.random();
   const v = Math.random();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v) * sigma;
 }
-/** Suavizado exponencial hacia el objetivo. */
+/** Exponential smoothing step toward target value. */
 const ease = (current: number, target: number, k: number) => current + (target - current) * k;
 
 export class MockVisionSimulator {
@@ -151,7 +152,7 @@ export class MockVisionSimulator {
     const calibrated = fill >= 100;
     const bpm = calibrated ? this.bpm : 0;
 
-    // --- Ojos / parpadeo / bostezos (sleep_engine) ---
+    // --- Eyes / Blinking / Yawns (sleep_engine) ---
     this.blinkPhase += dt;
     const blinking = params.sim_state !== 'sleeping_deep' && this.blinkPhase % 3.2 < 0.15;
     const earMean = clamp(profile.earMean + gauss(0.01) - (blinking ? 0.12 : 0), 0.04, 0.4);
@@ -192,7 +193,7 @@ export class MockVisionSimulator {
       else if (perclos >= 16 || this.yawnCount >= 1 || headNodding) fatigueLevel = 'Mild Fatigue';
     }
 
-    // --- Ánimo (mood_engine) ---
+    // --- Mood & Affect (mood_engine) ---
     const emotions: Record<string, number> = {};
     let total = 0;
     for (const [label, p] of Object.entries(profile.emotions)) {
@@ -246,7 +247,7 @@ export class MockVisionSimulator {
 
     const hrStatus = !calibrated ? 'calibrating' : signalQuality >= 30 ? 'locked' : 'low_signal';
 
-    // --- Salud global y alertas (pipeline) ---
+    // --- Global Health Index & Alerts (pipeline) ---
     const alerts: string[] = [];
     if (microsleep) alerts.push('CRITICAL: MICROSLEEP DETECTED ON DUTY');
     else if (perclos >= 35 && params.context === 'cabin_active')

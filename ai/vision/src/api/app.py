@@ -1,4 +1,15 @@
-"""FastAPI server exposing REST endpoints, WebSocket streaming, and the Mission Control UI."""
+"""FastAPI server exposing REST endpoints, WebSocket streaming, and the Mission Control UI.
+
+Provides:
+- Static Mission Control dashboard (`/`) and health/model diagnostics (`/api/health`).
+- Service-token authenticated telemetry and simulation endpoints (`/api/reset`,
+  `/api/telemetry/latest`, `/api/telemetry/tick`) enforcing `X-Service-Token` when
+  `AI_SERVICE_TOKEN` is set or in production mode.
+- Bounded image/video analysis endpoints (`/api/analyze/frame`, `/api/analyze/video`) with
+  5 MB frame and 50 MB video caps.
+- Real-time bidirectional `/ws/telemetry` WebSocket supporting `tick`, `frame`, `config`,
+  and `reset` messages.
+"""
 
 import base64
 import json
@@ -44,12 +55,14 @@ DEFAULT_ALLOWED_ORIGINS = [
 
 
 def _get_allowed_origins() -> list[str]:
+    """Resolves non-wildcard CORS origins from `ALLOWED_ORIGINS` or falls back to defaults."""
     raw = os.getenv("ALLOWED_ORIGINS", "")
     parsed = [origin.strip() for origin in raw.split(",") if origin.strip() and origin.strip() != "*"]
     return parsed or DEFAULT_ALLOWED_ORIGINS
 
 
 def _is_token_valid(provided: str | None) -> tuple[bool, str]:
+    """Validates `X-Service-Token` using constant-time comparison; requires token in production."""
     expected = os.getenv("AI_SERVICE_TOKEN", "").strip()
     app_env = os.getenv("APP_ENV", os.getenv("ENV", "")).strip().lower()
     if not expected:
@@ -64,6 +77,7 @@ def _is_token_valid(provided: str | None) -> tuple[bool, str]:
 def _require_service_token(
     x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
 ) -> None:
+    """FastAPI dependency enforcing service authentication (503 if unconfigured in prod, 401 if invalid)."""
     ok, reason = _is_token_valid(x_service_token)
     if not ok:
         status_code = 503 if "not configured" in reason else 401
@@ -71,6 +85,7 @@ def _require_service_token(
 
 
 async def _read_bounded_upload(upload: UploadFile, max_bytes: int) -> bytes:
+    """Streams an uploaded file in 1 MB chunks and rejects payloads exceeding `max_bytes` with HTTP 413."""
     chunks: list[bytes] = []
     total = 0
     chunk_size = 1024 * 1024
@@ -116,11 +131,13 @@ _global_gallery: list[EnrolledCrewProfile] = []
 
 @app.get("/", include_in_schema=False)
 async def serve_dashboard() -> FileResponse:
+    """Serves the Mission Control biometric telemetry web UI."""
     return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/api/health")
 async def health_check() -> Dict[str, Any]:
+    """Returns service liveness and loaded model/backend status (FERPlus ONNX & MediaPipe)."""
     return {
         "status": "ok",
         "service": "astronaut_vitals",
@@ -136,6 +153,7 @@ async def health_check() -> Dict[str, Any]:
 
 @app.post("/api/reset", dependencies=[Depends(_require_service_token)])
 async def reset_pipeline() -> Dict[str, str]:
+    """Resets the shared REST pipeline buffers and synthetic simulator clock."""
     global _global_sim_time
     global_pipeline.reset()
     _global_sim_time = 0.0
@@ -148,6 +166,7 @@ async def reset_pipeline() -> Dict[str, str]:
     dependencies=[Depends(_require_service_token)],
 )
 async def get_latest_telemetry() -> AstronautTelemetryFrame:
+    """Returns the latest processed telemetry frame, warming up 1 synthetic frame if uninitialized."""
     global _global_sim_time
     if global_pipeline.latest_telemetry is None:
         # Warm up with 1 frame from synthetic simulator so callers always receive valid telemetry
@@ -158,6 +177,8 @@ async def get_latest_telemetry() -> AstronautTelemetryFrame:
 
 
 class SimulatorTickRequest(BaseModel):
+    """Request payload for stepping the synthetic astronaut biometric simulator."""
+
     camera_mode: CameraMode = CameraMode.RGB_POS
     context: MonitoringContext = MonitoringContext.CABIN_ACTIVE
     sim_bpm: float = Field(72.0, ge=40.0, le=180.0)
@@ -171,6 +192,7 @@ class SimulatorTickRequest(BaseModel):
     dependencies=[Depends(_require_service_token)],
 )
 async def step_simulator_telemetry(body: SimulatorTickRequest) -> AstronautTelemetryFrame:
+    """Advances the synthetic simulator by 50 ms (20 FPS) and returns evaluated telemetry."""
     global _global_sim_time
     global_simulator.update_config(
         target_bpm=body.sim_bpm,
@@ -256,6 +278,7 @@ async def analyze_single_frame(
     context: MonitoringContext = Form(MonitoringContext.CABIN_ACTIVE),
     include_hud: bool = Form(False),
 ) -> AstronautTelemetryFrame:
+    """Decodes an uploaded image (<= 5 MB) and runs one frame through the shared biometric pipeline."""
     raw_bytes = await _read_bounded_upload(file, MAX_FRAME_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty image upload")
@@ -278,6 +301,7 @@ async def analyze_video_file(
     context: MonitoringContext = Form(MonitoringContext.CABIN_ACTIVE),
     max_frames: int = Form(450, ge=1, le=1800),
 ) -> Dict[str, Any]:
+    """Processes an uploaded video clip (<= 50 MB, up to `max_frames`) in an isolated session pipeline and summarizes BPM, mood, and sleep metrics."""
     suffix = Path(file.filename or "video.mp4").suffix.lower() or ".mp4"
     if suffix not in ALLOWED_VIDEO_SUFFIXES:
         raise HTTPException(status_code=400, detail="Unsupported video container format")
@@ -359,6 +383,7 @@ async def analyze_video_file(
 
 
 def _decode_base64_image(data_uri: str) -> np.ndarray | None:
+    """Validates and decodes a Base64 JPEG/PNG frame payload (<= 5 MB decoded) into a BGR ndarray."""
     if not isinstance(data_uri, str) or len(data_uri) > MAX_WS_MESSAGE_BYTES:
         return None
     if "," in data_uri:
@@ -377,6 +402,7 @@ def _decode_base64_image(data_uri: str) -> np.ndarray | None:
 
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(ws: WebSocket) -> None:
+    """Real-time WebSocket stream supporting `tick` (30 FPS simulator), `frame` (base64 webcam), `sync_gallery`, `config`, and `reset` commands."""
     global _global_gallery
     ok, _reason = _is_token_valid(ws.headers.get("x-service-token"))
     if not ok:

@@ -1,3 +1,12 @@
+/**
+ * @module domain/errors/AppError
+ * Domain error hierarchy mapped to HTTP status codes by the Express error-handling middleware.
+ */
+
+/**
+ * Base abstract domain error carrying an HTTP status code.
+ * Restores the prototype chain via `Object.setPrototypeOf` so `instanceof` checks work across transpiled `Error` subclasses.
+ */
 export abstract class AppError extends Error {
   public abstract readonly statusCode: number;
 
@@ -7,6 +16,7 @@ export abstract class AppError extends Error {
   }
 }
 
+/** HTTP 404 error raised when a requested domain entity does not exist or is soft-deleted. */
 export class NotFoundError extends AppError {
   public readonly statusCode = 404;
 
@@ -15,6 +25,7 @@ export class NotFoundError extends AppError {
   }
 }
 
+/** HTTP 400 error raised when domain invariants or input validations fail. */
 export class ValidationError extends AppError {
   public readonly statusCode = 400;
 
@@ -23,6 +34,7 @@ export class ValidationError extends AppError {
   }
 }
 
+/** HTTP 401 error raised when authentication is missing, invalid, or expired. */
 export class UnauthorizedError extends AppError {
   public readonly statusCode = 401;
 
@@ -31,6 +43,7 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** HTTP 403 error raised when an authenticated user lacks permissions for the requested resource or action. */
 export class ForbiddenError extends AppError {
   public readonly statusCode = 403;
 
@@ -39,6 +52,7 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** HTTP 409 error raised on uniqueness or state-conflict violations. */
 export class ConflictError extends AppError {
   public readonly statusCode = 409;
 
