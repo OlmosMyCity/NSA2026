@@ -31,7 +31,7 @@ class AdminTriageService {
           astronautId: astro.id,
           astronautName: astro.name,
           missionId: astro.missionId,
-          missionName: mission ? mission.name : 'Artemis IV Deep Space',
+          missionName: mission ? mission.name : 'Crewed Spaceflight Mission',
           role: astro.role,
           environment: mission ? mission.environment : 'SPACECRAFT',
           status: (latest ? latest.status : 'OK') as 'CRITICAL' | 'WARNING' | 'OK',

@@ -505,13 +505,13 @@ class MockDatabase {
   private hydrateFromStorage() {
     if (typeof window === 'undefined') return;
     try {
-      const storedMissions = localStorage.getItem('artemis_mock_missions');
+      const storedMissions = localStorage.getItem('orbvital_mock_v3_missions');
       if (storedMissions) this.missions = JSON.parse(storedMissions);
 
-      const storedAstronauts = localStorage.getItem('artemis_mock_astronauts');
+      const storedAstronauts = localStorage.getItem('orbvital_mock_v3_astronauts');
       if (storedAstronauts) this.astronauts = JSON.parse(storedAstronauts);
 
-      const storedReadings = localStorage.getItem('artemis_mock_readings');
+      const storedReadings = localStorage.getItem('orbvital_mock_v3_readings');
       if (storedReadings) this.readings = JSON.parse(storedReadings);
     } catch {
       // Ignorar fallback
@@ -521,9 +521,9 @@ class MockDatabase {
   private persist() {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('artemis_mock_missions', JSON.stringify(this.missions));
-      localStorage.setItem('artemis_mock_astronauts', JSON.stringify(this.astronauts));
-      localStorage.setItem('artemis_mock_readings', JSON.stringify(this.readings));
+      localStorage.setItem('orbvital_mock_v3_missions', JSON.stringify(this.missions));
+      localStorage.setItem('orbvital_mock_v3_astronauts', JSON.stringify(this.astronauts));
+      localStorage.setItem('orbvital_mock_v3_readings', JSON.stringify(this.readings));
     } catch {
       // Ignorar fallback
     }

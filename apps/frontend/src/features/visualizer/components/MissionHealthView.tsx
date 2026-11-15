@@ -148,6 +148,8 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
           <p className="text-sm text-stem tabular-nums">
             {STATUS_LABEL[mission.status]}
             {mission.status === 'IN_PROGRESS' && nowMetRaw >= 0 && ` · mission day ${day + 1}`}
+            {trajectoryOverride !== 'auto' &&
+              ` · Simulating: ${TRAJECTORY_PRESETS.find((p) => p.id === trajectoryOverride)?.label ?? trajectoryOverride}`}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
             {mission.name}

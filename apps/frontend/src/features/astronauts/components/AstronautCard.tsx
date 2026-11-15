@@ -69,7 +69,7 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
           <div className="truncate">
             <span className="text-stem">Mission: </span>
             <span className="font-semibold text-blueberry">
-              {astronaut.mission?.name || 'Artemis IV'}
+              {astronaut.mission?.name || 'Active Crewed Mission'}
             </span>
           </div>
         </div>

@@ -16,11 +16,6 @@ export const VEHICLE_OPTIONS: VehicleOption[] = [
   { id: 'hls', label: 'Starship HLS', category: 'Lunar Descent' },
   { id: 'rover', label: 'Pressurized Lunar Rover', category: 'Lunar Surface' },
   { id: 'gateway', label: 'Lunar Gateway', category: 'NRHO Station' },
-  { id: 'lro', label: 'Lunar Reconnaissance Orbiter', category: 'Lunar Orbit' },
-  { id: 'mars2020', label: 'Mars 2020 Perseverance', category: 'Mars Interplanetary' },
-  { id: 'ares', label: 'Ares I Mars Transit', category: 'Mars Interplanetary' },
-  { id: 'clipper', label: 'Europa Clipper', category: 'Outer System / Jupiter' },
-  { id: 'parker', label: 'Parker Solar Probe', category: 'Inner System / Sun' },
 ];
 
 export interface TrajectoryPresetOption {

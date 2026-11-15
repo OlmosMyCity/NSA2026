@@ -134,7 +134,7 @@ export function FlightSurgeonConsole() {
             {metrics.totalCrew}
           </p>
           <span className="mt-1 block text-xs text-stem">
-            Artemis IV &amp; Gateway Station
+            Apollo, ISS &amp; Artemis Programs
           </span>
         </button>
 
