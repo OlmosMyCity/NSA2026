@@ -19,14 +19,17 @@ export interface ZoneSummary {
 }
 
 /** Estado de cada zona de la figura según la última medición de sus indicadores. */
-export function summarizeZones(readings: IndicatorReading[]): Record<BodyZoneId, ZoneSummary> {
+export function summarizeZones(
+  readings: IndicatorReading[],
+  phaseId?: string | null,
+): Record<BodyZoneId, ZoneSummary> {
   const latest = latestByIndicator(readings);
   const result = {} as Record<BodyZoneId, ZoneSummary>;
   for (const zone of Object.keys(INDICATORS_BY_ZONE) as BodyZoneId[]) {
     const evaluations = INDICATORS_BY_ZONE[zone]
       .map((id) => latest[id])
       .filter((r): r is IndicatorReading => !!r)
-      .map((r) => evaluateIndicator(r.indicator, r.value));
+      .map((r) => evaluateIndicator(r.indicator, r.value, phaseId));
     result[zone] = { zone, status: worstStatus(evaluations.map((e) => e.status)), evaluations };
   }
   return result;

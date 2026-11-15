@@ -48,8 +48,13 @@ export function createHud(dom, mission, samples, frames, budget) {
 
   function showPhase(phase) {
     phaseId = phase.id;
-    const info = PHASE_INFO[phase.id];
-    const color = PHASE_COLORS[phase.id];
+    const info = PHASE_INFO[phase.id] ?? {
+      short: phase.name,
+      physics: phase.name,
+      method: "Kepler / Lambert",
+      result: phase.name,
+    };
+    const color = PHASE_COLORS[phase.id] ?? "#3fa7d6";
     dom.root.style.setProperty("--phase", color);
     dom.physics.textContent = info.physics;
     dom.method.textContent = info.method;

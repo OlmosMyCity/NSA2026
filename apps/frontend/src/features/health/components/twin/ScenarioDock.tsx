@@ -99,7 +99,6 @@ export function ScenarioDock({
             {value.active ? 'Simulating' : baseline ? 'Showing last reading' : 'Baseline values'}
           </span>
         </div>
-        <p className="text-[11px] text-stem">Colors update instantly · no AI calls until you run triage</p>
       </header>
 
       <div className="mt-4 grid gap-x-8 gap-y-4 md:grid-cols-2">
@@ -171,7 +170,7 @@ export function ScenarioDock({
             </select>
           </label>
           <label className="col-span-2 block space-y-1.5">
-            <span className="twin-label">Crew note (optional, read by the model)</span>
+            <span className="twin-label">Crew note (optional)</span>
             <input
               type="text"
               maxLength={280}
@@ -187,7 +186,7 @@ export function ScenarioDock({
       <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-4">
         <p className="text-xs text-stem" aria-live="polite">
           {isEvaluating
-            ? 'Running rules + Gemini triage…'
+            ? 'Evaluating clinical triage…'
             : isDirty
               ? 'Scenario changed since the last triage.'
               : 'Triage is up to date with this scenario.'}

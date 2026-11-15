@@ -62,30 +62,11 @@ export interface ZoneScoreEstimate {
   confidence: number;
 }
 
-export interface DecisionOutcome {
-  score: Record<BodyZoneId, ZoneScoreEstimate>;
-  escalar: boolean;
-  escalarProbabilidad: number;
-  accion: RecommendedAction;
-  confianza: number;
-}
-
 export interface DecisionResult {
   score: Record<BodyZoneId, ZoneScoreEstimate>;
   escalar: boolean;
   accion: RecommendedAction;
   confianza: number;
-  official: DecisionOutcome;
-  modelEstimate: DecisionOutcome;
-  discrepancy: {
-    hasDiscrepancy: boolean;
-    reasons: string[];
-    zoneDiscrepancies: BodyZoneId[];
-    escalarDiscrepancy: boolean;
-    accionDiscrepancy: boolean;
-  };
-  source: 'gemini-decision-1' | 'cache' | 'rules-fallback';
-  disclaimer: 'estimación del modelo, no diagnóstico';
   freeTextMoodEstimate?: {
     moodScore: number;
     rawScore: number;
@@ -164,14 +145,6 @@ function localFallbackEvaluate(payload: EvaluateTwinPayload): {
         ? 're_measure'
         : 'no_action';
 
-  const official: DecisionOutcome = {
-    score,
-    escalar,
-    escalarProbabilidad: escalar ? 0.99 : 0.01,
-    accion,
-    confianza: 1,
-  };
-
   return {
     twin: {
       evaluatedAt: new Date().toISOString(),
@@ -187,17 +160,6 @@ function localFallbackEvaluate(payload: EvaluateTwinPayload): {
       escalar,
       accion,
       confianza: 1,
-      official,
-      modelEstimate: official,
-      discrepancy: {
-        hasDiscrepancy: false,
-        reasons: [],
-        zoneDiscrepancies: [],
-        escalarDiscrepancy: false,
-        accionDiscrepancy: false,
-      },
-      source: 'rules-fallback',
-      disclaimer: 'estimación del modelo, no diagnóstico',
     },
   };
 }

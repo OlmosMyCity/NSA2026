@@ -100,8 +100,24 @@ npm run dev
 
 ---
 
+## 🩺 Phase-Adjusted Physiological Norms (NASA-STD-3001 & HRP)
+
+Vital signs that appear abnormal relative to a resting 1-G Earth baseline can be **physiologically nominal** during specific spaceflight phases. The clinical evaluator (`apps/frontend/src/features/health/domain/phaseNorms.ts`) adapts expected green/amber thresholds to the active mission phase:
+
+| Flight Regime | Applicable Phases | Expected Nominal Adjustments (vs. 1-G Earth Baseline) | Physiological Basis |
+| :--- | :--- | :--- | :--- |
+| **1-G Earth Baseline** | Pre-launch | HR `50–90 bpm`, SBP `90–129 mmHg`, DBP `≤ 84 mmHg`, SpO₂ `≥ 95%`, Sleep `≥ 7.0 h` | Pre-flight clinical screening norms |
+| **Launch & Ascent (`+Gx/+Gz`)** | `ascent`, `heo` | HR `60–135 bpm`, SBP `95–155 mmHg`, DBP `≤ 95 mmHg`, SpO₂ `≥ 94%` | Sympathetic surge, adrenaline, and thoracic compression under launch acceleration |
+| **Microgravity / Orbital Cruise (`0-G`)** | `parking`, `leo`, `outbound`, `transit`, `cruise`, `lunar_orbit`, `nrho`, `return`, `flyby`, `gravity_assist`, `perihelion` | HR `45–88 bpm`, SBP `85–125 mmHg`, Sleep `≥ 6.5 h/day` | Cephalad fluid shift, baroreceptor unloading, lower resting cardiac workload, and 16 sunrises/day circadian drift |
+| **Entry, Descent & Landing** | `approach`, `descent`, `edl`, `landing` | HR `55–130 bpm`, SBP `85–145 mmHg`, SpO₂ `≥ 94%` | Reentry `+Gx/+Gz` deceleration load and post-flight orthostatic intolerance |
+
+---
+
 ## 📚 References & Standards
-- **NASA Human Research Program (HRP):** *The 5 Hazards of Human Spaceflight — Space Radiation* (<https://www.nasa.gov/hrp/hazards>)
-- **NASA-STD-3001:** *NASA Spaceflight Human-System Standard: Crew Health and Habitability*
+- **NASA-STD-3001, Volume 1 (Crew Health):** *NASA Spaceflight Human-System Standard — Pre-flight, In-flight, and Post-flight Physiological & Medical Standards* (<https://www.nasa.gov/ochmo/human-system-standards/>)
+- **NASA-STD-3001, Volume 2 (Human Factors, Habitability, and Environmental Health):** *Translational Acceleration Limits, Launch/Entry/Landing (LEL) Tolerances, and Cabin Atmosphere* (<https://www.nasa.gov/ochmo/human-system-standards/>)
+- **NASA Human Research Program (HRP):** *The 5 Hazards of Human Spaceflight — Space Radiation, Isolation, Distance, Gravity Fields, Hostile Environments* (<https://www.nasa.gov/hrp/hazards>)
+- **NASA HRP Cardiovascular & Fluid Shift Research:** *Cardiovascular Deconditioning, Cephalad Fluid Shift, and Orthostatic Intolerance in Microgravity* (<https://www.nasa.gov/hrp/bodyinspace>)
 - **NOAA SWPC:** *Space Weather Scales for Solar Radiation Storms (S-Scale)* (<https://www.swpc.noaa.gov/noaa-scales-explanation>)
 - **NASA DONKI:** *Space Weather Database Of Notifications, Knowledge, Information* (<https://kauai.ccmc.gsfc.nasa.gov/DONKI/>)
+- **JPL Solar System Dynamics:** *Approximate Positions of the Planets (Standish) & Mission Ephemerides (Artemis II, ISS, LRO, Mars 2020, Europa Clipper, Parker Solar Probe)* (<https://ssd.jpl.nasa.gov/>)

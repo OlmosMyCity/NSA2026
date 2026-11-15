@@ -35,8 +35,10 @@
   function connectWebSocket() {
     ws = new WebSocket(wsUrl);
     ws.onopen = () => {
-      connPill.textContent = "WS: EN LÍNEA";
-      connPill.style.color = "#22c55e";
+      if (connPill) {
+        connPill.textContent = "EN LÍNEA";
+        connPill.style.color = "#22c55e";
+      }
       awaitingResponse = false;
       startStreamingLoop();
     };
@@ -47,8 +49,10 @@
       renderTelemetry(data);
     };
     ws.onclose = () => {
-      connPill.textContent = "WS: RECONECTANDO...";
-      connPill.style.color = "#f59e0b";
+      if (connPill) {
+        connPill.textContent = "RECONECTANDO...";
+        connPill.style.color = "#f59e0b";
+      }
       setTimeout(connectWebSocket, 1500);
     };
   }
@@ -148,7 +152,7 @@
     if (t.annotated_frame_jpeg_b64) {
       hudImage.src = `data:image/jpeg;base64,${t.annotated_frame_jpeg_b64}`;
     }
-    fpsPill.textContent = `FPS: ${t.fps.toFixed(1)}`;
+    if (fpsPill) fpsPill.textContent = `FPS: ${t.fps.toFixed(1)}`;
     healthPill.textContent = `SALUD GLOBAL: ${t.overall_health_index.toFixed(0)}%`;
 
     if (t.alerts && t.alerts.length > 0) {
@@ -184,7 +188,8 @@
     document.getElementById("dominant-mood").textContent = mood.dominant_mood;
     document.getElementById("raw-emotion").textContent = mood.raw_emotion;
     document.getElementById("mood-valence").textContent = mood.mood_valence.toFixed(2);
-    document.getElementById("mood-backend-tag").textContent = mood.model_backend;
+    const moodBackendEl = document.getElementById("mood-backend-tag");
+    if (moodBackendEl) moodBackendEl.textContent = mood.model_backend;
     document.getElementById("stress-val").textContent = `${mood.stress_index.toFixed(0)}%`;
     document.getElementById("stress-bar").style.width = `${mood.stress_index}%`;
     document.getElementById("alertness-val").textContent = `${mood.alertness_score.toFixed(0)}%`;

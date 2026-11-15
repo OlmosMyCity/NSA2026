@@ -29,14 +29,6 @@ export interface DecisionOutcome {
   confianza: number;
 }
 
-export interface DecisionDiscrepancy {
-  hasDiscrepancy: boolean;
-  reasons: string[];
-  zoneDiscrepancies: BodyZoneId[];
-  escalarDiscrepancy: boolean;
-  accionDiscrepancy: boolean;
-}
-
 export const ACTION_DESCRIPTIONS: Record<RecommendedAction, string> = {
   re_measure:
     "Medición vencida o lectura ámbar aislada que requiere repetir medición en 5-30 min para confirmar.",
@@ -142,52 +134,6 @@ export function decideByRules(state: DigitalTwinState): DecisionOutcome {
     escalarProbabilidad: escalar ? 0.99 : 0.01,
     accion,
     confianza: 1,
-  };
-}
-
-/**
- * Compara la decisión oficial por reglas contra la estimación del modelo
- * y reporta cualquier discrepancia relevante.
- */
-export function detectDiscrepancies(
-  official: DecisionOutcome,
-  modelEstimate: DecisionOutcome
-): DecisionDiscrepancy {
-  const reasons: string[] = [];
-  const zoneDiscrepancies: BodyZoneId[] = [];
-
-  for (const zone of BODY_ZONES) {
-    const ruleLevel = official.score[zone].riskLevel;
-    const modelLevel = modelEstimate.score[zone].riskLevel;
-    if (ruleLevel !== modelLevel) {
-      zoneDiscrepancies.push(zone);
-      reasons.push(
-        `Zona ${zone}: regla=${ruleLevel}, modelo=${modelLevel}`
-      );
-    }
-  }
-
-  const escalarDiscrepancy = official.escalar !== modelEstimate.escalar;
-  if (escalarDiscrepancy) {
-    reasons.push(
-      `Escalamiento: regla=${official.escalar ? "SÍ" : "NO"}, modelo=${modelEstimate.escalar ? "SÍ" : "NO"}`
-    );
-  }
-
-  const accionDiscrepancy = official.accion !== modelEstimate.accion;
-  if (accionDiscrepancy) {
-    reasons.push(
-      `Acción: regla=${official.accion}, modelo=${modelEstimate.accion}`
-    );
-  }
-
-  return {
-    hasDiscrepancy:
-      zoneDiscrepancies.length > 0 || escalarDiscrepancy || accionDiscrepancy,
-    reasons,
-    zoneDiscrepancies,
-    escalarDiscrepancy,
-    accionDiscrepancy,
   };
 }
 

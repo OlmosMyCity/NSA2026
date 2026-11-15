@@ -137,7 +137,7 @@ export async function ingestVisionTelemetry(
       status: evaluation.status,
       alerts: evaluation.alerts,
       recommendation: evaluation.recommendation,
-      notes: `[Vision AI Auto-Sync] Cam: ${frame.camera_mode} | Mood: ${frame.mood.dominant_mood}`,
+      notes: undefined,
       takenAt: now,
       createdAt: now,
       updatedAt: now,

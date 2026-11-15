@@ -34,9 +34,11 @@ export function phaseAt(phases: MissionPhase[], met: number): MissionPhase | nul
   return phases.find((p) => met <= p.t_end) ?? phases[phases.length - 1];
 }
 
-/** Estado de una lectura: el peor de sus indicadores (misma regla que la figura). */
-export function readingStatus(r: ApiHealthReading): HealthStatus {
-  return worstStatus(toIndicatorReadings(r).map((x) => evaluateIndicator(x.indicator, x.value).status));
+/** Estado de una lectura: el peor de sus indicadores (ajustado a la fase de vuelo si aplica). */
+export function readingStatus(r: ApiHealthReading, phaseId?: string | null): HealthStatus {
+  return worstStatus(
+    toIndicatorReadings(r).map((x) => evaluateIndicator(x.indicator, x.value, phaseId).status),
+  );
 }
 
 export function readingsOnTimeline(
@@ -47,7 +49,8 @@ export function readingsOnTimeline(
   return readings
     .map((reading) => {
       const met = metOf(reading.takenAt, missionStart);
-      return { reading, met, status: readingStatus(reading), phaseId: phaseAt(phases, met)?.id ?? null };
+      const phaseId = phaseAt(phases, met)?.id ?? null;
+      return { reading, met, status: readingStatus(reading, phaseId), phaseId };
     })
     .sort((a, b) => a.met - b.met);
 }

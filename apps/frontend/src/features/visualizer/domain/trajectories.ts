@@ -80,23 +80,8 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
 
 export function resolveDefaultVehicleId(missionOrId: TrajectoryMissionInput): string {
   if (typeof missionOrId === 'string') return 'auto';
-  const text = `${missionOrId.name} ${missionOrId.description ?? ''}`.toLowerCase();
-  if (/\b(europa|clipper|jupiter)\b/.test(text)) return 'clipper';
-  if (/\b(parker|solar probe|venus)\b/.test(text)) return 'parker';
-  if (/\b(perseverance|mars 2020)\b/.test(text)) return 'mars2020';
-  if (/\b(lro|reconnaissance orbiter)\b/.test(text)) return 'lro';
-  switch (missionOrId.environment) {
-    case 'STATION':
-      return 'iss';
-    case 'MARS_BASE':
-      return 'mars2020';
-    case 'ROVER':
-      return 'rover';
-    case 'LUNAR_BASE':
-      return /\bartemis\b/i.test(missionOrId.name) ? 'orion' : 'lro';
-    default:
-      return 'orion';
-  }
+  if (missionOrId.environment === 'ROVER') return 'rover';
+  return 'auto';
 }
 
 export function trajectoryUrl(
