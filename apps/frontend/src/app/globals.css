@@ -179,6 +179,8 @@ a {
 
 .chrome-translucent {
   background-color: hsl(var(--hsl-canvas) / 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
 }
 

@@ -77,7 +77,7 @@ export function Navbar() {
     user?.role === 'ADMIN' ? 'Flight Surgeon' : user?.role === 'OPERATOR' ? 'Mission Operator' : 'Astronaut';
 
   return (
-    <header className="sticky top-0 z-50 w-full chrome-translucent">
+    <header className="sticky top-0 z-50 w-full chrome-translucent backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-container items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand identity */}
         <Link href="/" className="flex items-center tactile-press">
