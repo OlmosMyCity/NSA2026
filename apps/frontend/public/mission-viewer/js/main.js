@@ -383,12 +383,22 @@ async function main() {
       follow.force = true;
     }
     if (follow.user) return;
+    const k = follow.force || reducedMotion ? 1 : 1 - Math.exp(-elapsed * 3);
+    follow.force = false;
+    if (target.focus === "ship") {
+      // Deep space: center directly on the spacecraft/rocket looking forward along its trajectory
+      const st = hermiteState(samples, t);
+      const v = norm(frames.velocityToFrame(target.frame, st.r, st.v, t));
+      const camPos = [-v[0] * 3.2 + 0.8, -v[1] * 3.2 - 1.4, -v[2] * 3.2 + 1.4];
+      camera.position.lerp(tmp.set(...camPos), k);
+      camera.fov += (40 - camera.fov) * k;
+      camera.updateProjectionMatrix();
+      return;
+    }
     const body = focusPosition(target.focus, t, target.frame);
     const ship = frames.toFrame(target.frame, positionAt(t), t);
     const radius = target.focus === "moon" ? bodies.moon.radius_km : bodies.earth.radius_km;
     const shot = chaseCamera(ship.map((x, i) => x - body[i]), radius);
-    const k = follow.force || reducedMotion ? 1 : 1 - Math.exp(-elapsed * 3);
-    follow.force = false;
     camera.position.lerp(tmp.set(...shot.position).divideScalar(KM_PER_UNIT), k);
     camera.fov += (shot.fov - camera.fov) * k;
     camera.updateProjectionMatrix();

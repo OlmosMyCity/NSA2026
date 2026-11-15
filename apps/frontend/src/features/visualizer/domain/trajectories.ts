@@ -45,24 +45,24 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
 
   const text = `${missionOrId.name} ${missionOrId.description ?? ''}`.toLowerCase();
 
-  if (/\b(jupiter|europa|jovian|outer system|saturn)\b/.test(text)) {
+  if (/\b(jupiter|europa|jovian|outer system|saturn|clipper)\b/.test(text)) {
     return DATA_FILES.jupiter;
   }
 
-  if (/\b(venus|vesper|mercury|inner system)\b/.test(text)) {
+  if (/\b(venus|parker|solar probe|mercury|inner system)\b/.test(text)) {
     return DATA_FILES.venus;
   }
 
   if (
     missionOrId.environment === 'MARS_BASE' ||
-    /\b(mars|marte|ares|phobos|deimos|interplanetary|tmi)\b/.test(text)
+    /\b(mars|marte|perseverance|jezero|ares|phobos|deimos|interplanetary|tmi)\b/.test(text)
   ) {
     return DATA_FILES.mars;
   }
 
   if (
     missionOrId.environment === 'STATION' ||
-    /\b(iss|leo|earth orbit|low earth|orbital station|órbita terrestre|tierra)\b/.test(text)
+    /\b(iss|expedition 72|leo|earth orbit|low earth|orbital station|órbita terrestre|tierra)\b/.test(text)
   ) {
     return DATA_FILES.leo;
   }
@@ -70,7 +70,7 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
   if (
     missionOrId.environment === 'ROVER' ||
     missionOrId.environment === 'LUNAR_BASE' ||
-    /\b(shackleton|rover|lunar base)\b/.test(text)
+    /\b(lro|reconnaissance orbiter|shackleton|rover|lunar base|50 km)\b/.test(text)
   ) {
     return DATA_FILES.lunarBase;
   }

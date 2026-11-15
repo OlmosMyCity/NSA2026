@@ -15,6 +15,8 @@ const DEFAULT_TRAIL = 1800;
 
 /** Esfera de influencia lunar aproximada (km): dentro, la cámara sigue a la Luna. */
 export const MOON_SOI_KM = 66000;
+/** Radio máximo alrededor de la Tierra para centrar en la Tierra; más allá se centra en la nave. */
+export const EARTH_CHASE_MAX_KM = 85000;
 
 /** Ventana [t0, t] de la estela: solo hacia atrás. */
 export function trailWindow(phases, t) {
@@ -29,10 +31,13 @@ export function trailFade(ti, t, [t0, t1]) {
   return 0.55 * ((ti - t0) / (t - t0)) ** 1.5;
 }
 
-/** Cuerpo que la nave orbita: la Luna dentro de su esfera de influencia, si no la Tierra. */
+/** Cuerpo que la nave orbita: Luna, Tierra cercana, o la propia nave en espacio profundo. */
 export function nearestBody(shipEci, moonEci) {
   const dMoon = Math.hypot(shipEci[0] - moonEci[0], shipEci[1] - moonEci[1], shipEci[2] - moonEci[2]);
-  return dMoon < MOON_SOI_KM ? { focus: "moon", frame: "moon" } : { focus: "earth", frame: "eci" };
+  if (dMoon < MOON_SOI_KM) return { focus: "moon", frame: "moon" };
+  const dEarth = Math.hypot(shipEci[0], shipEci[1], shipEci[2]);
+  if (dEarth < EARTH_CHASE_MAX_KM) return { focus: "earth", frame: "eci" };
+  return { focus: "ship", frame: "eci" };
 }
 
 /** Fracción de media pantalla que ocupa el radio del cuerpo en la toma. */
