@@ -67,13 +67,13 @@ export function Navbar() {
         {/* Brand identity */}
         <Link href="/" className="flex items-center tactile-press">
           <span
-            className="text-base font-bold tracking-[-0.02em] text-[#FFFFFF] leading-none"
+            className="text-xl sm:text-2xl font-bold uppercase tracking-[-0.02em] text-[#FFFFFF] leading-none"
             style={{
               fontFamily:
                 'ui-rounded, "SF Pro Rounded", var(--font-sans), system-ui, -apple-system, sans-serif',
             }}
           >
-            Orbvital
+            ORBVITAL
           </span>
         </Link>
 
