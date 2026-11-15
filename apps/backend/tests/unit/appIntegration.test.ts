@@ -114,6 +114,11 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
 
   it("la supervisión del operador exige sesión (401) y rol OPERATOR (403)", async () => {
     const adminToken = tokenService.sign({ id: "admin-test-01", email: "admin@nasa.gov", role: Role.ADMIN });
+    const detail = await fetch(`${baseUrl}/api/operator/crew/astro-01`, {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    expect(detail.status).toBe(403);
+
     const [anonymous, asCrew, asSurgeon] = await Promise.all([
       fetch(`${baseUrl}/api/operator/crew`),
       fetch(`${baseUrl}/api/operator/crew`, { headers: { Authorization: `Bearer ${userToken}` } }),

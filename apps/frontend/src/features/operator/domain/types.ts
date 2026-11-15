@@ -1,6 +1,6 @@
 /**
- * Contrato de la vista de supervisión desde Tierra (`GET /api/operator/crew`).
- * No hay campos clínicos: el operador ve estado, ubicación, aptitud y fecha.
+ * Contrato de la supervisión desde Tierra (`GET /api/operator/crew` y `/crew/:id`).
+ * El operador ve la información completa de la tripulación de sus misiones.
  */
 
 export type OperatorCrewStatus = 'CRITICAL' | 'WARNING' | 'OK' | 'NO_DATA';
@@ -30,10 +30,11 @@ export const DESTINATION_LABEL: Record<Destination, string> = {
 
 export type ReadinessVerdict = 'FIT' | 'FIT_WITH_CAUTION' | 'NOT_FIT' | 'NO_DATA';
 
-export type OperatorReadinessNote =
-  | 'CLEARED'
-  | 'MEDICAL_CAUTION'
-  | 'MEDICAL_HOLD'
+export type OperatorReadinessReason =
+  | 'ALL_NOMINAL'
+  | 'RECOVERY_WATCH'
+  | 'VITAL_WATCH'
+  | 'CRITICAL_FINDING'
   | 'READING_EXPIRED'
   | 'NO_READINGS'
   | 'PROTECTIVE_SHELTER';
@@ -41,7 +42,18 @@ export type OperatorReadinessNote =
 export interface OperatorDestinationReadiness {
   destination: Destination;
   verdict: ReadinessVerdict;
-  note: OperatorReadinessNote;
+  reasonCode: OperatorReadinessReason;
+}
+
+export interface CrewVitals {
+  heartRateBpm: number;
+  systolicMmHg: number;
+  diastolicMmHg: number;
+  spo2Pct: number;
+  temperatureC: number;
+  glucoseMgDl: number;
+  sleepHours: number;
+  mood: number;
 }
 
 export interface OperatorCrewMember {
@@ -57,7 +69,33 @@ export interface OperatorCrewMember {
   lastReadingAt: string | null;
   expiresAt: string | null;
   isFresh: boolean;
+  /** Valores de la última lectura. Si `isFresh` es `false` son históricos, no el estado actual. */
+  vitals: CrewVitals | null;
   readiness: OperatorDestinationReadiness[];
+}
+
+type ReadingStatus = Exclude<OperatorCrewStatus, 'NO_DATA'>;
+
+export interface OperatorReadingEntry extends CrewVitals {
+  id: string;
+  takenAt: string;
+  status: ReadingStatus;
+}
+
+export interface OperatorCrewDetail extends OperatorCrewMember {
+  lastReadingStatus: ReadingStatus | null;
+  alerts: string[];
+  recommendation: string | null;
+  zones: {
+    zone: 'heart' | 'brain' | 'blood' | 'bones' | 'sleep';
+    status: 'green' | 'amber' | 'red' | 'unknown';
+    trend: 'improving' | 'stable' | 'worsening';
+  }[];
+  latestDirective: { content: string; createdAt: string; acknowledgedAt: string | null } | null;
+  /** De la más reciente a la más antigua. */
+  history: OperatorReadingEntry[];
+  serverTime: string;
+  freshnessWindowMin: number;
 }
 
 export interface OperatorCrewOverview {

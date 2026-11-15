@@ -73,7 +73,7 @@ export interface TriageOverview {
 /** Sin datos va después de vigilancia (2) y antes de nominal (3): no saber es más urgente que estar bien. */
 const NO_DATA_PRIORITY_SCORE = 2.5;
 
-function normalizeAlertMessages(alerts: unknown): string[] {
+export function normalizeAlertMessages(alerts: unknown): string[] {
   if (!Array.isArray(alerts)) return [];
   return alerts.map((item) => {
     if (typeof item === "string") return item;

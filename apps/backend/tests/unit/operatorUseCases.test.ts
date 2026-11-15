@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { CrewLocation, Environment, HealthReading, HealthStatus, Role } from "@prisma/client";
-import { GetOperatorCrewOverviewUseCase } from "../../src/application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
+import {
+  GetOperatorCrewMemberUseCase,
+  GetOperatorCrewOverviewUseCase,
+} from "../../src/application/use-cases/operator/GetOperatorCrewOverviewUseCase.js";
 import {
   GetCrewLocationUseCase,
   UpdateCrewLocationUseCase,
@@ -51,12 +54,14 @@ function record(id: string, recentReadings: HealthReading[]): OperatorCrewRecord
     currentLocation: CrewLocation.HABITAT,
     locationUpdatedAt: TAKEN_AT,
     recentReadings,
+    latestDirective: null,
   };
 }
 
 function crewRepo(overrides: Partial<IOperatorCrewRepository> = {}): IOperatorCrewRepository {
   return {
     listCrewForOperator: vi.fn().mockResolvedValue([]),
+    findCrewMemberForOperator: vi.fn().mockResolvedValue(null),
     listOperatorAccess: vi.fn().mockResolvedValue({ operators: [], missions: [] }),
     findLocation: vi.fn().mockResolvedValue(null),
     setMissionOperator: vi.fn().mockResolvedValue(true),
@@ -75,7 +80,7 @@ describe("GetOperatorCrewOverviewUseCase", () => {
     expect(list).toHaveBeenCalledWith("op-7");
   });
 
-  it("no expone ningún valor clínico, alerta, recomendación ni nota", async () => {
+  it("incluye los valores clínicos de la última lectura", async () => {
     const useCase = new GetOperatorCrewOverviewUseCase(
       crewRepo({ listCrewForOperator: vi.fn().mockResolvedValue([record("a", [reading(HealthStatus.WARNING)])]) }),
       FRESH_NOW
@@ -83,26 +88,16 @@ describe("GetOperatorCrewOverviewUseCase", () => {
 
     const { crew } = await useCase.execute("op-1");
 
-    expect(Object.keys(crew[0]).sort()).toEqual(
-      [
-        "astronautId",
-        "crewRole",
-        "expiresAt",
-        "isFresh",
-        "lastReadingAt",
-        "location",
-        "locationUpdatedAt",
-        "missionId",
-        "missionName",
-        "name",
-        "photoUrl",
-        "readiness",
-        "status",
-      ].sort()
-    );
-    const serialized = JSON.stringify(crew);
-    expect(serialized).not.toContain("confidencial");
-    expect(serialized).not.toMatch(/heartRate|spo2|glucose|systolic|temperature|sleepHours|mood/i);
+    expect(crew[0].vitals).toEqual({
+      heartRateBpm: 72,
+      systolicMmHg: 118,
+      diastolicMmHg: 76,
+      spo2Pct: 98,
+      temperatureC: 36.6,
+      glucoseMgDl: 95,
+      sleepHours: 7.5,
+      mood: 4,
+    });
   });
 
   it("con lectura vigente y nominal informa estado, ubicación y aptitud", async () => {
@@ -134,13 +129,15 @@ describe("GetOperatorCrewOverviewUseCase", () => {
     const { crew } = await useCase.execute("op-1");
 
     expect(crew[0]).toMatchObject({ status: "NO_DATA", isFresh: false, lastReadingAt: "2026-11-14T10:00:00.000Z" });
+    // Los valores siguen visibles como históricos; lo que se pierde es el estado actual.
+    expect(crew[0].vitals?.heartRateBpm).toBe(72);
     expect(crew[0].readiness.find((r) => r.destination === "EVA")).toMatchObject({
       verdict: "NO_DATA",
-      note: "READING_EXPIRED",
+      reasonCode: "READING_EXPIRED",
     });
     expect(crew[0].readiness.find((r) => r.destination === "STORM_SHELTER")).toMatchObject({
       verdict: "FIT",
-      note: "PROTECTIVE_SHELTER",
+      reasonCode: "PROTECTIVE_SHELTER",
     });
   });
 
@@ -152,11 +149,11 @@ describe("GetOperatorCrewOverviewUseCase", () => {
 
     const { crew } = await useCase.execute("op-1");
 
-    expect(crew[0]).toMatchObject({ status: "NO_DATA", lastReadingAt: null, expiresAt: null });
-    expect(crew[0].readiness.find((r) => r.destination === "ROVER")?.note).toBe("NO_READINGS");
+    expect(crew[0]).toMatchObject({ status: "NO_DATA", lastReadingAt: null, expiresAt: null, vitals: null });
+    expect(crew[0].readiness.find((r) => r.destination === "ROVER")?.reasonCode).toBe("NO_READINGS");
   });
 
-  it("un hallazgo crítico retiene la EVA con un motivo genérico", async () => {
+  it("un hallazgo crítico retiene la EVA y dice por qué", async () => {
     const critical = reading(HealthStatus.CRITICAL, { heartRateBpm: 130 });
     const useCase = new GetOperatorCrewOverviewUseCase(
       crewRepo({ listCrewForOperator: vi.fn().mockResolvedValue([record("a", [critical])]) }),
@@ -168,7 +165,7 @@ describe("GetOperatorCrewOverviewUseCase", () => {
     expect(crew[0].status).toBe("CRITICAL");
     expect(crew[0].readiness.find((r) => r.destination === "EVA")).toMatchObject({
       verdict: "NOT_FIT",
-      note: "MEDICAL_HOLD",
+      reasonCode: "CRITICAL_FINDING",
     });
   });
 
@@ -187,6 +184,70 @@ describe("GetOperatorCrewOverviewUseCase", () => {
 
     const { crew } = await useCase.execute("op-1");
     expect(crew.map((c) => c.astronautId)).toEqual(["crit", "warn", "none", "ok"]);
+  });
+});
+
+describe("GetOperatorCrewMemberUseCase", () => {
+  const history = [
+    reading(HealthStatus.WARNING, { id: "r-2", heartRateBpm: 96, alerts: [{ message: "FC elevada" }], recommendation: "Reposo" }),
+    reading(HealthStatus.OK, { id: "r-1", takenAt: new Date("2026-11-14T08:00:00Z") }),
+  ];
+
+  it("pide la ficha con el id del operador: el alcance lo aplica la consulta", async () => {
+    const find = vi.fn().mockResolvedValue(record("a", history));
+    await new GetOperatorCrewMemberUseCase(crewRepo({ findCrewMemberForOperator: find }), FRESH_NOW).execute("op-7", "a");
+    expect(find).toHaveBeenCalledWith("op-7", "a");
+  });
+
+  it("un tripulante de otra misión responde como inexistente", async () => {
+    const useCase = new GetOperatorCrewMemberUseCase(crewRepo(), FRESH_NOW);
+    await expect(useCase.execute("op-1", "astro-ajeno")).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("entrega la información individual completa", async () => {
+    const rec = record("a", history);
+    rec.latestDirective = {
+      id: "dir-1",
+      astronautId: "a",
+      issuedById: "admin-1",
+      incidentId: null,
+      content: "Reposo 4 h",
+      acknowledgedAt: null,
+      createdAt: TAKEN_AT,
+      updatedAt: TAKEN_AT,
+    } as never;
+
+    const detail = await new GetOperatorCrewMemberUseCase(
+      crewRepo({ findCrewMemberForOperator: vi.fn().mockResolvedValue(rec) }),
+      FRESH_NOW
+    ).execute("op-1", "a");
+
+    expect(detail).toMatchObject({
+      status: "WARNING",
+      lastReadingStatus: "WARNING",
+      location: "HABITAT",
+      alerts: ["FC elevada"],
+      recommendation: "Reposo",
+      latestDirective: { content: "Reposo 4 h", acknowledgedAt: null },
+    });
+    expect(detail.vitals?.heartRateBpm).toBe(96);
+    expect(detail.zones.map((z) => z.zone).sort()).toEqual(["blood", "bones", "brain", "heart", "sleep"]);
+    expect(detail.zones.find((z) => z.zone === "heart")?.status).toBe("amber");
+    expect(detail.history.map((h) => h.id)).toEqual(["r-2", "r-1"]);
+    expect(detail.readiness.find((r) => r.destination === "EVA")).toMatchObject({
+      verdict: "NOT_FIT",
+      reasonCode: "VITAL_WATCH",
+    });
+  });
+
+  it("con la lectura vencida conserva los valores pero no el estado actual", async () => {
+    const detail = await new GetOperatorCrewMemberUseCase(
+      crewRepo({ findCrewMemberForOperator: vi.fn().mockResolvedValue(record("a", history)) }),
+      EXPIRED_NOW
+    ).execute("op-1", "a");
+
+    expect(detail).toMatchObject({ status: "NO_DATA", lastReadingStatus: "WARNING", isFresh: false });
+    expect(detail.vitals?.heartRateBpm).toBe(96);
   });
 });
 

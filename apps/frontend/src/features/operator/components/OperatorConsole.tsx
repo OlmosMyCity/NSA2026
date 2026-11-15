@@ -1,67 +1,39 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { AlertTriangle, CircleCheck, CircleHelp, CircleSlash, MapPin, RefreshCw, TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
+import { AlertTriangle, ChevronRight, MapPin, RefreshCw, Search } from 'lucide-react';
 import { AstronautFallbackAvatar } from '@/features/astronauts/components/AstronautFallbackAvatar';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
 import { serverNow } from '@/features/common/services/serverClock';
 import { FreshnessRing } from '@/features/health/components/FreshnessRing';
+import { evaluateIndicator, worstStatus } from '@/features/health/domain/evaluate';
+import { STATUS_THEME } from '@/features/health/domain/status-theme';
+import type { IndicatorId } from '@/features/health/domain/types';
 import { operatorService } from '../services/operatorService';
+import { REASON_TEXT, STATUS_META, VERDICT_META, timeAgo } from '../domain/presentation';
 import {
   CREW_LOCATION_LABEL,
   DESTINATIONS,
   DESTINATION_LABEL,
+  type CrewVitals,
   type Destination,
   type OperatorCrewMember,
   type OperatorCrewOverview,
-  type OperatorCrewStatus,
-  type OperatorReadinessNote,
-  type ReadinessVerdict,
 } from '../domain/types';
 
 const REFRESH_MS = 45_000;
 
-const STATUS_META: Record<OperatorCrewStatus, { label: string; color: string; border: string }> = {
-  CRITICAL: { label: 'Critical', color: 'var(--status-critical)', border: 'var(--status-critical-border)' },
-  WARNING: { label: 'Watch', color: 'var(--status-caution)', border: 'var(--status-caution-border)' },
-  OK: { label: 'Nominal', color: 'var(--status-nominal)', border: 'var(--border-subtle)' },
-  NO_DATA: { label: 'No current data', color: 'var(--color-stem)', border: 'var(--border-subtle)' },
-};
-
-const VERDICT_META: Record<ReadinessVerdict, { label: string; color: string; Icon: typeof CircleCheck }> = {
-  FIT: { label: 'Fit', color: 'var(--status-nominal)', Icon: CircleCheck },
-  FIT_WITH_CAUTION: { label: 'Fit with caution', color: 'var(--status-caution)', Icon: TriangleAlert },
-  NOT_FIT: { label: 'Not fit', color: 'var(--status-critical)', Icon: CircleSlash },
-  NO_DATA: { label: 'Unknown', color: 'var(--color-stem)', Icon: CircleHelp },
-};
-
-const NOTE_TEXT: Record<OperatorReadinessNote, string> = {
-  CLEARED: 'No medical restriction',
-  MEDICAL_CAUTION: 'Medical caution · needs flight surgeon approval',
-  MEDICAL_HOLD: 'Medical hold',
-  READING_EXPIRED: 'Reading expired · awaiting a new measurement',
-  NO_READINGS: 'No readings on record',
-  PROTECTIVE_SHELTER: 'Always available · protective measure',
-};
-
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 const timeFmt = new Intl.DateTimeFormat('en', { timeStyle: 'medium' });
-
-function timeAgo(iso: string, nowMs: number): string {
-  const minutes = Math.max(0, Math.round((nowMs - Date.parse(iso)) / 60_000));
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h ago`;
-  return `${Math.round(hours / 24)} d ago`;
-}
 
 export function OperatorConsole() {
   const [overview, setOverview] = useState<OperatorCrewOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [destination, setDestination] = useState<Destination>('EVA');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +62,14 @@ export function OperatorConsole() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [load]);
+
+  const visibleCrew = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!overview || !q) return overview?.crew ?? [];
+    return overview.crew.filter((m) =>
+      [m.name, m.crewRole, m.missionName].some((text) => text.toLowerCase().includes(q))
+    );
+  }, [overview, query]);
 
   if (!overview && !error) {
     return (
@@ -139,7 +119,21 @@ export function OperatorConsole() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-stem">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-stem">
+          <div className="relative w-60">
+            <Search
+              className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-stem"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search crew, role or mission"
+              aria-label="Search crew"
+              className="ui-input pl-6 text-sm placeholder:text-stem/70"
+            />
+          </div>
           {error ? (
             <span role="status" className="flex items-center gap-1.5 text-status-caution">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -163,10 +157,18 @@ export function OperatorConsole() {
         <div className="surface-tinted p-12 text-center text-sm text-stem">
           No missions are assigned to your account yet. Ask the flight surgeon to assign one.
         </div>
+      ) : visibleCrew.length === 0 ? (
+        <div className="surface-tinted p-12 text-center text-sm text-stem">
+          No crew member matches that search.
+        </div>
       ) : (
         <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {overview.crew.map((member, index) => (
-            <li key={member.astronautId} className="crew-card-enter" style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}>
+          {visibleCrew.map((member, index) => (
+            <li
+              key={member.astronautId}
+              className="crew-card-enter"
+              style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
+            >
               <CrewCard member={member} destination={destination} nowMs={nowMs} />
             </li>
           ))}
@@ -175,11 +177,27 @@ export function OperatorConsole() {
 
       <p className="max-w-prose text-xs text-stem">
         Status counts as current for {overview.freshnessWindowMin} minutes after a measurement. Readiness is
-        guidance from deterministic rules; clearance for an activity stays with the flight surgeon. Clinical
-        values are not shown in this view.
+        guidance from deterministic rules; clearance for an activity stays with the flight surgeon. Open a
+        crew member for their full record.
       </p>
     </div>
   );
+}
+
+/** Los cuatro signos vivos, coloreados con las mismas reglas del panel del astronauta. */
+function liveVitals(v: CrewVitals) {
+  const color = (indicator: IndicatorId, value: number) =>
+    STATUS_THEME[evaluateIndicator(indicator, value).status].color;
+  const bloodPressure = worstStatus([
+    evaluateIndicator('systolic', v.systolicMmHg).status,
+    evaluateIndicator('diastolic', v.diastolicMmHg).status,
+  ]);
+  return [
+    { label: 'HR', value: `${v.heartRateBpm} bpm`, color: color('heartRate', v.heartRateBpm) },
+    { label: 'BP', value: `${v.systolicMmHg}/${v.diastolicMmHg}`, color: STATUS_THEME[bloodPressure].color },
+    { label: 'SpO₂', value: `${v.spo2Pct}%`, color: color('spo2', v.spo2Pct) },
+    { label: 'Temp', value: `${v.temperatureC}°C`, color: color('temperature', v.temperatureC) },
+  ];
 }
 
 function CrewCard({
@@ -231,7 +249,7 @@ function CrewCard({
             <VerdictIcon className="h-[1.125rem] w-[1.125rem] shrink-0" aria-hidden="true" />
             {verdict.label}
           </p>
-          <p className="mt-0.5 text-xs text-stem">{readiness ? NOTE_TEXT[readiness.note] : NOTE_TEXT.NO_READINGS}</p>
+          <p className="mt-0.5 text-xs text-stem">{REASON_TEXT[readiness?.reasonCode ?? 'NO_READINGS']}</p>
         </div>
       </div>
 
@@ -261,6 +279,34 @@ function CrewCard({
           )}
         </div>
       </dl>
+
+      {member.vitals && (
+        <div className="border-t border-line/60 pt-4">
+          <dl className="grid grid-cols-4 gap-3">
+            {liveVitals(member.vitals).map((v) => (
+              <div key={v.label} className="min-w-0">
+                <dt className="twin-label">{v.label}</dt>
+                {/* Vencidos: se ven en gris, como dato histórico y no como estado actual */}
+                <dd
+                  className="twin-value mt-0.5 text-sm font-bold"
+                  style={{ color: member.isFresh ? v.color : 'var(--color-stem)' }}
+                >
+                  {v.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {!member.isFresh && <p className="mt-2 text-[11px] text-stem">From the last reading · not current</p>}
+        </div>
+      )}
+
+      <Link
+        href={`/operator/${member.astronautId}`}
+        className="mt-auto inline-flex items-center gap-1 self-start text-[13px] font-semibold text-berry underline-offset-4 hover:text-blueberry hover:underline"
+      >
+        Full record
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
     </article>
   );
 }
