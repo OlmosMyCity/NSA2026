@@ -48,8 +48,8 @@ Estos hallazgos condicionan todo lo demás.
 | H7 | Existen `PUT` y `DELETE` en `/api/readings/:id` | Contradice BR-01 ("los datos de salud solo se agregan") |
 | H8 | La vigencia actual es de **12 a 48 horas** por indicador (`overdueHours` en `digitalTwin.ts`) | Pasar a 15 minutos es un cambio de dos órdenes de magnitud; conviene que sea configurable |
 | H9 | `AdminTriageController` consulta Prisma directamente desde el controlador | Rompe la regla de dependencias del propio md |
-| H10 | `apps/frontend/.agents` y `apps/frontend/skills` son **enlaces simbólicos rotos** (apuntan a `apps/.agents` y `apps/skills`, que no existen) | La guía *impeccable* no está en el repositorio. Ver sección 6 |
-| H11 | `ai/vision` ya mide FC, ánimo y sueño **sin contacto** por cámara | Es la salida natural para que renovar datos cada 15 min tome segundos y no un formulario de 8 campos |
+| H10 | `frontend/.agents` y `frontend/skills` son **enlaces simbólicos rotos** (apuntan a `apps/.agents` y `apps/skills`, que no existen) | La guía *impeccable* no está en el repositorio. Ver sección 6 |
+| H11 | `vision` ya mide FC, ánimo y sueño **sin contacto** por cámara | Es la salida natural para que renovar datos cada 15 min tome segundos y no un formulario de 8 campos |
 
 ---
 
@@ -155,7 +155,7 @@ Todos los destinos van en la misma respuesta: son pocos, el menú cambia al inst
 
 ### 4.1 Contrato
 
-Función pura en `application/health/` (donde ya viven `evaluateReading`, `digitalTwin` y `hazards`):
+Función pura en `service/health/` (donde ya viven `evaluateReading`, `digitalTwin` y `hazards`):
 
 ```
 evaluateReadiness(estadoPorZona, esVigente, destino) → { verdict, reasonCode }
@@ -228,7 +228,7 @@ La lectura actual exige 8 valores a mano: FC, presión, glucosa, temperatura, Sp
 | Lentos | Glucosa, ánimo | 12 h (como hoy) |
 | Diarios | Horas de sueño | 24 h (como hoy) |
 
-El estado general exige que los signos vivos estén vigentes. Para que renovarlos sea rápido, el camino es la medición por cámara de `ai/vision` (H11) o una "lectura rápida" de solo esos cuatro campos, con los lentos precargados.
+El estado general exige que los signos vivos estén vigentes. Para que renovarlos sea rápido, el camino es la medición por cámara de `vision` (H11) o una "lectura rápida" de solo esos cuatro campos, con los lentos precargados.
 
 ### 5.4 Recordatorio
 
@@ -292,16 +292,16 @@ No se cambia el lenguaje: se corrige el documento para que describa lo que hay.
 
 | El md dice (Spring Boot) | El repositorio tiene (TypeScript) |
 |---|---|
-| `controller/` | `interface/controllers/` + `interface/routers/` |
-| `dto/` + Bean Validation | `interface/validation/schemas.ts` |
-| `service/` + `impl/` | `application/use-cases/<recurso>/XxxUseCase.ts` |
-| `domain/` (Java puro) | `domain/models/` + reglas puras en `application/health/` |
-| `repository/` (Spring Data) | `domain/repository/IXxxRepository.ts` + `infrastructure/repository/PrismaXxxRepository.ts` |
+| `controller/` | `controller/` + `controller/routes/` |
+| `dto/` + Bean Validation | `dto/schemas.ts` (Zod) |
+| `service/` + `impl/` | `service/<recurso>/XxxUseCase.ts` |
+| `domain/` (Java puro) | `entity/` + reglas puras en `service/health/` |
+| `repository/` (Spring Data) | `repository/IXxxRepository.ts` + `repository/PrismaXxxRepository.ts` |
 | `entity/` + Flyway | `prisma/schema.prisma` + migraciones de Prisma |
-| `exception/` + `@RestControllerAdvice` | `domain/errors/AppError.ts` + `middlewares/errorHandler.ts` |
-| `security/` (vacío) | `middlewares/authenticate.ts`, `authorizeRoles.ts`, `TokenService`, `PasswordHasher` |
-| `config/` + `resources/data/*.json` | Constantes en `application/health/*.ts` y variables de entorno |
-| Frontend: no se describe | `apps/frontend/src/features/<módulo>/{components,domain,hooks,services}` |
+| `exception/` + `@RestControllerAdvice` | `exception/AppError.ts` + `exception/errorHandler.ts` |
+| `security/` (vacío) | `security/authenticate.ts`, `authorizeRoles.ts`, `TokenService`, `PasswordHasher` |
+| `config/` + `resources/data/*.json` | Constantes en `service/health/*.ts` y variables de entorno |
+| Frontend: no se describe | `frontend/src/{components,domain}/<módulo> + hooks/ + services/` |
 
 ### 7.2 Regla de dependencias, reescrita
 
@@ -330,12 +330,12 @@ routers → controllers → use-cases → domain (modelos, interfaces de reposit
 | Pieza | Ubicación |
 |---|---|
 | Rol, ubicación, operador de misión | `prisma/schema.prisma` + migración |
-| Vigencia | `application/health/freshness.ts` (pura) |
-| Aptitud por destino | `application/health/readiness.ts` + `destinationProfiles.ts` (puras) |
-| Resumen para el operador | `application/use-cases/operator/GetOperatorCrewOverviewUseCase.ts` |
-| Rutas | `interface/routers/operatorRouter.ts`, `controllers/OperatorController.ts` |
-| Vista | `apps/frontend/src/app/operator/page.tsx` + `features/operator/` |
-| Temporizador y bloqueo | `features/health/hooks/useReadingFreshness.ts` |
+| Vigencia | `service/health/freshness.ts` (pura) |
+| Aptitud por destino | `service/health/readiness.ts` + `destinationProfiles.ts` (puras) |
+| Resumen para el operador | `service/operator/GetOperatorCrewOverviewUseCase.ts` |
+| Rutas | `controller/routes/operatorRouter.ts`, `controller/OperatorController.ts` |
+| Vista | `frontend/src/app/operator/page.tsx` + `components/operator/`, `domain/operator/` |
+| Temporizador y bloqueo | `hooks/useFreshnessPhase.ts` |
 
 ---
 

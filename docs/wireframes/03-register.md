@@ -3,7 +3,7 @@
 | | |
 | :--- | :--- |
 | **Ruta** | `/register` |
-| **Archivo** | `apps/frontend/src/app/register/page.tsx` |
+| **Archivo** | `frontend/src/app/register/page.tsx` |
 | **Componentes** | `AppLayout` → `RegisterForm` |
 | **Acceso** | Solo sin sesión. Si existe la cookie `artemis_auth_token` → redirect a `/`. |
 | **Objetivo** | Crear una cuenta para registrar signos vitales y la rutina diaria de contramedidas. |

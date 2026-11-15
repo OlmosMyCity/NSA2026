@@ -1,6 +1,6 @@
 # Wireframes — Orbvital
 
-Wireframes de baja fidelidad (ASCII) de cada vista del frontend (`apps/frontend/src/app`).
+Wireframes de baja fidelidad (ASCII) de cada vista del frontend (`frontend/src/app`).
 Cada archivo documenta: ruta, propósito, layout desktop y móvil, componentes, estados e interacciones.
 
 > El texto de la interfaz se mantiene en inglés (igual que en la app). Las notas están en español.

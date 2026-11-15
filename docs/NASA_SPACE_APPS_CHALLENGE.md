@@ -36,7 +36,7 @@ Long-duration missions expose astronauts to space radiation, isolation and confi
 
 | Challenge Requirement | How Orbvital Delivers It |
 | :--- | :--- |
-| **Gather multiple health inputs** | Guided vital entry wizard (`/readings/new`), free-text mood notes, instrument image checks, AND contactless cabin camera streaming (`ai/vision` rPPG + PERCLOS + FERPlus syncing every 30s). |
+| **Gather multiple health inputs** | Guided vital entry wizard (`/readings/new`), free-text mood notes, instrument image checks, AND contactless cabin camera streaming (`vision` rPPG + PERCLOS + FERPlus syncing every 30s). |
 | **Evaluate status & recommend actions** | Deterministic clinical rules engine (`evaluateReading.ts`, `decisionRules.ts`) computing alerts, action protocols (`re_measure`, `rest`, `exercise`, `shelter_shielding`, `contact_ground`), paired with on-demand **Gemini Decision 1** second-opinion triage. |
 | **Clickable interactive human body** | Interactive **3D Anatomical Digital Twin** (`/dashboard`, `Body3D.tsx`) mapping **Heart**, **Brain**, **Blood**, **Bones**, and **Sleep** zones with color-coded glow and per-zone HRP hazard breakdowns. |
 | **At-a-glance color coding** | Unified Green (`Nominal`), Amber (`Watch / Caution`), Red (`Critical`) encoding across 3D organs, indicator cards, trend charts, and Flight Surgeon priority badges. |

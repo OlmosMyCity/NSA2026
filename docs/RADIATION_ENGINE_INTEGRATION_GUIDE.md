@@ -1,14 +1,13 @@
-# Integration Guide: Deep Space Radiation Engine (`@nsa2026/radiation-engine`)
+# Integration Guide: Deep Space Radiation Engine (`backend/src/service/radiation/engine`)
 
-This guide documents how `@nsa2026/radiation-engine` connects heliophysics feeds from NOAA SWPC and NASA DONKI into the Orbvital backend (`apps/backend`) and Next.js frontend (`apps/frontend`).
+This guide documents how `backend/src/service/radiation/engine` connects heliophysics feeds from NOAA SWPC and NASA DONKI into the Orbvital backend (`backend`) and Next.js frontend (`frontend`).
 
 ---
 
 ## 1. Integration Modes
 
-Located in `packages/radiation-engine`, the engine operates in two modes:
-1. **Embedded TypeScript SDK (Default in Orbvital):** Imported directly by `apps/backend/src/infrastructure/services/radiationEngine.ts` and exposed through `/api/radiation/*` routes alongside automated `RADIATION` incident synchronization.
-2. **Standalone REST Microservice (`src/server.ts`):** Can be booted independently during isolated testing or demos (`npm run dev` inside `packages/radiation-engine`).
+Located in `backend/src/service/radiation/engine`, the engine runs embedded in the backend:
+1. **Embedded TypeScript module:** Imported directly by `backend/src/service/radiation/radiationEngine.ts` and exposed through `/api/radiation/*` routes alongside automated `RADIATION` incident synchronization.
 
 ---
 
@@ -110,7 +109,7 @@ Evaluates custom synthetic CME/flare parameters (`sourceLocation`, `flareClass`,
 ## 3. Direct TypeScript SDK Usage
 
 ```typescript
-import { RadiationEngine } from '@nsa2026/radiation-engine';
+import { RadiationEngine } from './service/radiation/engine/index.js';
 
 const engine = new RadiationEngine();
 const state = await engine.getCurrentState();

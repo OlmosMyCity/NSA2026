@@ -3,7 +3,7 @@
 | | |
 | :--- | :--- |
 | **Ruta** | `/dashboard` |
-| **Archivo** | `apps/frontend/src/app/dashboard/page.tsx` |
+| **Archivo** | `frontend/src/app/dashboard/page.tsx` |
 | **Componentes** | `AppLayout` → `HealthTabs`, `HealthDashboard` (`Body3D`, `ScenarioDock`, `ZoneSelector`, `ZoneInspector` / `TwinOverview`, grilla de vitales) |
 | **Acceso** | Usuario autenticado (astronauta ve su propio gemelo; admin puede cambiar de tripulante) |
 | **Objetivo** | Ver el estado fisiológico del tripulante sobre un modelo anatómico 3D de 5 zonas, simular escenarios *What-If* sin gastar tokens y pedir triage IA de forma explícita. |

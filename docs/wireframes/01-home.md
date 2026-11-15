@@ -3,7 +3,7 @@
 | | |
 | :--- | :--- |
 | **Ruta** | `/` |
-| **Archivo** | `apps/frontend/src/app/page.tsx` |
+| **Archivo** | `frontend/src/app/page.tsx` |
 | **Componentes** | `AppLayout` → `HeroSection`, `HazardsSection` |
 | **Acceso** | Público (con o sin sesión) |
 | **Objetivo** | Presentar la propuesta de valor y llevar al usuario a registrar una lectura o explorar la órbita 3D. |

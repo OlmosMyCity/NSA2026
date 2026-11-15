@@ -3,7 +3,7 @@
 | | |
 | :--- | :--- |
 | **Ruta** | `/login` (`?expired=true` muestra aviso de sesión expirada) |
-| **Archivo** | `apps/frontend/src/app/login/page.tsx` |
+| **Archivo** | `frontend/src/app/login/page.tsx` |
 | **Componentes** | `AppLayout` → `Suspense` → `LoginForm` |
 | **Acceso** | Solo sin sesión. Si existe la cookie `artemis_auth_token` → redirect a `/`. |
 | **Objetivo** | Autenticar a tripulantes y personal médico de vuelo. |
