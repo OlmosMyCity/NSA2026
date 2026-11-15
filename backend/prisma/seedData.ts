@@ -175,6 +175,11 @@ export const CREW: CrewProfile[] = [
   { id: "astro-13", missionId: "mission-05", name: "Dr. Hana Kobayashi", role: "Mission Specialist (Science)", age: 39, hr: 62, sys: 111, dia: 71, glucose: 88, sleep: 8.1, mood: 4.7 },
   { id: "astro-14", missionId: "mission-05", name: "Maj. Daniel Brooks", role: "Pilot", age: 42, hr: 64, sys: 122, dia: 78, glucose: 95, sleep: 7.9, mood: 4.6 },
   { id: "astro-15", missionId: "mission-06", name: "Dr. Yusuf Demir", role: "Command Module Pilot", age: 44, hr: 66, sys: 119, dia: 77, glucose: 96, sleep: 7.9, mood: 4.6 },
+  // astro-16…19: 3+ tripulantes en todas las misiones (4 en Artemis II)
+  { id: "astro-16", missionId: "mission-03", name: "Dr. Owen Callahan", role: "Mission Commander", age: 40, hr: 65, sys: 117, dia: 75, glucose: 94, sleep: 7.9, mood: 4.6 },
+  { id: "astro-17", missionId: "mission-04", name: "Dr. Mei-Ling Zhou", role: "Command Module Pilot", age: 39, hr: 61, sys: 113, dia: 72, glucose: 91, sleep: 8.1, mood: 4.7 },
+  { id: "astro-18", missionId: "mission-05", name: "Maj. Tomas Novak", role: "Mission Specialist (Systems)", age: 43, hr: 68, sys: 120, dia: 77, glucose: 98, sleep: 7.8, mood: 4.5 },
+  { id: "astro-19", missionId: "mission-06", name: "Capt. Hannah Lindholm", role: "Lunar Module Pilot", age: 38, hr: 63, sys: 115, dia: 74, glucose: 92, sleep: 8.0, mood: 4.7 },
 ];
 
 // ---------------------------------------------------------------------------

@@ -148,13 +148,31 @@ const astronaut = (id: string, missionId: string, name: string, role: string, ag
 });
 
 const ASTRONAUTS: MockAstronaut[] = [
+  // Mission 01: Apollo 11
   astronaut('astro-01', 'mission-01', 'Cmdr. Elena Vance', 'Mission Commander', 42, 'user-crew-01'),
   astronaut('astro-02', 'mission-01', 'Dr. Marcus Thorne', 'Lunar Module Pilot', 39),
+  astronaut('astro-08', 'mission-01', 'Dr. Amara Okafor', 'Command Module Pilot', 40),
+  // Mission 02: ISS Expedition 72
   astronaut('astro-03', 'mission-02', 'Maj. Kenji Takahashi', 'Flight Engineer (ISS)', 44),
+  astronaut('astro-09', 'mission-02', 'Dr. Ingrid Halvorsen', 'ISS Commander', 47),
+  astronaut('astro-10', 'mission-02', 'Cmdr. Rafael Duarte', 'Flight Engineer (Science)', 51),
+  // Mission 03: Apollo 13
   astronaut('astro-04', 'mission-03', 'Capt. Sofia Navarro', 'Command Module Pilot', 41),
+  astronaut('astro-11', 'mission-03', 'Dr. Priya Raman', 'Lunar Module Pilot', 37),
+  astronaut('astro-16', 'mission-03', 'Dr. Owen Callahan', 'Mission Commander', 40),
+  // Mission 04: Apollo 17
   astronaut('astro-05', 'mission-04', "Dr. Liam O'Connor", 'Lunar Surface Geologist', 38),
+  astronaut('astro-12', 'mission-04', 'Cmdr. Tomás Ibarra', 'Mission Commander', 46),
+  astronaut('astro-17', 'mission-04', 'Dr. Mei-Ling Zhou', 'Command Module Pilot', 39),
+  // Mission 05: Artemis II
   astronaut('astro-06', 'mission-05', 'Cmdr. Nadia Al-Mansoor', 'Artemis Flight Specialist', 45),
+  astronaut('astro-13', 'mission-05', 'Dr. Hana Kobayashi', 'Mission Specialist (Science)', 39),
+  astronaut('astro-14', 'mission-05', 'Maj. Daniel Brooks', 'Pilot', 42),
+  astronaut('astro-18', 'mission-05', 'Maj. Tomas Novak', 'Mission Specialist (Systems)', 43),
+  // Mission 06: Apollo 8
   astronaut('astro-07', 'mission-06', 'Lt. Col. Mateo Silva', 'Lunar Orbit Navigator', 43),
+  astronaut('astro-15', 'mission-06', 'Dr. Yusuf Demir', 'Command Module Pilot', 44),
+  astronaut('astro-19', 'mission-06', 'Capt. Hannah Lindholm', 'Lunar Module Pilot', 38),
 ];
 
 export function buildReading(id: string, astronautId: string, vitals: Vitals, takenAt: string, notes: string | null = null): MockReading {
@@ -357,6 +375,19 @@ const SCHEDULED_READINGS: MockReading[] = [
   ], 'm4-a5'),
   ...buildScheduleReadings('astro-06', MISSIONS[4].startDate, STANDARD_CHECKLIST, 'm5-a6'),
   ...buildScheduleReadings('astro-07', MISSIONS[5].startDate, STANDARD_CHECKLIST.slice(0, 6), 'm6-a7'),
+  // Additional distinct crew readings across all 6 missions
+  ...buildScheduleReadings('astro-08', MISSIONS[0].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[4]], 'm1-a8'),
+  ...buildScheduleReadings('astro-09', MISSIONS[1].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[5]], 'm2-a9'),
+  ...buildScheduleReadings('astro-10', MISSIONS[1].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[3], STANDARD_CHECKLIST[4]], 'm2-a10'),
+  ...buildScheduleReadings('astro-11', MISSIONS[2].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[5]], 'm3-a11'),
+  ...buildScheduleReadings('astro-12', MISSIONS[3].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[3], STANDARD_CHECKLIST[4]], 'm4-a12'),
+  ...buildScheduleReadings('astro-13', MISSIONS[4].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[4]], 'm5-a13'),
+  ...buildScheduleReadings('astro-14', MISSIONS[4].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[3], STANDARD_CHECKLIST[5]], 'm5-a14'),
+  ...buildScheduleReadings('astro-15', MISSIONS[5].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[4]], 'm6-a15'),
+  ...buildScheduleReadings('astro-16', MISSIONS[2].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[1], STANDARD_CHECKLIST[4]], 'm3-a16'),
+  ...buildScheduleReadings('astro-17', MISSIONS[3].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[2], STANDARD_CHECKLIST[5]], 'm4-a17'),
+  ...buildScheduleReadings('astro-18', MISSIONS[4].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[1], STANDARD_CHECKLIST[4]], 'm5-a18'),
+  ...buildScheduleReadings('astro-19', MISSIONS[5].startDate, [STANDARD_CHECKLIST[0], STANDARD_CHECKLIST[3], STANDARD_CHECKLIST[5]], 'm6-a19'),
 ];
 
 export function seedState(): MockState {

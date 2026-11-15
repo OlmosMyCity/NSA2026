@@ -29,7 +29,7 @@ import {
 } from './mockData';
 
 
-const STORAGE_KEY = 'orbvital_mock_db_v4';
+const STORAGE_KEY = 'orbvital_mock_db_v5';
 
 class MockHttpError extends Error {
   constructor(
