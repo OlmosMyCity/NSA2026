@@ -1,12 +1,19 @@
 'use client';
 
+/**
+ * @module health/components/TrendChart
+ * Responsive SVG time-series chart with deterministic green/amber/red threshold
+ * background bands (`statusBands`), ResizeObserver layout, pointer crosshair,
+ * and keyboard arrow-key point navigation.
+ */
+
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { INDICATORS } from '../domain/indicators';
 import { STATUS_THEME } from '../domain/status-theme';
 import { statusBands, trendDomain, type TrendPoint } from '../domain/trends';
 import type { IndicatorId } from '../domain/types';
 
-/** Colores sincronizados con los tokens CSS globales (HSL). */
+/** Chart stroke and hairline colors synchronized with global HSL design tokens. */
 const LINE = 'hsl(223, 29%, 26%)';       /* Blueberry Skin */
 const SURFACE = 'hsl(80, 14%, 99%)';     /* Surface White */
 const GRID = 'hsl(27, 14%, 85%)';        /* Yogurt hairline */
@@ -34,6 +41,7 @@ const fullFmt = new Intl.DateTimeFormat('es', {
   minute: '2-digit',
 });
 
+/** Computes readable Y-axis tick intervals (1, 2, 2.5, 5, 10 × 10^n) across `[lo, hi]`. */
 function niceTicks(lo: number, hi: number, count = 4): number[] {
   const raw = (hi - lo) / count;
   const mag = 10 ** Math.floor(Math.log10(raw));
@@ -43,6 +51,7 @@ function niceTicks(lo: number, hi: number, count = 4): number[] {
   return ticks;
 }
 
+/** Renders a full or compact sparkline SVG chart with threshold bands and hover tooltip. */
 export function TrendChart({
   indicator,
   points,

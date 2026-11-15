@@ -1,3 +1,11 @@
+/**
+ * Service layer for the Flight Surgeon administrative triage console.
+ * Fetches prioritized crew clinical telemetry and dispatches medical directives
+ * to either the in-memory mock store or the backend `/admin` endpoints.
+ *
+ * @module features/admin/services/adminTriageService
+ */
+
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
@@ -8,6 +16,10 @@ import {
 } from '../domain/types';
 
 class AdminTriageService {
+  /**
+   * Returns crew members ordered by clinical severity (CRITICAL -> WARNING -> OK),
+   * aggregate fleet triage counts, and any active solar radiation incident context.
+   */
   async getTriageOverview(): Promise<{
     crew: CrewMemberTriage[];
     metrics: FlightSurgeonMetrics;
@@ -51,7 +63,7 @@ class AdminTriageService {
         };
       });
 
-      // Ordenar por severidad de triage: CRITICAL primero, luego WARNING, luego OK
+      // Sort by triage severity: CRITICAL first, then WARNING, then OK
       crew.sort((a, b) => {
         const score = { CRITICAL: 3, WARNING: 2, OK: 1 };
         return score[b.status] - score[a.status];
@@ -70,12 +82,16 @@ class AdminTriageService {
     return httpClient.get('/admin/triage');
   }
 
+  /**
+   * Transmits a Flight Surgeon medical directive or countermeasure order for an astronaut.
+   * In mock mode, prepends the directive to the astronaut's most recent reading record.
+   */
   async sendClinicalDirectives(
     astronautId: string,
     directives: string
   ): Promise<{ success: boolean; message: string }> {
     if (ENV.USE_MOCKS) {
-      // Registrar directiva médica en la última lectura del astronauta
+      // Attach the medical directive to the astronaut's latest health reading
       const reading = mockDb.readings
         .filter((r) => r.astronautId === astronautId)
         .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())[0];

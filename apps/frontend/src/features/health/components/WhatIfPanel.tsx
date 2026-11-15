@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * @module health/components/WhatIfPanel
+ * Compact What-If simulation form allowing mission environment, NOAA solar storm
+ * scale, radiation shielding, key vitals, and mood notes to be adjusted before
+ * triggering triage evaluation.
+ */
+
 import { Play, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import type {
   MissionEnvironment,
@@ -31,6 +38,7 @@ interface WhatIfPanelProps {
   onReset: () => void;
 }
 
+/** Controlled simulation inputs for testing hypothetical physiological and radiation scenarios. */
 export function WhatIfPanel({
   value,
   baseline,

@@ -28,6 +28,12 @@ const STATUS_LABEL: Record<Mission['status'], string> = {
   COMPLETED: 'Completed',
 };
 
+/**
+ * Integrated mission trajectory and crew physiological timeline view.
+ * Couples the embedded 3D flight-dynamics iframe (`useViewerBridge`) with historical
+ * astronaut health readings on a logarithmic MET timeline (`MissionTimeline`) and
+ * phase-aware physiological hazard inspection (`MissionMomentPanel`).
+ */
 export function MissionHealthView({ missionId }: { missionId: string }) {
   const { user, isAdmin } = useAuth();
   const [mission, setMission] = useState<Mission | null>(null);

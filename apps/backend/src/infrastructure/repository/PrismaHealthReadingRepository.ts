@@ -1,3 +1,10 @@
+/**
+ * @module PrismaHealthReadingRepository
+ * PostgreSQL/Prisma implementation of `IHealthReadingRepository`, including 7-day rolling
+ * organ-system status evaluation (`cardiovascular`, `metabolic`, `respiratoryImmune`,
+ * `sleepRecovery`, and `behavioral`) for astronaut clinical summaries.
+ */
+
 import { HealthReading, HealthStatus, Prisma } from "@prisma/client";
 import {
   AstronautHealthSummary,
@@ -11,6 +18,7 @@ import {
 } from "../../domain/models/HealthReading.js";
 import { prisma } from "../database/prismaClient.js";
 
+/** Extracts readable alert text from heterogeneous JSON alert arrays persisted on readings. */
 function normalizeAlertMessages(alerts: unknown): string[] {
   if (!Array.isArray(alerts)) return [];
   return alerts.map((item) => {
@@ -22,13 +30,16 @@ function normalizeAlertMessages(alerts: unknown): string[] {
   });
 }
 
+/**
+ * Prisma-backed repository for vital-sign readings and multi-system clinical summaries.
+ */
 export class PrismaHealthReadingRepository implements IHealthReadingRepository {
   async findMany(filters: HealthReadingFilters): Promise<PaginatedResult<HealthReading>> {
     const page = Math.max(1, filters.page || 1);
     const limit = Math.max(1, Math.min(100, filters.limit || 10));
     const skip = (page - 1) * limit;
 
-    // P1: por defecto solo lecturas válidas; includeInvalid=true para auditoría
+    // P1: return only valid readings by default; set includeInvalid=true for clinical audit logs
     const where: Prisma.HealthReadingWhereInput = filters.includeInvalid ? {} : { isValid: true };
 
     if (filters.astronautId) {
@@ -82,7 +93,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
   }
 
   async findById(id: string): Promise<HealthReading | null> {
-    // Devuelve también lecturas invalidadas: el historial clínico es auditable
+    // Returns invalidated readings as well so clinical history remains auditable
     return prisma.healthReading.findFirst({
       where: { id },
       include: {
@@ -129,7 +140,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
     reading: NewHealthReadingData,
     invalidation: InvalidateHealthReadingDTO
   ): Promise<HealthReading> {
-    // Una corrección es una lectura nueva + la invalidación de la original, en una sola transacción
+    // P1: a correction creates a superseding reading and invalidates the original atomically
     return prisma.$transaction(async (tx) => {
       await tx.healthReading.update({
         where: { id: supersedesId },
@@ -151,6 +162,10 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
     });
   }
 
+  /**
+   * Computes a multi-system clinical summary for an astronaut using their latest reading and
+   * 7-day rolling history. Falls back to nominal baseline vitals when no readings exist yet.
+   */
   async getAstronautHealthSummary(astronautId: string): Promise<AstronautHealthSummary | null> {
     const astronaut = await prisma.astronaut.findFirst({
       where: { id: astronautId, deletedAt: null },
@@ -211,7 +226,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       };
     }
 
-    // Calcular estado cardiovascular
+    // Evaluate cardiovascular status (HR in bpm, BP in mmHg)
     let cvStatus: HealthStatus = HealthStatus.OK;
     if (latest.heartRateBpm > 100 || latest.heartRateBpm < 40 || latest.systolicMmHg >= 140 || latest.diastolicMmHg >= 90) {
       cvStatus = HealthStatus.CRITICAL;
@@ -219,7 +234,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       cvStatus = HealthStatus.WARNING;
     }
 
-    // Calcular estado metabólico
+    // Evaluate metabolic status (blood glucose in mg/dL)
     let metaStatus: HealthStatus = HealthStatus.OK;
     if (latest.glucoseMgDl < 70 || latest.glucoseMgDl > 180) {
       metaStatus = HealthStatus.CRITICAL;
@@ -227,7 +242,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       metaStatus = HealthStatus.WARNING;
     }
 
-    // Respiratorio e inmune
+    // Evaluate respiratory and immune status (SpO2 %, core temperature in °C)
     let respStatus: HealthStatus = HealthStatus.OK;
     if (latest.spo2Pct < 92 || latest.temperatureC > 38.0 || latest.temperatureC < 35.5) {
       respStatus = HealthStatus.CRITICAL;
@@ -235,7 +250,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       respStatus = HealthStatus.WARNING;
     }
 
-    // Sueño y recuperación (promedio últimos 7 días)
+    // Evaluate sleep and recovery (7-day rolling mean sleep duration in hours)
     const totalSleepHours = recentHistory7d.reduce((sum, r) => sum + r.sleepHours, 0);
     const avgSleep =
       recentHistory7d.length > 0
@@ -248,7 +263,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       sleepStatus = HealthStatus.WARNING;
     }
 
-    // Conductual / Ánimo
+    // Evaluate behavioral / mood status (1–5 ordinal scale)
     let moodStatus: HealthStatus = HealthStatus.OK;
     if (latest.mood <= 2) {
       moodStatus = HealthStatus.CRITICAL;

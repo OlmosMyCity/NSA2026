@@ -1,4 +1,13 @@
 "use strict";
+/**
+ * @module simulator/stormSimulator
+ * Deterministic solar storm and cislunar radiation scenario simulator.
+ *
+ * Generates synthetic GOES X-ray/proton telemetry and L1 solar wind conditions across preset
+ * mission scenarios (`NOMINAL`, `FLARE_EARLY_WARNING`, `PEAK_STORM_S4`, `SIDE_MISS_CME`) as
+ * well as custom Stonyhurst heliographic flare/CME events, feeding the physics, impact,
+ * dosimetry, and mitigation engines identically to live telemetry.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StormSimulator = void 0;
 const noaaSwpcClient_1 = require("../clients/noaaSwpcClient");
@@ -6,13 +15,20 @@ const doseCalculator_1 = require("../physics/doseCalculator");
 const sepPrediction_1 = require("../physics/sepPrediction");
 const solarWindImpact_1 = require("../physics/solarWindImpact");
 const mitigationRules_1 = require("../alert/mitigationRules");
+/**
+ * Produces complete, physically consistent `RadiationEngineState` snapshots for preset
+ * and custom solar storm scenarios.
+ */
 class StormSimulator {
     doseCalculator = new doseCalculator_1.DoseCalculator();
     sepEngine = new sepPrediction_1.SepPredictionEngine();
     impactPredictor = new solarWindImpact_1.SolarWindImpactPredictor();
     mitigationEngine = new mitigationRules_1.MitigationRulesEngine();
     /**
-     * Genera el estado completo del motor según el escenario de simulación seleccionado
+     * Generates a complete radiation engine state snapshot for the selected preset scenario.
+     *
+     * @param scenarioId - Preset scenario identifier (`NOMINAL`, `FLARE_EARLY_WARNING`, `PEAK_STORM_S4`, or `SIDE_MISS_CME`).
+     * @returns Complete simulated `RadiationEngineState` with `isSimulated: true`.
      */
     getSimulatedState(scenarioId) {
         const now = new Date().toISOString();
@@ -22,7 +38,7 @@ class StormSimulator {
                     timestamp: now,
                     satellite: 18,
                     fluxShort: 4.8e-5,
-                    fluxLong: 4.5e-4, // Clase X4.5
+                    fluxLong: 4.5e-4, // X4.5-class solar flare flux (W/m^2)
                     currentClass: 'X4.5',
                     derivativePerMinute: 8.5e-5
                 };
@@ -249,7 +265,12 @@ class StormSimulator {
         }
     }
     /**
-     * Simula un evento personalizado a partir de una coordenada heliográfica (ej. "N15W45" o "S20E70")
+     * Simulates a custom solar flare/CME event originating from a Stonyhurst heliographic coordinate
+     * (e.g., `"N15W45"` or `"S20E70"`), evaluating cislunar impact trajectory, proton flux escalation,
+     * biological shielding doses, and mitigation posture.
+     *
+     * @param params - Custom heliographic source, flare class, CME/solar wind kinematics, and lunar phase.
+     * @returns Complete simulated `RadiationEngineState` for the custom eruption.
      */
     simulateCustomEvent(params) {
         const now = new Date().toISOString();

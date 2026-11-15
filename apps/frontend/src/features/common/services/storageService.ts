@@ -1,8 +1,16 @@
+/**
+ * Media upload service for mission patches and crew portraits.
+ * Supports client-side validation, mock data URL generation, backend upload relay,
+ * and direct S3-compatible Supabase Storage uploads.
+ *
+ * @module features/common/services/storageService
+ */
+
 import { createClient } from '@supabase/supabase-js';
 import { ENV } from '../config/env';
 import { httpClient } from './httpClient';
 
-// Cliente Supabase para subida de archivos a Supabase Storage (S3-compatible)
+// Supabase client for direct uploads to S3-compatible Supabase Storage
 const supabase =
   ENV.SUPABASE_URL && ENV.SUPABASE_ANON_KEY
     ? createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY)
@@ -10,22 +18,22 @@ const supabase =
 
 export const storageService = {
   /**
-   * Sube un archivo de imagen (parche o foto) a Supabase Storage (bucket S3).
-   * Devuelve la URL pública accesible resultante.
+   * Validates and uploads an image file (mission patch or portrait) and returns
+   * the resulting publicly accessible URL or mock data URL.
    */
   async uploadImage(file: File, folder: 'missions' | 'astronauts'): Promise<string> {
-    // 1. Validaciones de cliente (tipo y tamaño máximo de 5MB; sin SVG por seguridad)
+    // 1. Client-side validation (MIME whitelist and 5 MB limit; SVG excluded for security)
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       throw new Error('Formato de imagen inválido. Solo se admiten JPG, PNG o WEBP.');
     }
 
-    const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+    const maxSizeInBytes = 5 * 1024 * 1024; // 5 MB
     if (file.size > maxSizeInBytes) {
       throw new Error('El archivo excede el tamaño máximo permitido de 5 MB.');
     }
 
-    // 2. Modo mock: generar un data URL local para pruebas sin backend
+    // 2. Mock mode: generate a local data URL for backendless testing
     if (ENV.USE_MOCKS) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -36,7 +44,7 @@ export const storageService = {
       });
     }
 
-    // 3. Si no hay credenciales de Supabase en el cliente, subir vía backend a Vercel Blob
+    // 3. Fallback to backend upload relay (Vercel Blob) when Supabase client credentials are absent
     if (!supabase) {
       const formData = new FormData();
       formData.append('file', file);
@@ -44,7 +52,7 @@ export const storageService = {
       return res.url;
     }
 
-    // 4. Subida directa a Supabase Storage (si está configurado en el cliente)
+    // 4. Direct upload to Supabase Storage when configured on the client
     const ext = file.name.split('.').pop() || 'png';
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
@@ -59,7 +67,7 @@ export const storageService = {
       throw new Error(`Error en el almacenamiento de archivos: ${uploadError.message}`);
     }
 
-    // 4. Obtener URL pública
+    // 5. Resolve public asset URL
     const { data } = supabase.storage.from(ENV.SUPABASE_BUCKET).getPublicUrl(fileName);
 
     return data.publicUrl;

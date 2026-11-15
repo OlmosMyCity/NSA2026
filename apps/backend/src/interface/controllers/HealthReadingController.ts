@@ -1,3 +1,10 @@
+/**
+ * @module HealthReadingController
+ * HTTP controller for astronaut vital-sign readings, multi-system health summaries,
+ * and edge computer-vision / rPPG telemetry ingestion. Enforces crew-member self-access
+ * for `USER` accounts while granting full fleet access to `ADMIN` flight surgeons.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { ListHealthReadingsUseCase } from "../../application/use-cases/health/ListHealthReadingsUseCase.js";
 import { GetHealthReadingByIdUseCase } from "../../application/use-cases/health/GetHealthReadingByIdUseCase.js";
@@ -17,6 +24,9 @@ import {
   visionIngestSchema,
 } from "../validation/schemas.js";
 
+/**
+ * Controller backing `/api/readings` and `GET /api/astronauts/:id/summary`.
+ */
 export class HealthReadingController {
   constructor(
     private readonly listHealthReadingsUseCase: ListHealthReadingsUseCase,
@@ -78,7 +88,7 @@ export class HealthReadingController {
 
       let astronautIdFilter = req.query.astronautId as string | undefined;
 
-      // Los astronautas (USER) solo pueden consultar su propio historial médico
+      // Astronauts (USER) may only inspect their own medical history
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (astronautIdFilter && astronautIdFilter !== ownAstronautId) {
@@ -193,9 +203,10 @@ export class HealthReadingController {
     }
   };
 
+  /** `GET /api/astronauts/:id/summary` — Returns multi-system clinical summary and 7-day history. */
   getSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params; // astronautId
+      const { id } = req.params; // Target astronautId
 
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);

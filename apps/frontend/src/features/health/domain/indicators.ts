@@ -1,8 +1,16 @@
+/**
+ * @module health/domain/indicators
+ * Canonical catalog of the 9 monitored physiological and behavioral indicators,
+ * mapping each metric to one of the 5 Digital Twin zones (`heart`, `brain`, `blood`,
+ * `bones`, `sleep`), associated NASA HRP hazards, and deterministic threshold bands.
+ */
+
 import type { BodyZoneId, IndicatorDefinition, IndicatorId } from './types';
 
 /**
- * Catálogo de indicadores con umbrales orientativos para la demo
- * (no son criterio clínico). Fuente: docs/NASA_SPACE_APPS_CHALLENGE.md §2.
+ * Indicator catalog with mission-demo reference thresholds
+ * (illustrative operational baselines, not clinical diagnostic criteria).
+ * Source: `docs/NASA_SPACE_APPS_CHALLENGE.md` §2.
  */
 export const INDICATORS: Record<IndicatorId, IndicatorDefinition> = {
   heartRate: {
@@ -90,7 +98,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDefinition> = {
 
 export const INDICATOR_IDS = Object.keys(INDICATORS) as IndicatorId[];
 
-/** Indicadores agrupados por zona de la figura humana. */
+/** Indicator IDs grouped by their target 3D anatomical zone. */
 export const INDICATORS_BY_ZONE: Record<BodyZoneId, IndicatorId[]> = {
   heart: [],
   brain: [],

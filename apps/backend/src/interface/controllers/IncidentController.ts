@@ -1,3 +1,9 @@
+/**
+ * @module IncidentController
+ * HTTP and Server-Sent Events (SSE) controller for clinical and mission contingency incidents,
+ * protocol/contingency catalogs, overdue SLA escalation, and RBAC-scoped crew notifications.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { IncidentCategory, IncidentSeverity, IncidentStatus, Role } from "@prisma/client";
 import { ListIncidentsUseCase } from "../../application/use-cases/incident/ListIncidentsUseCase.js";
@@ -17,6 +23,9 @@ import {
 } from "../../application/incident/incidentNotificationBus.js";
 import { closeIncidentSchema, openIncidentSchema, parseWithValidation } from "../validation/schemas.js";
 
+/**
+ * Controller exposing `/api/incidents` REST endpoints and real-time SSE stream.
+ */
 export class IncidentController {
   constructor(
     private readonly listIncidentsUseCase: ListIncidentsUseCase,
@@ -34,14 +43,21 @@ export class IncidentController {
     return astro?.id ?? null;
   }
 
+  /** `GET /api/incidents/protocols` — Returns the static catalog of medical response protocols. */
   listProtocols = (_req: Request, res: Response): void => {
     res.status(200).json({ data: listMedicalProtocols() });
   };
 
+  /** `GET /api/incidents/mission-catalog` — Returns predefined mission contingency scenarios. */
   listMissionCatalog = (_req: Request, res: Response): void => {
     res.status(200).json({ data: listMissionContingencies() });
   };
 
+  /**
+   * `GET /api/incidents/stream` — Opens an SSE stream filtered by RBAC scope (global incidents
+   * plus the caller's own astronaut incidents for `USER`, or all events for `ADMIN`),
+   * emitting keepalive heartbeats and triggering overdue incident escalation every 20s.
+   */
   stream = async (req: Request, res: Response): Promise<void> => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");

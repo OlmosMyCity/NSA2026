@@ -1,3 +1,9 @@
+/**
+ * @module prismaClient
+ * Shared Prisma ORM client singleton. Caching the instance on `global.prisma` outside
+ * production prevents exhausting database connections during module hot-reloading.
+ */
+
 import { PrismaClient } from "@prisma/client";
 
 declare global {

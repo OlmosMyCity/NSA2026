@@ -152,6 +152,11 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
   },
 ];
 
+/**
+ * Standalone 3D orbital trajectory explorer component.
+ * Provides mission preset switching, vehicle overrides, custom `schema_version: 1`
+ * trajectory JSON uploads via object URLs, fullscreen toggling, and HRP context cards.
+ */
 export function OrbitTrajectoryViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>('apollo-11');

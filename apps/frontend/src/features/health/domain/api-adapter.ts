@@ -1,5 +1,12 @@
+/**
+ * @module health/domain/api-adapter
+ * Translates wide backend `HealthReading` payloads into flattened per-indicator
+ * telemetry points and frontend traffic-light status tokens.
+ */
+
 import type { HealthStatus, IndicatorId, IndicatorReading, ApiHealthStatus } from './types';
 
+/** Structured clinical alert entry attached to a backend reading. */
 export interface ApiHealthAlert {
   indicator: string;
   level: 'WARNING' | 'CRITICAL';
@@ -7,7 +14,7 @@ export interface ApiHealthAlert {
   value: number;
 }
 
-/** Contrato de `HealthReading` del backend: una fila con todos los indicadores. */
+/** Backend `HealthReading` contract: one wide row containing all vital-sign fields. */
 export interface ApiHealthReading {
   id: string;
   astronautId: string;
@@ -27,7 +34,7 @@ export interface ApiHealthReading {
   takenAt: string;
 }
 
-/** Campo del backend que corresponde a cada indicador del frontend. */
+/** Maps each frontend `IndicatorId` to its corresponding field on `ApiHealthReading`. */
 export const API_FIELD: Record<IndicatorId, keyof ApiHealthReading> = {
   heartRate: 'heartRateBpm',
   systolic: 'systolicMmHg',
@@ -40,13 +47,14 @@ export const API_FIELD: Record<IndicatorId, keyof ApiHealthReading> = {
   resistanceExercise: 'resistanceExerciseMin',
 };
 
+/** Maps backend `ApiHealthStatus` enum values to frontend traffic-light `HealthStatus` tokens. */
 export const API_STATUS: Record<ApiHealthStatus, HealthStatus> = {
   OK: 'green',
   WARNING: 'amber',
   CRITICAL: 'red',
 };
 
-/** Aplana una fila del backend en una medición por indicador (omite valores ausentes). */
+/** Flattens a wide backend reading row into per-indicator `IndicatorReading` items, omitting missing values. */
 export function toIndicatorReadings(row: ApiHealthReading): IndicatorReading[] {
   return (Object.keys(API_FIELD) as IndicatorId[]).flatMap((indicator) => {
     const value = row[API_FIELD[indicator]];

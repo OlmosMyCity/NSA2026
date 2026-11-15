@@ -1,10 +1,16 @@
+/**
+ * @module authorizeRoles
+ * Role-based access control (RBAC) Express middleware factory.
+ */
+
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import { Role } from "@prisma/client";
 import { ForbiddenError, UnauthorizedError } from "../../domain/errors/AppError.js";
 
 /**
- * Restringe una ruta a ciertos roles. Debe ir DESPUÉS de `authenticate`.
- * Ej: router.delete("/:id", authenticate, authorizeRoles(Role.ADMIN), controller.delete)
+ * Restricts a route to users holding one of the specified roles. Must run AFTER `authenticate`.
+ * Forwards `UnauthorizedError` (401) if unauthenticated or `ForbiddenError` (403) if disallowed.
+ * Example: `router.delete("/:id", authenticate, authorizeRoles(Role.ADMIN), controller.delete)`
  */
 export function authorizeRoles(...allowed: Role[]): RequestHandler {
   return (req: Request, _res: Response, next: NextFunction): void => {

@@ -1,4 +1,10 @@
-"""Synthetic Astronaut Video Generator with physiological rPPG, sleep, and mood signals."""
+"""Synthetic Astronaut Video Generator with physiological rPPG, sleep, and mood signals.
+
+Synthesizes BGR and Near-Infrared (NIR) monochrome cabin frames containing a simulated
+subject whose facial skin reflectance exhibits cardiac Blood Volume Pulse (fundamental
++ 2nd harmonic dicrotic notch + respiratory envelope), alongside controllable blinks,
+yawns, head nodding, brow furrowing, smiling, and sleep-pod restlessness motion.
+"""
 
 import math
 from dataclasses import dataclass
@@ -8,6 +14,8 @@ import numpy as np
 
 @dataclass
 class SimulationConfig:
+    """Configuration state driving the synthetic astronaut biometric video stream."""
+
     target_bpm: float = 72.0
     respiration_rpm: float = 15.0
     state: str = "nominal"        # nominal, happy, stressed, drowsy, sleeping_calm, sleeping_restless
@@ -29,6 +37,7 @@ class SyntheticAstronautGenerator:
         state: str | None = None,
         nir_mode: bool | None = None,
     ) -> None:
+        """Updates simulated heart rate (clamped to 48-175 BPM), behavioral state, or NIR mode."""
         if target_bpm is not None:
             self.cfg.target_bpm = float(np.clip(target_bpm, 48.0, 175.0))
         if state is not None:
@@ -37,6 +46,7 @@ class SyntheticAstronautGenerator:
             self.cfg.nir_mode = bool(nir_mode)
 
     def next_frame(self, timestamp: float) -> np.ndarray:
+        """Renders the next synthetic BGR frame at `timestamp` seconds."""
         self._frame_count += 1
         w, h = self.cfg.width, self.cfg.height
         canvas = np.zeros((h, w, 3), dtype=np.uint8)

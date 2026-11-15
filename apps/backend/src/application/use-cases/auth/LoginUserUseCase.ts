@@ -1,16 +1,26 @@
+/**
+ * @module application/use-cases/auth/LoginUserUseCase
+ * Use case for authenticating users with email/password credentials and issuing a JWT.
+ */
+
 import { UserState } from "@prisma/client";
 import { IUserRepository } from "../../../domain/repository/IUserRepository.js";
 import { AuthResponse, PasswordHasher, TokenSigner, toAuthUser } from "../../../domain/models/User.js";
 import { UnauthorizedError, ValidationError } from "../../../domain/errors/AppError.js";
 
+/** Credentials payload accepted by `LoginUserUseCase`. */
 export interface LoginUserInput {
   email: string;
   password: string;
 }
 
-// Mensaje genérico: no revela si el email existe o si falló la contraseña.
+// Generic message: avoids leaking whether the email exists or the password failed.
 const INVALID_CREDENTIALS = "Email o contraseña incorrectos.";
 
+/**
+ * Normalizes email, verifies the password hash via `PasswordHasher`, enforces `UserState.ACTIVE`,
+ * and returns a sanitized `AuthUser` paired with a signed JWT (`AuthResponse`).
+ */
 export class LoginUserUseCase {
   constructor(
     private readonly userRepo: IUserRepository,

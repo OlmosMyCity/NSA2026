@@ -7,17 +7,17 @@ import * as THREE from 'three';
 import type { AstronautTelemetryFrame } from '../domain/types';
 
 /**
- * Sujeto sintético en 3D para el HUD de /vision cuando no se usa la webcam.
- * Sustituye la cara dibujada por el simulador y se anima con la telemetría:
- *  - pose de la cabeza (pitch / yaw / roll) → cabeceo por somnolencia
- *  - respiración (respiration_rpm) → leve escala vertical
- *  - pulso (bpm) → brillo rojo sincronizado con el latido
- *  - estrés → tinte cálido; sueño / baja alerta → luz atenuada y azulada
+ * 3D anatomical synthetic subject rendered in the `/vision` HUD when webcam capture is inactive.
+ * Replaces static 2D simulator bitmaps and animates smoothly from live telemetry:
+ *  - head pose (`pitch` / `yaw` / `roll`) -> drowsiness head nodding
+ *  - respiration (`respiration_rpm`) -> subtle vertical chest/head breathing scale
+ *  - pulse (`bpm`) -> rhythmic red emissive glow synchronized with heartbeats
+ *  - stress -> warm amber/orange tint above 40%; sleep/low alertness -> cool attenuated light
  */
 const MODEL_URL = '/anatomy/head.glb';
 
 const DEG = Math.PI / 180;
-/** El GLB mira hacia +X; se gira para que mire a la cámara (+Z). */
+/** Source GLB faces +X; rotate -90 deg around Y to face the camera (+Z). */
 const MODEL_YAW = -Math.PI / 2;
 
 interface Props {
@@ -91,7 +91,7 @@ function Head({ telemetryRef }: { telemetryRef: TelemetryRef }) {
   const breathPhase = useRef(0);
   const pose = useRef({ pitch: 0, yaw: 0, roll: 0 });
 
-  // Material propio (clonado) para poder modular el emissive sin tocar la caché de useGLTF
+  // Clone materials locally so emissive pulses do not mutate shared useGLTF cache materials
   const { model, materials } = useMemo(() => {
     const clone = scene.clone(true);
     const mats: THREE.MeshStandardMaterial[] = [];
@@ -104,7 +104,7 @@ function Head({ telemetryRef }: { telemetryRef: TelemetryRef }) {
       o.material = m;
       mats.push(m);
     });
-    // Centrar y escalar a ~1 m de alto
+    // Center and normalize height to ~1 m
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
@@ -132,7 +132,7 @@ function Head({ telemetryRef }: { telemetryRef: TelemetryRef }) {
     if (!g) return;
     const k = Math.min(1, dt * 3);
 
-    // Pose de la cabeza: datos del simulador + vaivén idle
+    // Head pose: simulator orientation angles + gentle idle sway
     const time = state.clock.elapsedTime;
     const idleYaw = Math.sin(time * 0.35) * 6;
     const tgt = {
@@ -145,14 +145,14 @@ function Head({ telemetryRef }: { telemetryRef: TelemetryRef }) {
     pose.current.roll += (tgt.roll - pose.current.roll) * k;
     g.rotation.set(pose.current.pitch * DEG, pose.current.yaw * DEG, pose.current.roll * DEG);
 
-    // Respiración
+    // Respiration cycle
     const rpm = t?.heart_rate.respiration_rpm || 14;
     breathPhase.current += dt * (rpm / 60) * Math.PI * 2;
     const breath = Math.sin(breathPhase.current);
     g.scale.set(1, 1 + breath * 0.006, 1);
     g.position.y = breath * 0.006;
 
-    // Pulso: pico agudo en cada latido (solo con rPPG calibrado)
+    // Cardiac pulse: sharp beat peak once rPPG calibration locks
     const bpm = t?.heart_rate.bpm ?? 0;
     let pulse = 0;
     if (bpm > 0) {
@@ -160,7 +160,7 @@ function Head({ telemetryRef }: { telemetryRef: TelemetryRef }) {
       pulse = Math.pow(Math.max(0, Math.cos(beatPhase.current * Math.PI * 2)), 12);
     }
 
-    // Estrés: tinte cálido por encima del 40 %
+    // Stress tint blended above 40%
     const stress = t ? Math.max(0, (t.mood.stress_index - 40) / 60) : 0;
     const emissive = stress * 0.14 + pulse * 0.12;
     for (const m of materials) {

@@ -1,3 +1,10 @@
+/**
+ * Vehicle presets, trajectory catalog definitions, custom trajectory JSON validation,
+ * and `localStorage` persistence for per-mission 3D simulation configuration.
+ *
+ * @module features/visualizer/domain/missionSimulationConfig
+ */
+
 export interface VehicleOption {
   id: string;
   label: string;

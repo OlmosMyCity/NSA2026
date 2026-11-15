@@ -1,5 +1,24 @@
 'use client';
 
+/**
+ * @module health/components/HealthDashboard
+ * Top-level orchestrator for the 3D Physiological Digital Twin dashboard (`/dashboard`).
+ *
+ * Architectural flow:
+ * 1. **5 Physiological Zones**: Aggregates telemetry into `heart`, `brain`, `blood`,
+ *    `bones`, and `sleep` via `useHealthReadings` and `summarizeZones`.
+ * 2. **Zero-Token What-If Preview**: Slider and mission parameter edits in `ScenarioDock`
+ *    run `applyScenario` + `summarizeZones` locally, immediately updating the 3D body
+ *    and deterministic zone badges without invoking the AI backend.
+ * 3. **Explicit Gemini Decision 1 Triage**: `runTriage` (`evaluateDigitalTwinRemote`)
+ *    executes only on initial data load or when the user clicks "Run triage", caching
+ *    results per scenario key (`cache`) and flagging `isStale` whenever inputs diverge
+ *    from the last evaluated snapshot.
+ * 4. **NASA HRP Hazard Overlays**: Displays per-zone 5-hazard exposure breakdowns
+ *    (`radiation`, `isolation`, `distance`, `gravity`, `hostileEnvironment`) inside
+ *    `ZoneInspector` while preserving deterministic rules as the official verdict.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertTriangle, ArrowLeft, FlaskConical, RefreshCw, Rotate3d } from 'lucide-react';
@@ -69,6 +88,7 @@ function applyScenario(rows: ApiHealthReading[], s: WhatIfState, astronautId?: s
   return next;
 }
 
+/** Evaluates the scenario key used to cache Gemini Decision 1 responses and detect stale UI state. */
 function scenarioKey(s: WhatIfState): string {
   return JSON.stringify([
     s.active,
@@ -82,6 +102,7 @@ function scenarioKey(s: WhatIfState): string {
   ]);
 }
 
+/** Main Digital Twin dashboard combining the 3D body viewer, What-If dock, and zone inspector. */
 export function HealthDashboard() {
   const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
   const { rows, zones: baseZones, latest, isLoading, error, refetch } = useHealthReadings(astronautId);

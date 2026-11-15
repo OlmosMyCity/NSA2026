@@ -1,11 +1,20 @@
+/**
+ * @module application/use-cases/health/BiodosimetryTriageUseCase
+ * Use case orchestrating Signal vs. Noise biodosimetry attribution across biomedical vitals,
+ * optional radiation biomarkers (gamma-H2AX, urinary 8-OHdG, FDXR fold change), and live
+ * space-weather radiation telemetry.
+ */
+
 import { Role } from "@prisma/client";
 import { ForbiddenError, NotFoundError } from "../../../domain/errors/AppError.js";
 import { IAstronautRepository } from "../../../domain/repository/IAstronautRepository.js";
 import { IHealthReadingRepository } from "../../../domain/repository/IHealthReadingRepository.js";
 import { radiationEngine } from "../../../infrastructure/services/radiationEngine.js";
 
+/** Shielding configuration submitted for radiation dose attenuation attribution. */
 export type ShieldingType = "EVA_SUIT" | "CREW_CABIN_NOMINAL" | "STORM_SHELTER";
 
+/** Input contract for biodosimetry differential triage execution. */
 export interface BiodosimetryTriageInput {
   astronautId?: string;
   requestingUserId?: string;
@@ -20,6 +29,7 @@ export interface BiodosimetryTriageInput {
   };
 }
 
+/** Attribution percentages and clinical guidance returned by the Signal vs. Noise microservice. */
 export interface BiodosimetryAttributionResponse {
   primaryCause: "NOMINAL" | "IONIZING_RADIATION" | "MICROGRAVITY_STRESS" | "SLEEP_PSYCH_STRESS";
   confidence: number;
@@ -35,6 +45,7 @@ export interface BiodosimetryAttributionResponse {
   explanation: string;
 }
 
+/** Full biodosimetry triage response including radiation telemetry provenance and degradation flag. */
 export interface BiodosimetryTriageResult {
   astronautId: string | null;
   shieldingType: ShieldingType;
@@ -58,6 +69,16 @@ function buildNominalRadiationFallback(): Record<string, unknown> {
   };
 }
 
+/**
+ * Orchestrates biodosimetry differential diagnosis to distinguish ionizing-radiation injury
+ * from microgravity fluid shifts or sleep/psychosocial confounders.
+ *
+ * Invariants:
+ * - Only `ADMIN` (Flight Surgeon) may supply manual `healthReading` / `radiationState`
+ *   overrides or execute triage on another crew member.
+ * - Radiation state resolves via: request override -> injected provider -> external
+ *   `RADIATION_ENGINE_URL` -> in-process `radiationEngine` -> nominal degraded fallback.
+ */
 export class BiodosimetryTriageUseCase {
   constructor(
     private readonly readingRepo: IHealthReadingRepository,
@@ -113,7 +134,7 @@ export class BiodosimetryTriageUseCase {
           telemetryDegraded: Boolean((state as { telemetryDegraded?: unknown }).telemetryDegraded),
         };
       } catch {
-        // Reintentar con el motor en proceso antes de declarar degradación total
+        // Fall back to the in-process radiation engine before declaring telemetry degraded
       }
     }
 

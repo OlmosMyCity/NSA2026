@@ -5,9 +5,9 @@ const inRange = (value: number, { min = -Infinity, max = Infinity }: Range) =>
   value >= min && value <= max;
 
 /**
- * Evaluación local (optimista) para dar feedback inmediato en la UI.
- * Si se provee `phaseId`, ajusta los umbrales a las normas fisiológicas
- * esperadas por fase (NASA-STD-3001 / NASA HRP).
+ * Optimistic client-side evaluation providing immediate UI feedback.
+ * When `phaseId` is supplied, adapts thresholds to phase-specific physiological norms
+ * (NASA-STD-3001 / NASA HRP).
  */
 export function evaluateIndicator(
   indicator: IndicatorId,
@@ -24,7 +24,7 @@ export function evaluateIndicator(
 
 const SEVERITY: Record<HealthStatus, number> = { unknown: 0, green: 1, amber: 2, red: 3 };
 
-/** El peor estado manda: se usa para colorear una zona de la figura. */
+/** Returns the highest-severity status across a collection (`red > amber > green > unknown`), used to tint each 3D zone. */
 export function worstStatus(statuses: HealthStatus[]): HealthStatus {
   return statuses.reduce<HealthStatus>(
     (worst, s) => (SEVERITY[s] > SEVERITY[worst] ? s : worst),

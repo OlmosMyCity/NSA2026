@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * @module health/components/TrendsView
+ * Longitudinal physiological trends view (`/trends`): 7/14/30-day window selector,
+ * primary chart with threshold bands and accessible data table, plus interactive
+ * small-multiples sparklines across all 9 indicators.
+ */
+
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/features/common/components/EmptyState';
@@ -16,6 +23,7 @@ import { TrendChart } from './TrendChart';
 
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 
+/** Historical trends dashboard with primary detail chart and 9-indicator sparkline grid. */
 export function TrendsView() {
   const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
   const { readings, isLoading, error, refetch, latest } = useHealthReadings(astronautId);
@@ -137,7 +145,7 @@ export function TrendsView() {
         </label>
       </div>
 
-      {/* Gráfica principal */}
+      {/* Primary indicator trend chart */}
       <section aria-labelledby="trend-title" className="surface-card p-6 sm:p-8">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -219,7 +227,7 @@ export function TrendsView() {
         )}
       </section>
 
-      {/* Múltiplos pequeños */}
+      {/* Small-multiples overview grid */}
       <section aria-labelledby="overview-title">
         <h2 id="overview-title" className="mb-3 text-sm font-semibold text-blueberry">
           All Indicators

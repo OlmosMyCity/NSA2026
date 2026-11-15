@@ -1,3 +1,10 @@
+/**
+ * Domain contracts for daily HRP spaceflight countermeasure checklists,
+ * adherence streaks, and milestone badges.
+ *
+ * @module features/routine/domain/types
+ */
+
 export type RoutineCategory =
   | 'EXERCISE'
   | 'BIOMEDICAL'

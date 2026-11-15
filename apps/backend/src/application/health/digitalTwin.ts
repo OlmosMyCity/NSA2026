@@ -1,3 +1,10 @@
+/**
+ * @module application/health/digitalTwin
+ * Pure deterministic Astronaut Digital Twin engine modeling 5 physiological body zones
+ * (`heart`, `brain`, `blood`, `bones`, `sleep`) by combining latest vital indicators,
+ * longitudinal trend direction, measurement staleness windows, and NASA HRP hazard loads.
+ */
+
 import {
   BODY_ZONES,
   computeZoneHazardLoad,
@@ -7,10 +14,16 @@ import {
   type ZoneHazardLoad,
 } from "./hazards.js";
 
+/** Clinical status tier assigned to each indicator and aggregated per body zone. */
 export type ZoneHealthStatus = "green" | "amber" | "red" | "unknown";
+
+/** Longitudinal direction relative to each indicator's optimal `nominalTarget`. */
 export type TrendDirection = "improving" | "stable" | "worsening";
+
+/** Discrete operational risk classification aligned with triage scoring (`0`–`3`). */
 export type ZoneRiskLevel = "stable" | "watch" | "elevated" | "critical";
 
+/** Canonical physiological and behavioral indicator identifiers tracked by the twin. */
 export type IndicatorId =
   | "heartRate"
   | "systolic"
@@ -22,6 +35,7 @@ export type IndicatorId =
   | "mood"
   | "resistanceExercise";
 
+/** Timestamped biomedical and countermeasure reading consumed by the Digital Twin. */
 export interface TimedHealthReading {
   heartRateBpm: number;
   systolicMmHg: number;
@@ -35,6 +49,7 @@ export interface TimedHealthReading {
   takenAt: string | Date;
 }
 
+/** Latest evaluated state and staleness metadata for a single physiological indicator. */
 export interface IndicatorSnapshot {
   id: IndicatorId;
   value: number | null;
@@ -44,11 +59,12 @@ export interface IndicatorSnapshot {
   hoursSinceLast: number | null;
 }
 
+/** Aggregated Digital Twin state for one body zone, combining clinical status, trend, staleness, and hazards. */
 export interface ZoneTwinState {
   zone: BodyZoneId;
   status: ZoneHealthStatus;
   riskLevel: ZoneRiskLevel;
-  /** Nivel discreto 0..3 equivalente a stable/watch/elevated/critical. */
+  /** Discrete risk tier `0..3` corresponding to `stable` / `watch` / `elevated` / `critical`. */
   riskScore: 0 | 1 | 2 | 3;
   trend: TrendDirection;
   isOverdue: boolean;
@@ -56,14 +72,16 @@ export interface ZoneTwinState {
   hazardLoad: ZoneHazardLoad;
 }
 
+/** Input contract for deterministic Digital Twin evaluation. */
 export interface DigitalTwinInput {
   readings: TimedHealthReading[];
   environment: MissionEnvironment;
   radiation?: RadiationContext;
-  /** Marca temporal de referencia (ms o ISO); por defecto Date.now(). */
+  /** Reference evaluation timestamp (epoch ms, ISO string, or `Date`); defaults to `Date.now()`. */
   now?: number | string | Date;
 }
 
+/** Complete multi-zone Digital Twin snapshot consumed by `decideByRules` and Gemini Decision 1. */
 export interface DigitalTwinState {
   evaluatedAt: string;
   environment: MissionEnvironment;
@@ -74,12 +92,14 @@ export interface DigitalTwinState {
   zones: Record<BodyZoneId, ZoneTwinState>;
 }
 
+/** Hypothetical environment, radiation, or vital overrides applied in "What-If" projections. */
 export interface WhatIfOverrides {
   environment?: MissionEnvironment;
   radiation?: Partial<RadiationContext>;
   readingOverrides?: Partial<Omit<TimedHealthReading, "takenAt">>;
 }
 
+/** Baseline vs. projected Digital Twin comparison returned by `simulateWhatIf`. */
 export interface DigitalTwinSimulationResult {
   baseline: DigitalTwinState;
   projected: DigitalTwinState;
@@ -90,11 +110,11 @@ interface IndicatorSpec {
   id: IndicatorId;
   zone: BodyZoneId;
   unit: string;
-  /** Horas máximas antes de considerar la medición vencida. */
+  /** Maximum age in hours before a measurement is considered overdue. */
   overdueHours: number;
-  /** Centro nominal para medir si un cambio se acerca o aleja de lo óptimo. */
+  /** Optimal physiological center used to determine whether shifts move toward or away from nominal. */
   nominalTarget: number;
-  /** Desviación mínima respecto a previas para considerar cambio significativo. */
+  /** Minimum absolute distance shift from prior mean required to trigger `improving` or `worsening`. */
   significantDelta: number;
   extract: (r: TimedHealthReading) => number | null | undefined;
   evaluate: (v: number) => Exclude<ZoneHealthStatus, "unknown">;
@@ -266,8 +286,8 @@ function worstStatus(statuses: ZoneHealthStatus[]): ZoneHealthStatus {
 }
 
 /**
- * Calcula tendencia de un indicador comparando la lectura más reciente
- * con el promedio de hasta 6 lecturas previas usando distancia al objetivo nominal.
+ * Computes an indicator trend by comparing the latest reading against the mean of up to
+ * 6 preceding readings using Euclidean distance to `nominalTarget`.
  */
 function computeIndicatorTrend(
   spec: IndicatorSpec,
@@ -301,8 +321,8 @@ function combineZoneTrend(directions: TrendDirection[]): TrendDirection {
 }
 
 /**
- * Traduce estado clínico + tendencia + vencimiento + carga ambiental
- * al nivel discreto de riesgo (0..3) alineado con la rúbrica de triaje.
+ * Maps clinical status, longitudinal trend, measurement staleness, and environmental
+ * hazard load onto the discrete triage risk score (`0..3`).
  */
 function computeZoneRiskScore(
   status: ZoneHealthStatus,
@@ -330,7 +350,7 @@ function computeZoneRiskScore(
 }
 
 /**
- * Motor determinista puro del Gemelo Digital del Astronauta.
+ * Pure deterministic Astronaut Digital Twin evaluation engine (zero side effects).
  */
 export function evaluateDigitalTwin(input: DigitalTwinInput): DigitalTwinState {
   const nowMs = toTimestampMs(input.now);
@@ -353,7 +373,7 @@ export function evaluateDigitalTwin(input: DigitalTwinInput): DigitalTwinState {
 
     for (const id of indicatorIds) {
       const spec = INDICATOR_SPECS[id];
-      // Busca la lectura más reciente que tenga valor numérico para este indicador
+      // Locate the most recent reading containing a finite numeric value for this indicator
       let latestReading: TimedHealthReading | null = null;
       let latestValue: number | null = null;
 
@@ -445,8 +465,8 @@ export function evaluateDigitalTwin(input: DigitalTwinInput): DigitalTwinState {
 }
 
 /**
- * Modo "¿Qué pasa si?": proyecta el estado del gemelo aplicando cambios hipotéticos
- * de entorno, radiación/blindaje o signos vitales sin alterar los datos reales.
+ * "What-If" projection mode: simulates the Digital Twin state under hypothetical habitat,
+ * radiation/shielding, or vital-sign overrides without mutating persisted telemetry.
  */
 export function simulateWhatIf(
   baseInput: DigitalTwinInput,

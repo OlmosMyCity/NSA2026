@@ -23,6 +23,12 @@ import {
 import { AstronautFallbackAvatar } from '@/features/astronauts/components/AstronautFallbackAvatar';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
 
+/**
+ * Flight Surgeon clinical command console.
+ * Displays fleet-wide triage KPIs, active solar radiation incident banners,
+ * severity/search filters, per-crew vital sign cards, and a modal for transmitting
+ * clinical directives to a capsule.
+ */
 export function FlightSurgeonConsole() {
   const [crew, setCrew] = useState<CrewMemberTriage[]>([]);
   const [metrics, setMetrics] = useState<FlightSurgeonMetrics>({

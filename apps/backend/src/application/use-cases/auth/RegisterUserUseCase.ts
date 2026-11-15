@@ -1,7 +1,13 @@
+/**
+ * @module application/use-cases/auth/RegisterUserUseCase
+ * Use case for public user self-registration and immediate JWT issuance.
+ */
+
 import { IUserRepository } from "../../../domain/repository/IUserRepository.js";
 import { AuthResponse, PasswordHasher, TokenSigner, toAuthUser } from "../../../domain/models/User.js";
 import { ConflictError, ValidationError } from "../../../domain/errors/AppError.js";
 
+/** Self-registration input payload accepted by `RegisterUserUseCase`. */
 export interface RegisterUserInput {
   name: string;
   email: string;
@@ -9,8 +15,13 @@ export interface RegisterUserInput {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const MIN_PASSWORD_LENGTH = 6; // Igual que la validación del RegisterForm del frontend
+/** Minimum password length enforced symmetrically with the frontend `RegisterForm`. */
+export const MIN_PASSWORD_LENGTH = 6; // Matches frontend RegisterForm validation
 
+/**
+ * Validates registration input, enforces email uniqueness (`ConflictError` 409),
+ * hashes the password via `PasswordHasher`, provisions a `USER` account, and signs a JWT.
+ */
 export class RegisterUserUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
@@ -32,7 +43,7 @@ export class RegisterUserUseCase {
       throw new ConflictError("Ya existe una cuenta registrada con ese email.");
     }
 
-    // El registro público siempre crea astronautas (USER); los ADMIN salen del seed.
+    // Public self-registration always creates astronaut (USER) accounts; ADMIN accounts come from seed data.
     const user = await this.userRepo.create({
       name,
       email,

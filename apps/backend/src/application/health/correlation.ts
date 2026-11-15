@@ -1,3 +1,9 @@
+/**
+ * @module application/health/correlation
+ * Cross-domain triage correlation combining clinical health reading severity with
+ * active NOAA solar radiation storm scales (`S3_STRONG` through `S5_EXTREME`).
+ */
+
 import { HealthStatus } from "@prisma/client";
 import { NOAAStormScale } from "@nsa2026/radiation-engine";
 
@@ -7,10 +13,12 @@ const S3_OR_HIGHER: ReadonlySet<string> = new Set([
   "S5_EXTREME",
 ]);
 
+/** Returns `true` when the NOAA storm scale is `S3_STRONG` or higher (`S3`–`S5`). */
 export function isS3OrHigherStorm(stormScale: string | null | undefined): boolean {
   return Boolean(stormScale && S3_OR_HIGHER.has(stormScale));
 }
 
+/** Triage priority metadata computed from biomedical status and radiation storm state. */
 export interface CorrelatedTriageFields {
   priorityBoosted: boolean;
   triagePriorityScore: number;
@@ -19,6 +27,13 @@ export interface CorrelatedTriageFields {
   recommendation: string | null;
 }
 
+/**
+ * Correlates a deterministic health reading status with the active solar storm scale.
+ *
+ * Invariant: A `CRITICAL` reading during an `S3_STRONG`+ solar storm elevates triage to
+ * `P0_STORM_CRITICAL` (score `0`), prohibits EVA or unshielded module transit, and
+ * prepends an in-shelter stabilization directive to `recommendation`.
+ */
 export function correlateTriageWithRadiation(
   status: HealthStatus,
   recommendation: string | null,

@@ -1,3 +1,11 @@
+/**
+ * Client-side daily countermeasure routine tracker backed by `localStorage`.
+ * Manages daily HRP protocol tasks, consecutive completion streaks, and badge unlocks
+ * per astronaut across calendar day rollovers.
+ *
+ * @module features/routine/services/routineService
+ */
+
 import { RoutineTask, Badge, AstronautRoutineState } from '../domain/types';
 
 const INITIAL_BADGES: Badge[] = [
@@ -99,6 +107,10 @@ class RoutineService {
     return `artemis_routine_${astronautId}`;
   }
 
+  /**
+   * Loads today's routine state for an astronaut, refreshing the daily task list
+   * on date rollover and resetting the streak if yesterday's checklist went unfinished.
+   */
   getRoutineState(astronautId: string): AstronautRoutineState {
     const today = new Date().toISOString().split('T')[0];
     const key = this.getStorageKey(astronautId);
@@ -117,12 +129,12 @@ class RoutineService {
 
       const parsed: AstronautRoutineState = JSON.parse(stored);
 
-      // Si cambió el día, renovar tareas preservando racha
+      // Roll over daily tasks on date change while preserving an active streak
       if (parsed.date !== today) {
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
         let newStreak = parsed.streakDays;
 
-        // Si ayer no completó todas las tareas, se resetea la racha (o si pasaron más días)
+        // Reset streak if yesterday was not completed or more than one day elapsed
         if (parsed.lastCompletedDate !== yesterday && parsed.lastCompletedDate !== today) {
           newStreak = 0;
         }
@@ -146,6 +158,7 @@ class RoutineService {
     }
   }
 
+  /** Toggles a daily task, updates the streak when all tasks are complete, and unlocks earned badges. */
   toggleTask(astronautId: string, taskId: string): AstronautRoutineState {
     const current = this.getRoutineState(astronautId);
     const updatedTasks = current.tasks.map((task) => {
@@ -172,7 +185,7 @@ class RoutineService {
       lastCompletedDate = null;
     }
 
-    // Actualizar insignias alcanzadas
+    // Unlock any newly earned streak badges
     const updatedBadges = (current.badges || INITIAL_BADGES).map((b) => {
       if (streakDays >= b.requiredStreak && !b.unlockedAt) {
         return { ...b, unlockedAt: new Date().toISOString() };
@@ -196,7 +209,7 @@ class RoutineService {
   }
 
   private buildInitialState(astronautId: string, today: string): AstronautRoutineState {
-    // Para astronautas de muestra precargar 5 días de racha demostrativa
+    // Seed demo astronauts with an initial 4-day streak
     const initialStreak = 4;
     const badges = INITIAL_BADGES.map((b) => {
       if (initialStreak >= b.requiredStreak) {
@@ -210,7 +223,7 @@ class RoutineService {
       date: today,
       tasks: DEFAULT_DAILY_TASKS.map((t, idx) => ({
         ...t,
-        completed: idx < 2, // 2 tareas completadas de inicio
+        completed: idx < 2, // Pre-complete the first 2 tasks
         completedAt: idx < 2 ? new Date().toISOString() : null,
       })),
       streakDays: initialStreak,

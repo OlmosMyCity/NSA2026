@@ -1,4 +1,13 @@
 "use strict";
+/**
+ * @module radiation-engine
+ * Public entrypoint for the Deep Space Radiation Prediction Engine.
+ *
+ * Exports the unified `RadiationEngine` orchestrator along with NOAA SWPC and NASA DONKI
+ * telemetry clients, SEP Parker spiral transit physics, cislunar CME impact geometry,
+ * NASA-STD-3001 biological dosimetry, NOAA S0-S5 mitigation rules, and the deterministic
+ * storm simulator.
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -31,6 +40,10 @@ Object.defineProperty(exports, "MitigationRulesEngine", { enumerable: true, get:
 const stormSimulator_1 = require("./simulator/stormSimulator");
 Object.defineProperty(exports, "StormSimulator", { enumerable: true, get: function () { return stormSimulator_1.StormSimulator; } });
 __exportStar(require("./types"), exports);
+/**
+ * Facade coordinating live NOAA/NASA space-weather telemetry, relativistic SEP prediction,
+ * Earth-Moon corridor impact modeling, biological dose calculations, and simulation overrides.
+ */
 class RadiationEngine {
     noaaClient = new noaaSwpcClient_1.NoaaSwpcClient();
     nasaClient = new nasaDonkiClient_1.NasaDonkiClient();
@@ -42,9 +55,14 @@ class RadiationEngine {
     activeSimulatedScenario = null;
     activeCustomSimulation = null;
     /**
-     * Obtiene el estado actual del clima espacial y radiación
-     * Si hay un escenario de simulación activo, devuelve el estado simulado.
-     * De lo contrario, consulta las APIs en vivo de NOAA y NASA.
+     * Retrieves the current space-weather and radiation assessment.
+     *
+     * Returns simulated state when a custom event or preset scenario is active; otherwise queries
+     * live NOAA SWPC and NASA DONKI feeds in parallel, applying per-feed nominal fallback and
+     * setting `telemetryDegraded` when one or two primary NOAA feeds fail (or falling back to the
+     * `'NOMINAL'` baseline if all three primary NOAA SWPC feeds are unavailable).
+     *
+     * @returns Consolidated `RadiationEngineState` snapshot.
      */
     async getCurrentState() {
         if (this.activeCustomSimulation) {
@@ -130,14 +148,20 @@ class RadiationEngine {
         }
     }
     /**
-     * Activa o desactiva un escenario simulado (ideal para la demo del jurado)
+     * Activates or clears a preset storm simulation scenario (`null` restores live telemetry).
+     *
+     * @param scenarioId - Preset scenario identifier, or `null` to return to live NOAA/NASA feeds.
      */
     setSimulationScenario(scenarioId) {
         this.activeCustomSimulation = null;
         this.activeSimulatedScenario = scenarioId;
     }
     /**
-     * Simula un evento personalizado con origen heliográfico y parámetros de viento solar
+     * Activates and evaluates a custom solar event using user-supplied heliographic source
+     * coordinates and solar wind parameters (`null` clears the custom override).
+     *
+     * @param params - Custom eruption and solar wind parameters, or `null` to disable override.
+     * @returns Simulated `RadiationEngineState`, or `null` when clearing the custom simulation.
      */
     simulateCustomEvent(params) {
         this.activeSimulatedScenario = null;
@@ -145,7 +169,10 @@ class RadiationEngine {
         return params ? this.simulator.simulateCustomEvent(params) : null;
     }
     /**
-     * Obtiene los pronósticos de impacto de eyecciones de masa coronal (WSA-ENLIL de NASA DONKI)
+     * Retrieves recent coronal mass ejection (CME) analyses and WSA-ENLIL arrival forecasts
+     * from NASA DONKI.
+     *
+     * @returns Recent `NasaCmeAnalysis` forecast records.
      */
     async getCmeForecasts() {
         return this.nasaClient.getLatestCmeAnalyses();

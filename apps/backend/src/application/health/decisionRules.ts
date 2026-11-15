@@ -1,6 +1,16 @@
+/**
+ * @module application/health/decisionRules
+ * Deterministic clinical decision rules engine for the Astronaut Digital Twin.
+ *
+ * Architectural invariant: Deterministic rules in `decideByRules` hold official clinical
+ * and operational authority. Any Gemini Decision 1 output is strictly advisory (second-opinion
+ * estimate + confidence + discrepancy audit) and never overrides deterministic escalation or action.
+ */
+
 import { BODY_ZONES, type BodyZoneId } from "./hazards.js";
 import type { DigitalTwinState, ZoneRiskLevel } from "./digitalTwin.js";
 
+/** Closed action set shared between deterministic triage rules and Gemini Decision 1. */
 export type RecommendedAction =
   | "re_measure"
   | "rest"
@@ -9,6 +19,7 @@ export type RecommendedAction =
   | "contact_ground"
   | "no_action";
 
+/** Per-zone risk assessment returned by either deterministic rules or the Gemini model. */
 export interface ZoneScoreEstimate {
   zone: BodyZoneId;
   riskScore: number;
@@ -16,16 +27,17 @@ export interface ZoneScoreEstimate {
   confidence: number;
 }
 
+/** Structured clinical decision outcome across body zones, ground escalation, and action choice. */
 export interface DecisionOutcome {
-  /** Nivel de riesgo por zona (0..3 y etiqueta). */
+  /** Per-zone risk score (`0..3`), categorical risk level, and confidence. */
   score: Record<BodyZoneId, ZoneScoreEstimate>;
-  /** ¿Conviene escalar al médico de vuelo ahora? */
+  /** Whether to escalate immediately to the Flight Surgeon on Earth. */
   escalar: boolean;
-  /** Probabilidad P(escalar = true) en [0..1]. */
+  /** Escalation probability `P(escalar = true)` in `[0..1]`. */
   escalarProbabilidad: number;
-  /** Acción recomendada principal de conjunto cerrado. */
+  /** Primary recommended action selected from the closed `RecommendedAction` set. */
   accion: RecommendedAction;
-  /** Confianza agregada [0..1]. */
+  /** Aggregate decision confidence in `[0..1]`. */
   confianza: number;
 }
 
@@ -43,6 +55,7 @@ export const ACTION_DESCRIPTIONS: Record<RecommendedAction, string> = {
     "Todos los parámetros nominales, mediciones al día y sin peligros agudos activos.",
 };
 
+/** Maps a numeric risk score (`0..3`) onto discrete `ZoneRiskLevel` categories. */
 export function riskScoreToLevel(score: number): ZoneRiskLevel {
   if (score >= 2.3) return "critical";
   if (score >= 1.5) return "elevated";
@@ -51,7 +64,13 @@ export function riskScoreToLevel(score: number): ZoneRiskLevel {
 }
 
 /**
- * Motor de decisión puramente determinista (fuente de verdad oficial).
+ * Pure deterministic clinical decision engine (official source of truth).
+ *
+ * Escalation triggers (`escalar = true`) when any of the following hold:
+ * - Any zone has `red` status or `critical` risk level
+ * - Two or more zones are `amber` with a `worsening` trend
+ * - Acute radiation exposure (`S4_SEVERE` or `S5_EXTREME` outside `STORM_SHELTER`)
+ * - Acute hypoxia risk (`SpO2 < 95%` under `hostileEnvironment >= 0.75`)
  */
 export function decideByRules(state: DigitalTwinState): DecisionOutcome {
   const score = {} as Record<BodyZoneId, ZoneScoreEstimate>;
@@ -108,7 +127,7 @@ export function decideByRules(state: DigitalTwinState): DecisionOutcome {
   } else if (moderateRadiationExposed) {
     accion = "shelter_shielding";
   } else if (anyAmber || state.overdueZones.length > 0) {
-    // Si solo sueño/ánimo está en ámbar sin vencidos ni vitales alterados, priorizar descanso
+    // If only sleep or mood is amber with no overdue measurements or altered vitals, prioritize rest
     const vitalOrBloodAmber =
       state.zones.heart.status === "amber" ||
       state.zones.blood.status === "amber";

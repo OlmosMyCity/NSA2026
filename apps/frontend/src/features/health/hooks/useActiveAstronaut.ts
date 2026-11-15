@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * @module health/hooks/useActiveAstronaut
+ * Resolves the active astronaut context for `/dashboard` and `/trends`.
+ */
+
 import { useEffect, useState } from 'react';
 import { ENV } from '@/features/common/config/env';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -9,8 +14,9 @@ import type { Astronaut } from '@/features/astronauts/domain/types';
 const DEMO_ASTRONAUT_ID = 'astro-01';
 
 /**
- * Resuelve el astronautId activo para My Health (/dashboard) y /trends:
- * usa el astronauta vinculado del usuario si es tripulante o el primero del crew si es ADMIN/demo.
+ * Resolves the active `astronautId` for My Health (`/dashboard`) and `/trends`:
+ * binds to the signed-in crew member's linked astronaut profile, or loads the crew
+ * roster for `ADMIN` / demo users so any crew member can be inspected.
  */
 export function useActiveAstronaut() {
   const { user, isLoading: authLoading } = useAuth();

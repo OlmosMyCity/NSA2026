@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module health/components/twin/ScenarioDock
+ * Interactive What-If simulation dock for the 3D Digital Twin.
+ * Edits to vital-sign sliders (`heartRateBpm`, `spo2Pct`, `sleepHours`) and
+ * mission/radiation parameters update the 3D body and zone status locally with
+ * zero AI tokens; Gemini Decision 1 triage runs only on explicit "Run triage".
+ */
+
 import { Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import type {
   MissionEnvironment,
@@ -68,6 +76,7 @@ const SHIELDING: { value: ShieldingType; label: string }[] = [
 
 const FALLBACK: ScenarioBaseline = { heartRateBpm: 72, spo2Pct: 98, sleepHours: 7.5 };
 
+/** Stateless What-If scenario builder and explicit Gemini Decision 1 triage trigger. */
 export function ScenarioDock({
   value,
   baseline,

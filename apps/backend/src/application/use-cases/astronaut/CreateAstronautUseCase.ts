@@ -1,7 +1,16 @@
+/**
+ * @module application/use-cases/astronaut/CreateAstronautUseCase
+ * Use case for registering a new astronaut profile assigned to a mission.
+ */
+
 import { IAstronautRepository } from "../../../domain/repository/IAstronautRepository.js";
 import { AstronautWithMission, CreateAstronautDTO } from "../../../domain/models/Astronaut.js";
 import { ValidationError } from "../../../domain/errors/AppError.js";
 
+/**
+ * Validates required crew attributes (`name`, `role`, `missionId`, positive `age`),
+ * trims text inputs, and persists a new astronaut via `IAstronautRepository`.
+ */
 export class CreateAstronautUseCase {
   constructor(private readonly astronautRepo: IAstronautRepository) {}
 
