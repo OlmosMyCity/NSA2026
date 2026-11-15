@@ -1,3 +1,9 @@
+/**
+ * @module PrismaMissionRepository
+ * PostgreSQL/Prisma implementation of `IMissionRepository` with soft-delete filtering,
+ * bounded pagination, and crew roster counts.
+ */
+
 import { Mission, Prisma } from "@prisma/client";
 import { IMissionRepository } from "../../domain/repository/IMissionRepository.js";
 import {
@@ -8,6 +14,9 @@ import {
 } from "../../domain/models/Mission.js";
 import { prisma } from "../database/prismaClient.js";
 
+/**
+ * Prisma-backed repository for mission records and active astronaut roster projections.
+ */
 export class PrismaMissionRepository implements IMissionRepository {
   async findMany(filters: MissionFilters): Promise<PaginatedResult<Mission>> {
     const page = Math.max(1, filters.page || 1);
@@ -15,7 +24,7 @@ export class PrismaMissionRepository implements IMissionRepository {
     const skip = (page - 1) * limit;
 
     const where: Prisma.MissionWhereInput = {
-      deletedAt: null, // Borrado lógico activo
+      deletedAt: null, // Exclude soft-deleted missions
     };
 
     if (filters.environment) {

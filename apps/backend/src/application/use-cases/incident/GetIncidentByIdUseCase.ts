@@ -1,7 +1,13 @@
+/**
+ * @module application/use-cases/incident/GetIncidentByIdUseCase
+ * Use case for retrieving a single incident record by ID.
+ */
+
 import { Incident } from "@prisma/client";
 import { IIncidentRepository } from "../../../domain/repository/IIncidentRepository.js";
 import { NotFoundError } from "../../../domain/errors/AppError.js";
 
+/** Fetches an incident by ID; throws `NotFoundError` (404) if missing. */
 export class GetIncidentByIdUseCase {
   constructor(private readonly incidentRepo: IIncidentRepository) {}
 

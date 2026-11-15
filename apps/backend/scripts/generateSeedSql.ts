@@ -105,6 +105,25 @@ UPDATE health_readings SET "supersedesId" = NULL
 WHERE id IN (SELECT id FROM seed_reading_chain) AND "supersedesId" IS NOT NULL;
 DELETE FROM health_readings WHERE id IN (SELECT id FROM seed_reading_chain);
 
+-- Limpiar misiones y astronautas legados que no pertenecen al seed actual
+CREATE TEMP TABLE legacy_missions ON COMMIT DROP AS
+SELECT id FROM missions
+WHERE id NOT IN (${data.missions.map((m) => quote(m.id)).join(", ")});
+
+CREATE TEMP TABLE legacy_astros ON COMMIT DROP AS
+SELECT id FROM astronauts
+WHERE id NOT IN (${data.astronauts.map((a) => quote(a.id)).join(", ")})
+   OR "missionId" IN (SELECT id FROM legacy_missions);
+
+DELETE FROM directives WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM incidents  WHERE "astronautId" IN (SELECT id FROM legacy_astros)
+                          OR "missionId"   IN (SELECT id FROM legacy_missions);
+UPDATE health_readings SET "supersedesId" = NULL
+WHERE "astronautId" IN (SELECT id FROM legacy_astros) AND "supersedesId" IS NOT NULL;
+DELETE FROM health_readings WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM astronauts      WHERE id IN (SELECT id FROM legacy_astros);
+DELETE FROM missions        WHERE id IN (SELECT id FROM legacy_missions);
+
 -- Usuarios
 ${insert("users", users, `ON CONFLICT ("email") DO UPDATE SET ${updateSet(["name", "passwordHash", "role", "state", "updatedAt", "deletedAt"])}`)}
 

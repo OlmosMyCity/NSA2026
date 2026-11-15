@@ -1,8 +1,14 @@
+/**
+ * @module application/use-cases/mission/CreateMissionUseCase
+ * Use case for validating and creating a new space mission.
+ */
+
 import { Mission } from "@prisma/client";
 import { IMissionRepository } from "../../../domain/repository/IMissionRepository.js";
 import { CreateMissionDTO } from "../../../domain/models/Mission.js";
 import { ValidationError } from "../../../domain/errors/AppError.js";
 
+/** Validates non-empty `name`, `description`, and `startDate`, trims strings, and persists the mission. */
 export class CreateMissionUseCase {
   constructor(private readonly missionRepo: IMissionRepository) {}
 

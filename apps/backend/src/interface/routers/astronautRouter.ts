@@ -1,3 +1,9 @@
+/**
+ * @module astronautRouter
+ * Express router composing crew profile CRUD, digital-twin evaluation/simulation,
+ * health summaries, and admin-only crew mutations with optional multipart photo upload.
+ */
+
 import { Router } from "express";
 import { Role } from "@prisma/client";
 import { AstronautController } from "../controllers/AstronautController.js";
@@ -29,6 +35,7 @@ const controller = new AstronautController(
   deleteAstronautUseCase
 );
 
+/** Router mounted at `/api/astronauts`. */
 export const astronautRouter = Router();
 
 astronautRouter.get("/", controller.list);
@@ -37,7 +44,7 @@ astronautRouter.use("/", astronautSummaryRouter); // GET /:id/summary
 astronautRouter.get("/:id/digital-twin", authenticate, digitalTwinController.getDigitalTwin);
 astronautRouter.post("/:id/simulate", authenticate, digitalTwinController.simulate);
 astronautRouter.get("/:id", controller.getById);
-// Imagen opcional: multipart con el campo "photo" o JSON con "photoUrl" ya resuelta.
+// Optional image: multipart payload with field "photo" or JSON with a pre-resolved "photoUrl".
 const photoUpload = imageUpload("photo", "astronauts", "photoUrl");
 
 astronautRouter.post("/", authenticate, authorizeRoles(Role.ADMIN), ...photoUpload, controller.create);

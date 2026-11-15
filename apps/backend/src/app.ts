@@ -1,3 +1,9 @@
+/**
+ * @module app
+ * Express application factory configuring security headers, CORS, rate limiting,
+ * domain API routers, health checks, JSON 404 fallback, and centralized error handling.
+ */
+
 import express, { Express, Request } from "express";
 import cors, { CorsOptions } from "cors";
 import { authRouter } from "./interface/routers/authRouter.js";
@@ -12,6 +18,9 @@ import { errorHandler } from "./interface/middlewares/errorHandler.js";
 import { securityHeaders } from "./interface/middlewares/securityHeaders.js";
 import { createRateLimiter } from "./interface/middlewares/rateLimiter.js";
 
+/**
+ * Collects permitted CORS origins from static defaults, `ALLOWED_ORIGINS`, and Vercel deployment URLs.
+ */
 function buildAllowedOrigins(): Set<string> {
   const origins = new Set<string>([
     "https://orbvital-nsa2026.vercel.app",
@@ -37,6 +46,9 @@ function buildAllowedOrigins(): Set<string> {
   return origins;
 }
 
+/**
+ * Builds a dynamic CORS delegate allowing configured origins, same-host requests, and non-browser callers.
+ */
 function buildCorsDelegate(): (req: Request, cb: (err: Error | null, options?: CorsOptions) => void) => void {
   const allowedOrigins = buildAllowedOrigins();
 
@@ -58,8 +70,8 @@ function buildCorsDelegate(): (req: Request, cb: (err: Error | null, options?: C
 }
 
 /**
- * Función factory para instanciar y configurar la app de Express.
- * Permite usar la misma configuración para el servidor en producción y para pruebas E2E.
+ * Factory function that instantiates and configures the Express application.
+ * Shared across production HTTP listeners, Vercel Serverless handlers, and E2E integration tests.
  */
 export function createApp(): Express {
   const app = express();
@@ -79,17 +91,17 @@ export function createApp(): Express {
     message: "Límite de solicitudes excedido para esta operación.",
   });
 
-  // Middlewares base
+  // Base security, CORS, and bounded JSON body parsing middleware
   app.use(securityHeaders);
   app.use(cors(buildCorsDelegate()));
   app.use(express.json({ limit: "256kb" }));
 
-  // Autenticación (register / login) con limitación de tasa
+  // Authentication endpoints (register / login) protected by strict rate limiting
   app.use("/api/auth/login", authRateLimiter);
   app.use("/api/auth/register", authRateLimiter);
   app.use("/api/auth", authRouter);
 
-  // Rutas de dominio: Misiones, Astronautas, Lecturas de Salud, Consola de Administración y Radiación
+  // Domain routes: Missions, Astronauts, Health Readings, Admin Triage Console, Radiation, Incidents, Uploads
   app.use("/api/missions", missionRouter);
   app.use("/api/astronauts", astronautRouter);
   app.use("/api/readings", readingRouter);
@@ -99,19 +111,19 @@ export function createApp(): Express {
   app.use("/api/incidents", incidentRouter);
   app.use("/api/uploads", sensitiveMutationLimiter, uploadRouter);
 
-  // Health check rápido del microservicio
+  // Lightweight microservice health check
   app.get(["/health", "/api/health"], (_req, res) => {
     res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
   });
 
-  // Ruta catch-all 404 en JSON para evitar respuestas HTML por defecto de Express
+  // JSON catch-all 404 handler to avoid Express's default HTML error responses
   app.use((req, res) => {
     res.status(404).json({
       error: `El recurso o ruta solicitada no existe (${req.method} ${req.originalUrl}).`,
     });
   });
 
-  // Middleware centralizado de errores (siempre al final de las rutas)
+  // Centralized error handler (must remain mounted after all routes)
   app.use(errorHandler);
 
   return app;

@@ -15,10 +15,10 @@ export function assertInvalidationReason(reason: unknown): string {
 }
 
 /**
- * P1 — Los datos de salud solo se agregan.
- * Invalida una lectura errónea (sensor suelto, astronauta equivocado, duplicado…).
- * La lectura se conserva para auditoría y deja de contar en dashboards y estadísticas.
- * La invalidación es definitiva.
+ * P1 — Append-only clinical integrity.
+ * Permanently marks an erroneous reading (loose sensor, wrong crew member, duplicate)
+ * as invalid (`isValid = false`). The record remains in the audit log while excluded
+ * from dashboards and active clinical summaries.
  */
 export class InvalidateHealthReadingUseCase {
   constructor(private readonly readingRepo: IHealthReadingRepository) {}

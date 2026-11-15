@@ -54,6 +54,12 @@ const SCALE_STYLES: Record<NOAAStormScale, { badge: string; border: string; bg: 
   },
 };
 
+/**
+ * Global solar radiation status banner polled every 60s.
+ * Surfaces NOAA S-scale alerts, X-ray/proton flux telemetry, and for S2+ storms
+ * requires completion of all action and medical countermeasure checklist items
+ * before allowing incident acknowledgement.
+ */
 export function RadiationStatusBanner() {
   const [status, setStatus] = useState<RadiationStatusResponse | null>(null);
   const [incident, setIncident] = useState<RadiationIncident | null>(null);
@@ -73,7 +79,7 @@ export function RadiationStatusBanner() {
         setIncident(null);
       }
     } catch {
-      // Silencioso para no bloquear la navegación si el servicio está reiniciando
+      // Fail silently so navigation remains unblocked if the radiation service is restarting
     }
   }, []);
 

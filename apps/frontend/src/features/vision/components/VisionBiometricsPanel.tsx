@@ -166,8 +166,8 @@ export function VisionBiometricsPanel() {
     let wsOpened = false;
     let lastMockAt = 0;
 
-    // Modo mock: si ai/vision (:8000) no responde, se usa telemetría simulada en el
-    // navegador. Si el servicio está corriendo, se usa el real (cámara incluida).
+    // Fallback mock transport: when ai/vision (:8000) is unreachable, simulate
+    // telemetry in-browser; seamlessly switch to live service (including webcam) when online.
     const MOCK_FRAME_MS = 100; // ~10 FPS
     const MOCK_PROBE_MS = 10_000;
 

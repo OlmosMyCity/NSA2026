@@ -1,9 +1,17 @@
+/**
+ * @module AuthController
+ * HTTP controller for user registration, credential login, and authenticated profile retrieval.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { RegisterUserUseCase } from "../../application/use-cases/auth/RegisterUserUseCase.js";
 import { LoginUserUseCase } from "../../application/use-cases/auth/LoginUserUseCase.js";
 import { GetCurrentUserUseCase } from "../../application/use-cases/auth/GetCurrentUserUseCase.js";
 import { UnauthorizedError } from "../../domain/errors/AppError.js";
 
+/**
+ * Controller exposing `/api/auth` endpoints.
+ */
 export class AuthController {
   constructor(
     private readonly registerUserUseCase: RegisterUserUseCase,
@@ -11,6 +19,7 @@ export class AuthController {
     private readonly getCurrentUserUseCase: GetCurrentUserUseCase
   ) {}
 
+  /** `POST /api/auth/register` — Registers a new user and returns a signed JWT. */
   register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { name, email, password } = req.body ?? {};
@@ -21,6 +30,7 @@ export class AuthController {
     }
   };
 
+  /** `POST /api/auth/login` — Authenticates credentials and returns a signed JWT. */
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { email, password } = req.body ?? {};
@@ -31,7 +41,7 @@ export class AuthController {
     }
   };
 
-  /** Requiere `authenticate` antes en la ruta. */
+  /** `GET /api/auth/me` — Returns the current user profile. Requires `authenticate` middleware upstream. */
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) throw new UnauthorizedError();

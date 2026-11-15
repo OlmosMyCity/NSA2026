@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * @module health/components/twin/ZoneSelector
+ * Segmented radiogroup control linking Overview and the 5 anatomical zones
+ * (`heart`, `brain`, `blood`, `bones`, `sleep`) to the 3D body camera focus.
+ */
+
 import { useRef, type KeyboardEvent } from 'react';
 import { STATUS_THEME } from '../../domain/status-theme';
 import type { ZoneSummary } from '../../domain/summary';
@@ -21,7 +27,7 @@ interface ZoneSelectorProps {
   onSelect: (zone: BodyZoneId | null) => void;
 }
 
-/** Segmented control synced with the 3D body: Overview + the five twin zones. */
+/** Accessible radiogroup segmented control synced with the 3D body viewer: Overview plus the 5 twin zones. */
 export function ZoneSelector({ zones, selected, onSelect }: ZoneSelectorProps) {
   const options: (BodyZoneId | null)[] = [null, ...ZONE_ORDER];
   const refs = useRef<(HTMLButtonElement | null)[]>([]);

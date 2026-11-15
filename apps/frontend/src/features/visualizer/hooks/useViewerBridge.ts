@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react';
 import type { MissionEvent, MissionPhase } from '../domain/missionClock';
 
-/** Protocolo definido en ArtemisIV-flight-dynamics/frontend/js/embed.js. */
+/** PostMessage bridge protocol defined by the embedded 3D flight-dynamics viewer (`embed.js`). */
 const HOST = 'artemis-host';
 const VIEWER = 'artemis-viewer';
 
@@ -19,6 +19,10 @@ export interface ViewerTime {
   playing: boolean;
 }
 
+/**
+ * Bidirectional `postMessage` bridge hook synchronizing React UI state with the
+ * same-origin embedded 3D orbital viewer iframe (`ready`/`time` events and `seek`/`play`/`pause` commands).
+ */
 export function useViewerBridge(frameRef: RefObject<HTMLIFrameElement>, src?: string | null) {
   const [ready, setReady] = useState<ViewerReady | null>(null);
   const [time, setTime] = useState<ViewerTime | null>(null);
@@ -30,7 +34,7 @@ export function useViewerBridge(frameRef: RefObject<HTMLIFrameElement>, src?: st
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      // Solo el iframe del visor, servido desde nuestra propia origen.
+      // Accept messages only from the embedded same-origin viewer iframe.
       if (e.origin !== window.location.origin || e.source !== frameRef.current?.contentWindow) return;
       const d = e.data;
       if (!d || d.source !== VIEWER) return;

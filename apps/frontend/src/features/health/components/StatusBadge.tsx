@@ -1,6 +1,12 @@
+/**
+ * @module health/components/StatusBadge
+ * Accessible clinical status badge pairing a semantic color dot with a text label (WCAG 1.4.1).
+ */
+
 import { STATUS_THEME } from '../domain/status-theme';
 import type { HealthStatus } from '../domain/types';
 
+/** Traffic-light status pill backed by `STATUS_THEME`; `compact` shortens `red` to `"Critical"`. */
 export function StatusBadge({
   status,
   compact = false,

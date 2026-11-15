@@ -1,3 +1,8 @@
+/**
+ * @module domain/repository/IMissionRepository
+ * Repository contract for space mission persistence and habitat configuration queries.
+ */
+
 import { Mission } from "@prisma/client";
 import {
   CreateMissionDTO,
@@ -6,6 +11,7 @@ import {
   UpdateMissionDTO,
 } from "../models/Mission.js";
 
+/** Persistence port for managing space missions (supports soft deletion). */
 export interface IMissionRepository {
   findMany(filters: MissionFilters): Promise<PaginatedResult<Mission>>;
   findById(id: string): Promise<Mission | null>;

@@ -1,8 +1,10 @@
 import type { BodyZoneId } from '@/features/health/domain/types';
 
 /**
- * Zonas del cuerpo a vigilar en cada fase de la simulación de Artemis IV
- * (según los peligros del vuelo espacial de NASA HRP). Claves = `id` de fase de mission.json.
+ * Primary physiological body zones monitored during each mission simulation phase
+ * (mapped to NASA HRP spaceflight hazards). Keys match phase `id` entries in mission JSONs.
+ *
+ * @module features/visualizer/domain/phaseHazards
  */
 export const PHASE_WATCH: Record<string, BodyZoneId[]> = {
   ascent: ['heart'],

@@ -19,6 +19,10 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * React context provider synchronizing user session state with `authStorage`
+ * and reacting to cross-component `artemis:auth-change` and `artemis:unauthorized` events.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);

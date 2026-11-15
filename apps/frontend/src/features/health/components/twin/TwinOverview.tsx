@@ -18,6 +18,7 @@ interface TwinOverviewProps {
   onSelectZone: (zone: BodyZoneId) => void;
 }
 
+/** Overview panel summarizing overall triage status and per-zone deterministic vs. model risk. */
 export function TwinOverview({ zones, twin, decision, isLoading, isStale, onSelectZone }: TwinOverviewProps) {
   return (
     <div className="animate-swap space-y-5">

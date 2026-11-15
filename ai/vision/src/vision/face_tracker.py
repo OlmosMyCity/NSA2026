@@ -1,4 +1,11 @@
-"""Lightweight CPU Face & Landmark Tracker (MediaPipe + OpenCV hybrid)."""
+"""Lightweight CPU Face & Landmark Tracker (MediaPipe + OpenCV hybrid).
+
+Detects facial geometry via MediaPipe 468/478 3D landmarks (`solutions.face_mesh` or
+`tasks.vision.FaceLandmarker`) with an automatic OpenCV Haar + intensity-box fallback for
+low-contrast NIR or synthetic streams. Extracts Eye/Mouth Aspect Ratios (EAR/MAR), geometric
+Action Units (brow furrow, smile ratio), Euler head pose (pitch/yaw/roll), aligned 64x64
+grayscale face crops for ONNX FERPlus, and forehead/cheek skin ROI polygons for rPPG.
+"""
 
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
@@ -24,6 +31,8 @@ _SHARED_HAAR = None
 
 @dataclass
 class FaceExtractionResult:
+    """Per-frame facial landmarks, ocular/oral ratios, Action Units, head pose, and rPPG ROIs."""
+
     face_detected: bool
     bbox: Optional[Tuple[int, int, int, int]] = None  # (x, y, w, h)
     landmarks_2d: Optional[np.ndarray] = None         # shape (N, 2) in pixel coords
@@ -81,6 +90,7 @@ class FaceTracker:
 
     @staticmethod
     def _init_shared_mediapipe() -> None:
+        """Initializes shared MediaPipe FaceMesh or Tasks FaceLandmarker once per process."""
         global _SHARED_MP_FACE_MESH, _SHARED_MP_LANDMARKER, _SHARED_MP_MODE
         try:
             import mediapipe as mp
@@ -115,6 +125,7 @@ class FaceTracker:
         _SHARED_MP_MODE = "opencv_fallback"
 
     def process_frame(self, frame_bgr: np.ndarray) -> FaceExtractionResult:
+        """Extracts facial landmarks, EAR/MAR, Action Units, head pose, and rPPG ROIs from a BGR frame."""
         if frame_bgr is None or frame_bgr.size == 0:
             return FaceExtractionResult(face_detected=False)
 
@@ -150,6 +161,7 @@ class FaceTracker:
     def _build_from_dense_landmarks(
         self, frame_bgr: np.ndarray, frame_rgb: np.ndarray, pts_3d: np.ndarray
     ) -> FaceExtractionResult:
+        """Combines MediaPipe 3D landmarks with local pixel-patch fallbacks to compute EAR/MAR, Action Units, and skin ROIs."""
         h, w = frame_bgr.shape[:2]
         pts_2d = pts_3d[:, :2]
 
@@ -261,6 +273,7 @@ class FaceTracker:
         )
 
     def _estimate_head_pose(self, pts_2d: np.ndarray, w: int, h: int) -> Tuple[float, float, float]:
+        """Approximates head pitch, yaw, and roll angles (degrees) from eye-line tilt and nose-tip ratios."""
         eye_mid = 0.5 * (pts_2d[33] + pts_2d[263])
         mouth_mid = 0.5 * (pts_2d[61] + pts_2d[291])
         nose = pts_2d[1]
@@ -279,6 +292,7 @@ class FaceTracker:
     def _compute_polygon_rgb_means(
         self, frame_rgb: np.ndarray, polygons: Dict[str, np.ndarray]
     ) -> Dict[str, np.ndarray]:
+        """Computes mean RGB intensities for each skin ROI polygon and an aggregated `'combined'` patch."""
         h, w = frame_rgb.shape[:2]
         means: Dict[str, np.ndarray] = {}
         combined_pixels = []

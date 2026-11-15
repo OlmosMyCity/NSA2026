@@ -1,9 +1,17 @@
+/**
+ * @module application/use-cases/health/IngestVisionTelemetryUseCase
+ * Use case for atomic ingestion of Vision AI camera-derived vital signs (rPPG heart rate,
+ * mood valence/stress, PERCLOS sleep quality) into persisted `HealthReading` records and
+ * deduplicated `MEDICAL` incidents.
+ */
+
 import { HealthReading, Incident, IncidentCategory, IncidentSeverity, IncidentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../../infrastructure/database/prismaClient.js";
 import { NotFoundError, ValidationError } from "../../../domain/errors/AppError.js";
 import { evaluateReading, HealthAlert } from "../../health/evaluateReading.js";
 import { incidentNotificationBus } from "../../incident/incidentNotificationBus.js";
 
+/** Telemetry payload emitted by the Vision AI camera pipeline. */
 export interface VisionTelemetryIngestDTO {
   astronautId: string;
   heartRateBpm: number;
@@ -26,6 +34,7 @@ export interface VisionTelemetryIngestDTO {
   takenAt?: Date | null;
 }
 
+/** Result returned after persisting a Vision AI reading and syncing medical incidents. */
 export interface VisionIngestResult {
   reading: HealthReading;
   incidentsTriggered: number;
@@ -93,10 +102,19 @@ function buildVisionNotes(dto: VisionTelemetryIngestDTO): string | null {
   return null;
 }
 
+/** Transaction abstraction injected for testability (defaults to `prisma.$transaction`). */
 export type TransactionRunner = <T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>
 ) => Promise<T>;
 
+/**
+ * Atomically ingests Vision AI telemetry inside a database transaction:
+ * 1. Backfills non-camera vitals (BP, glucose, temperature, SpO2) from the astronaut's latest
+ *    persisted reading (or nominal baseline defaults) and clamps derived HR (`20–260` bpm).
+ * 2. Evaluates deterministic NASA HRP rules (`evaluateReading`) and persists the `HealthReading`.
+ * 3. Opens or escalates (`WARNING -> CRITICAL`) deduplicated `MEDICAL` incidents inside the transaction,
+ *    publishing events to `incidentNotificationBus` only after the transaction commits.
+ */
 export class IngestVisionTelemetryUseCase {
   constructor(
     private readonly runInTransaction: TransactionRunner = (fn) => prisma.$transaction(fn)

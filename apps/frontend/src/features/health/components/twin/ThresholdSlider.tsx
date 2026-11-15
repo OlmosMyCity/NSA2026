@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * @module health/components/twin/ThresholdSlider
+ * Range slider with an embedded deterministic threshold gradient track and baseline marker.
+ */
+
 import { useId, useMemo } from 'react';
 import { evaluateIndicator } from '../../domain/evaluate';
 import { INDICATORS } from '../../domain/indicators';

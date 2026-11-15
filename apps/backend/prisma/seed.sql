@@ -35,10 +35,29 @@ UPDATE health_readings SET "supersedesId" = NULL
 WHERE id IN (SELECT id FROM seed_reading_chain) AND "supersedesId" IS NOT NULL;
 DELETE FROM health_readings WHERE id IN (SELECT id FROM seed_reading_chain);
 
+-- Limpiar misiones y astronautas legados que no pertenecen al seed actual
+CREATE TEMP TABLE legacy_missions ON COMMIT DROP AS
+SELECT id FROM missions
+WHERE id NOT IN ('mission-01', 'mission-02', 'mission-03', 'mission-04', 'mission-05', 'mission-06');
+
+CREATE TEMP TABLE legacy_astros ON COMMIT DROP AS
+SELECT id FROM astronauts
+WHERE id NOT IN ('astro-01', 'astro-02', 'astro-03', 'astro-04', 'astro-05', 'astro-06', 'astro-07', 'astro-08', 'astro-09', 'astro-10', 'astro-11', 'astro-12', 'astro-13', 'astro-14', 'astro-15')
+   OR "missionId" IN (SELECT id FROM legacy_missions);
+
+DELETE FROM directives WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM incidents  WHERE "astronautId" IN (SELECT id FROM legacy_astros)
+                          OR "missionId"   IN (SELECT id FROM legacy_missions);
+UPDATE health_readings SET "supersedesId" = NULL
+WHERE "astronautId" IN (SELECT id FROM legacy_astros) AND "supersedesId" IS NOT NULL;
+DELETE FROM health_readings WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM astronauts      WHERE id IN (SELECT id FROM legacy_astros);
+DELETE FROM missions        WHERE id IN (SELECT id FROM legacy_missions);
+
 -- Usuarios
 INSERT INTO users ("id", "email", "name", "passwordHash", "role", "state", "createdAt", "updatedAt", "deletedAt") VALUES
-  ('user-admin-01', 'elena.rodriguez@nasa.gov', 'Dra. Elena Rodriguez', '$2b$10$FQuSV89hG0uscfjCFDp/5.LN4yuzAX/ngGKI0CEVKLEZHkFtOa0bm', 'ADMIN', 'ACTIVE', (timezone('utc', now()) - interval '0 milliseconds'), (timezone('utc', now()) - interval '0 milliseconds'), NULL),
-  ('user-crew-01', 'r.wiseman@nasa.gov', 'Reid Wiseman', '$2b$10$9ziSBm8r2LvInXjdM09cvOUODgH7fUsaWtUGkCQkvfVXQFuGQrHDa', 'USER', 'ACTIVE', (timezone('utc', now()) - interval '0 milliseconds'), (timezone('utc', now()) - interval '0 milliseconds'), NULL)
+  ('user-admin-01', 'elena.rodriguez@nasa.gov', 'Dra. Elena Rodriguez', '$2b$10$d4t/kCyyu2E1Aj0D408LduZBujl0uPsU.6iouwSwjuxj6e0.Q2iAG', 'ADMIN', 'ACTIVE', (timezone('utc', now()) - interval '0 milliseconds'), (timezone('utc', now()) - interval '0 milliseconds'), NULL),
+  ('user-crew-01', 'r.wiseman@nasa.gov', 'Reid Wiseman', '$2b$10$ibha4Rq9TzZzdJ0ChA9XEOfMAb5G8fXTNKkOA49wina2dJTd99FJG', 'USER', 'ACTIVE', (timezone('utc', now()) - interval '0 milliseconds'), (timezone('utc', now()) - interval '0 milliseconds'), NULL)
 ON CONFLICT ("email") DO UPDATE SET "name" = EXCLUDED."name", "passwordHash" = EXCLUDED."passwordHash", "role" = EXCLUDED."role", "state" = EXCLUDED."state", "updatedAt" = EXCLUDED."updatedAt", "deletedAt" = EXCLUDED."deletedAt";
 
 -- Misiones (6)

@@ -1,6 +1,15 @@
+/**
+ * Shared HTTP client for the OrbVital backend API.
+ * Injects Bearer credentials from `authStorage`, serializes JSON payloads,
+ * broadcasts 401 session-expiration events, and normalizes errors into `ApiError`.
+ *
+ * @module features/common/services/httpClient
+ */
+
 import { ENV } from '../config/env';
 import { authStorage } from './storage';
 
+/** Structured HTTP/network error carrying the response status code and raw payload. */
 export class ApiError extends Error {
   public readonly status: number;
   public readonly data?: unknown;
@@ -57,13 +66,13 @@ class HttpClient {
 
     const headers = new Headers(customHeaders);
 
-    // Configurar Content-Type si hay body y no es FormData
+    // Set JSON Content-Type unless sending FormData (browser injects multipart boundary)
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     if (!isFormData && body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
-    // Inyectar Bearer token automáticamente
+    // Inject stored Bearer token for authenticated endpoints
     if (!skipAuth) {
       const token = authStorage.getToken();
       if (token && !headers.has('Authorization')) {
@@ -88,7 +97,7 @@ class HttpClient {
       );
     }
 
-    // Manejo de expiración o ausencia de sesión (401)
+    // Broadcast session expiry or missing authentication (401)
     if (response.status === 401) {
       authStorage.notifyUnauthorized();
       let errorMsg = 'Sesión no autorizada o expirada. Por favor inicie sesión nuevamente.';
@@ -96,12 +105,12 @@ class HttpClient {
         const errorData = await response.json();
         if (errorData?.error) errorMsg = errorData.error;
       } catch {
-        // Ignorar fallo de parseo JSON en error
+        // Ignore JSON parse failures on 401 error payloads
       }
       throw new ApiError(errorMsg, 401);
     }
 
-    // Manejo de respuestas 204 No Content
+    // Handle 204 No Content responses
     if (response.status === 204) {
       return {} as T;
     }

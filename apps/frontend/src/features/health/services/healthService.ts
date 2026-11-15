@@ -1,3 +1,9 @@
+/**
+ * @module health/services/healthService
+ * Crew biomedical telemetry client supporting live REST endpoints and local
+ * `mockDb` fallback mode (`ENV.USE_MOCKS`).
+ */
+
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb, MockHealthReading } from '@/features/common/mocks/mockDb';
@@ -18,12 +24,14 @@ interface Paginated<T> {
 
 class HealthService {
   /**
-   * Evalúa inmediatamente los 7 indicadores según los umbrales de la NASA HRP.
+   * Synchronously evaluates the 7 core physiological indicators against NASA HRP
+   * thresholds for immediate client-side preview before submission.
    */
   evaluate(input: Omit<HealthReadingInput, 'astronautId'>): EvaluationResult {
     return mockDb.evaluateReading(input);
   }
 
+  /** Persists a new biomedical reading (or appends to `mockDb` in mock mode). */
   async createReading(input: HealthReadingInput): Promise<HealthReading> {
     const evaluation = this.evaluate(input);
 
@@ -61,7 +69,7 @@ class HealthService {
     return httpClient.post<HealthReading>('/readings', input);
   }
 
-  /** Lecturas de un astronauta ordenadas de la más antigua a la más reciente (para gráficas y dashboard). */
+  /** Fetches readings for one astronaut sorted oldest-to-newest for trend charts and the digital twin. */
   async listReadingsForAstronaut(astronautId: string, limit = 100): Promise<ApiHealthReading[]> {
     if (ENV.USE_MOCKS) return buildMockHistory(astronautId);
 
@@ -72,7 +80,8 @@ class HealthService {
   }
 
   /**
-   * Listado de lecturas. Soporta llamada con astronautId directo o parámetros de paginación.
+   * Lists telemetry readings. Accepts either a direct `astronautId` (returns
+   * chronological array) or filter/pagination parameters.
    */
   async listReadings(astronautId: string, limit?: number): Promise<ApiHealthReading[]>;
   async listReadings(params?: Record<string, string | number>): Promise<{
@@ -122,6 +131,7 @@ class HealthService {
     return httpClient.get('/readings', { params });
   }
 
+  /** Retrieves the astronaut's mission assignment, latest reading, and alert summary. */
   async getAstronautSummary(astronautId: string): Promise<AstronautHealthSummary> {
     if (ENV.USE_MOCKS) {
       const astro = mockDb.astronauts.find((a) => a.id === astronautId);

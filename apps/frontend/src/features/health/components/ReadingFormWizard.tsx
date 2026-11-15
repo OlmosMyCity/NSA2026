@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * @module health/components/ReadingFormWizard
+ * Four-step vital-signs intake wizard (Cardiovascular, Metabolic, Life Support,
+ * and Assessment) featuring real-time optimistic evaluation against NASA HRP
+ * thresholds via `healthService.evaluate` prior to telemetry submission.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { healthService } from '../services/healthService';
@@ -29,6 +36,7 @@ const STEPS = [
   { id: 4, label: '4. Assessment' },
 ];
 
+/** Multi-step crew telemetry intake wizard with live deterministic clinical preview. */
 export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps) {
   const router = useRouter();
   const { user } = useAuth();

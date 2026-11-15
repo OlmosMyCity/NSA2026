@@ -1,3 +1,9 @@
+/**
+ * @module healthReadingRouter
+ * Express routers for authenticated health reading CRUD, vision telemetry ingestion,
+ * and astronaut multi-system clinical summary analytics.
+ */
+
 import { Router } from "express";
 import { HealthReadingController } from "../controllers/HealthReadingController.js";
 import { PrismaHealthReadingRepository } from "../../infrastructure/repository/PrismaHealthReadingRepository.js";
@@ -36,6 +42,7 @@ const controller = new HealthReadingController(
   ingestVisionTelemetryUseCase
 );
 
+/** Router mounted at `/api/readings` (all endpoints require authentication). */
 export const readingRouter = Router();
 
 readingRouter.get("/", authenticate, controller.list);
@@ -44,11 +51,11 @@ readingRouter.post("/", authenticate, controller.create);
 readingRouter.post("/vision-ingest", authenticate, controller.ingestVision);
 readingRouter.post("/:id/invalidate", authenticate, controller.invalidate);
 readingRouter.post("/:id/corrections", authenticate, controller.correct);
-// P1: los datos de salud solo se agregan
+// P1: health telemetry is strictly append-only
 readingRouter.put("/:id", authenticate, controller.methodNotAllowed);
 readingRouter.patch("/:id", authenticate, controller.methodNotAllowed);
 readingRouter.delete("/:id", authenticate, controller.methodNotAllowed);
 
-// Router dedicado para el endpoint analítico del astronauta
+/** Dedicated router mounted under `/api/astronauts` for the astronaut clinical summary endpoint. */
 export const astronautSummaryRouter = Router();
 astronautSummaryRouter.get("/:id/summary", authenticate, controller.getSummary);

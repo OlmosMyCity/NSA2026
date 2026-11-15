@@ -1,8 +1,13 @@
+/**
+ * @module health/domain/status-theme
+ * Harmonized HSL visual tokens for clinical traffic-light states.
+ */
+
 import type { HealthStatus } from './types';
 
 /**
- * Tokens visuales del semáforo clínico armonizados en HSL.
- * El color nunca va solo: siempre se acompaña de etiqueta e icono (WCAG 1.4.1).
+ * Clinical traffic-light theme tokens backed by CSS custom properties.
+ * Color is never used in isolation; every status pairs with an accessible label and icon (WCAG 1.4.1).
  */
 export const STATUS_THEME: Record<
   HealthStatus,

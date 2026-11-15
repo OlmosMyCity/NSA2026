@@ -1,3 +1,8 @@
+/**
+ * @module MissionController
+ * HTTP controller handling mission CRUD operations while deriving creator identity from JWT claims.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { ListMissionsUseCase } from "../../application/use-cases/mission/ListMissionsUseCase.js";
 import { GetMissionByIdUseCase } from "../../application/use-cases/mission/GetMissionByIdUseCase.js";
@@ -12,6 +17,9 @@ import {
   updateMissionSchema,
 } from "../validation/schemas.js";
 
+/**
+ * Controller exposing `/api/missions` REST endpoints.
+ */
 export class MissionController {
   constructor(
     private readonly listMissionsUseCase: ListMissionsUseCase,
@@ -57,9 +65,10 @@ export class MissionController {
     }
   };
 
+  /** `POST /api/missions` — Creates a mission using `req.user.id` as the authoritative creator. */
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // El creador sale SIEMPRE del JWT (authenticate): nunca se acepta `createdById` desde el body.
+      // Creator identity ALWAYS comes from the verified JWT (authenticate): never trust `createdById` from body.
       if (!req.user) throw new UnauthorizedError();
       const createdById = req.user.id;
 

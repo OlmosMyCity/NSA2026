@@ -1,8 +1,14 @@
+/**
+ * @module health/domain/summary
+ * Aggregates flattened indicator telemetry into per-zone physiological summaries
+ * across the 5 Digital Twin zones (`heart`, `brain`, `blood`, `bones`, `sleep`).
+ */
+
 import { INDICATORS_BY_ZONE } from './indicators';
 import { evaluateIndicator, worstStatus } from './evaluate';
 import type { BodyZoneId, IndicatorReading, HealthStatus, IndicatorEvaluation, IndicatorId } from './types';
 
-/** Última medición de cada indicador (por `takenAt`). */
+/** Returns the latest reading per indicator based on `takenAt` timestamp. */
 export function latestByIndicator(readings: IndicatorReading[]): Partial<Record<IndicatorId, IndicatorReading>> {
   const latest: Partial<Record<IndicatorId, IndicatorReading>> = {};
   for (const r of readings) {
@@ -12,6 +18,7 @@ export function latestByIndicator(readings: IndicatorReading[]): Partial<Record<
   return latest;
 }
 
+/** Deterministic status and constituent indicator evaluations for a single body zone. */
 export interface ZoneSummary {
   zone: BodyZoneId;
   status: HealthStatus;

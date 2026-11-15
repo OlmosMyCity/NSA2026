@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * @module health/components/Body3D
+ * Interactive 3D anatomical Digital Twin powered by React Three Fiber / Three.js
+ * and the BodyParts3D GLB model (`/anatomy/body.glb`).
+ *
+ * Maps anatomical mesh groups (`heart`, `brain`, `lungs`/`pleura`/`arteries`/`veins`
+ * -> `blood`, `skeleton` -> `bones`, and `sleep` focusing on `brain`) to the 5
+ * physiological twin zones, driving emissive status glow, priority-ranked raycast
+ * picking, smooth camera framing, and heart-rate / respiratory animations.
+ */
+
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html, OrbitControls, useGLTF } from '@react-three/drei';
@@ -11,7 +22,7 @@ import type { BodyZoneId, HealthStatus } from '../domain/types';
 
 const MODEL_URL = '/anatomy/body.glb';
 
-/** Grupo del modelo (nodo del GLB) → zona de salud. */
+/** Maps GLB model node/group names to the 5 Digital Twin zones (`null` for outer skin). */
 const PART_ZONE: Record<string, BodyZoneId | null> = {
   skin: null,
   heart: 'heart',
@@ -53,7 +64,7 @@ const PART_COLOR: Record<string, string> = {
   skeleton: '#dcd3bf',
 };
 
-/** Colores hex para el brillo emisivo WebGL de Three.js (sincronizados con --status-*). */
+/** WebGL emissive glow hex colors synchronized with CSS `--status-*` design tokens. */
 const STATUS_GLOW_HEX: Record<HealthStatus, string> = {
   green: '#327b58',
   amber: '#b9781e',
@@ -70,6 +81,10 @@ interface Body3DProps {
   className?: string;
 }
 
+/**
+ * Interactive 3D astronaut anatomical canvas with emissive per-zone status glow,
+ * orbit controls, and resettable camera framing.
+ */
 export default function Body3D(props: Body3DProps) {
   const [resetNonce, setResetNonce] = useState(0);
 

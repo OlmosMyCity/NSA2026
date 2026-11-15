@@ -1,5 +1,7 @@
 /**
- * Configuración centralizada de variables de entorno para el cliente frontend.
+ * Centralized runtime environment configuration for the frontend client.
+ *
+ * @module features/common/config/env
  */
 export const ENV = {
   API_HOST: process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:4000/api',
@@ -11,8 +13,8 @@ export const ENV = {
 } as const;
 
 /**
- * Evita peticiones CORS/mixed-content desde producción hacia `http://localhost:*`
- * cuando no se ha configurado una URL pública para un microservicio opcional.
+ * Prevents CORS and mixed-content requests from production origins to `http://localhost:*`
+ * when no public URL has been configured for an optional microservice.
  */
 export function isReachableServiceUrl(url: string): boolean {
   if (!url) return false;

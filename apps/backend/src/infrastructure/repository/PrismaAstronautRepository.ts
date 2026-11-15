@@ -1,3 +1,9 @@
+/**
+ * @module PrismaAstronautRepository
+ * PostgreSQL/Prisma implementation of `IAstronautRepository` with soft-delete filtering,
+ * bounded pagination, and eager mission summary projection.
+ */
+
 import { Prisma } from "@prisma/client";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import {
@@ -9,6 +15,9 @@ import {
 } from "../../domain/models/Astronaut.js";
 import { prisma } from "../database/prismaClient.js";
 
+/**
+ * Prisma-backed repository for crew profile persistence and mission assignment queries.
+ */
 export class PrismaAstronautRepository implements IAstronautRepository {
   async findMany(filters: AstronautFilters): Promise<PaginatedResult<AstronautWithMission>> {
 

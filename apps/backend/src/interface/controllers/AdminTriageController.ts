@@ -1,3 +1,9 @@
+/**
+ * @module AdminTriageController
+ * HTTP controller for Flight Surgeon administrative triage console endpoints:
+ * crew-wide clinical prioritization correlated with solar storm telemetry and clinical directives.
+ */
+
 import { Request, Response, NextFunction } from "express";
 import { HealthStatus, IncidentCategory, IncidentStatus } from "@prisma/client";
 import { RadiationEngineState } from "@nsa2026/radiation-engine";
@@ -12,6 +18,7 @@ import {
 import { NotFoundError } from "../../domain/errors/AppError.js";
 import { directivesSchema, parseWithValidation } from "../validation/schemas.js";
 
+/** Normalizes heterogeneous JSON alert payloads into plain display strings. */
 function normalizeAlertMessages(alerts: unknown): string[] {
   if (!Array.isArray(alerts)) return [];
   return alerts.map((item) => {
@@ -23,6 +30,9 @@ function normalizeAlertMessages(alerts: unknown): string[] {
   });
 }
 
+/**
+ * Controller backing `/api/admin` triage overview and crew directive dispatch routes.
+ */
 export class AdminTriageController {
   constructor(
     private readonly directiveRepo: IDirectiveRepository = new PrismaDirectiveRepository(),
@@ -30,6 +40,11 @@ export class AdminTriageController {
       radiationEngine.getCurrentState().catch(() => null)
   ) {}
 
+  /**
+   * `GET /api/admin/triage` — Aggregates latest vitals and directives for all active crew,
+   * correlates each astronaut's clinical status against the active NOAA storm scale (`>= S3` escalation),
+   * and returns the crew sorted by ascending triage priority score alongside fleet metrics.
+   */
   getTriageOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const [astronauts, radiationState, radiationIncident] = await Promise.all([
@@ -160,6 +175,7 @@ export class AdminTriageController {
     }
   };
 
+  /** `GET /api/admin/astronauts/:id/directives` — Lists recent clinical directives issued to an astronaut. */
   listAstronautDirectives = async (
     req: Request,
     res: Response,
@@ -182,6 +198,7 @@ export class AdminTriageController {
     }
   };
 
+  /** `POST /api/admin/astronauts/:id/directives` — Persists and dispatches a flight-surgeon directive. */
   sendClinicalDirectives = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
