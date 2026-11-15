@@ -230,6 +230,28 @@ export const closeIncidentSchema = z.object({
   resolutionNotes: z.string().trim().max(2000).nullable().optional(),
 });
 
+export const visionIngestSchema = z.object({
+  astronautId: requiredNonEmptyString("astronautId", 128),
+  heartRateBpm: finiteNumber("heartRateBpm", 0, 260),
+  mood: finiteNumber("mood", 1, 5, { int: true }).optional(),
+  moodValence: finiteNumber("moodValence", -1, 1).optional(),
+  stressIndex: finiteNumber("stressIndex", 0, 100).optional(),
+  alertnessScore: finiteNumber("alertnessScore", 0, 100).optional(),
+  dominantMood: z.string().trim().max(120).optional(),
+  sleepHours: finiteNumber("sleepHours", 0, 24).optional(),
+  sleepQualityScore: finiteNumber("sleepQualityScore", 0, 100).optional(),
+  perclos: finiteNumber("perclos", 0, 100).optional(),
+  hrvRmssdMs: finiteNumber("hrvRmssdMs", 0, 1000).optional(),
+  respirationRpm: finiteNumber("respirationRpm", 0, 100).optional(),
+  signalQuality: finiteNumber("signalQuality", 0, 100).optional(),
+  overallHealthIndex: finiteNumber("overallHealthIndex", 0, 100).optional(),
+  cameraMode: z.string().trim().max(40).optional(),
+  context: z.string().trim().max(40).optional(),
+  fatigueLevel: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+  takenAt: optionalDateSchema,
+});
+
 /**
  * Parsea un objeto con un esquema Zod y traduce cualquier falla a ValidationError (400).
  */

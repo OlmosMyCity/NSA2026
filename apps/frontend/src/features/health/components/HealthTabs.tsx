@@ -11,6 +11,7 @@ import { missionService } from '@/features/missions/services/missionService';
 const TABS = [
   { href: '/dashboard', label: 'Anatomical Body' },
   { href: '/trends', label: 'Historical Trends' },
+  { href: '/vision', label: 'Vision AI (Live)' },
 ];
 
 export function HealthTabs() {

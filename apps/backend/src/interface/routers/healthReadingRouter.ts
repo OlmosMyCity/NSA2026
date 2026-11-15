@@ -9,6 +9,7 @@ import { CreateHealthReadingUseCase } from "../../application/use-cases/health/C
 import { UpdateHealthReadingUseCase } from "../../application/use-cases/health/UpdateHealthReadingUseCase.js";
 import { DeleteHealthReadingUseCase } from "../../application/use-cases/health/DeleteHealthReadingUseCase.js";
 import { GetAstronautHealthSummaryUseCase } from "../../application/use-cases/health/GetAstronautHealthSummaryUseCase.js";
+import { IngestVisionTelemetryUseCase } from "../../application/use-cases/health/IngestVisionTelemetryUseCase.js";
 import { OpenIncidentUseCase } from "../../application/use-cases/incident/OpenIncidentUseCase.js";
 import { authenticate } from "../middlewares/authenticate.js";
 
@@ -22,6 +23,7 @@ const createHealthReadingUseCase = new CreateHealthReadingUseCase(readingRepo, o
 const updateHealthReadingUseCase = new UpdateHealthReadingUseCase(readingRepo, openIncidentUseCase);
 const deleteHealthReadingUseCase = new DeleteHealthReadingUseCase(readingRepo);
 const getAstronautHealthSummaryUseCase = new GetAstronautHealthSummaryUseCase(readingRepo);
+const ingestVisionTelemetryUseCase = new IngestVisionTelemetryUseCase();
 
 const controller = new HealthReadingController(
   listHealthReadingsUseCase,
@@ -30,7 +32,8 @@ const controller = new HealthReadingController(
   deleteHealthReadingUseCase,
   getAstronautHealthSummaryUseCase,
   updateHealthReadingUseCase,
-  astronautRepo
+  astronautRepo,
+  ingestVisionTelemetryUseCase
 );
 
 export const readingRouter = Router();
@@ -38,6 +41,7 @@ export const readingRouter = Router();
 readingRouter.get("/", authenticate, controller.list);
 readingRouter.get("/:id", authenticate, controller.getById);
 readingRouter.post("/", authenticate, controller.create);
+readingRouter.post("/vision-ingest", authenticate, controller.ingestVision);
 readingRouter.put("/:id", authenticate, controller.update);
 readingRouter.delete("/:id", authenticate, controller.delete);
 

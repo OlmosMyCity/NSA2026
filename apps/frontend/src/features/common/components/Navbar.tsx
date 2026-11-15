@@ -85,7 +85,7 @@ export function Navbar() {
             const Icon = link.icon;
             const isActive =
               pathname === link.href ||
-              (link.href === '/dashboard' && pathname === '/trends');
+              (link.href === '/dashboard' && (pathname === '/trends' || pathname === '/vision'));
 
             return (
               <Link
