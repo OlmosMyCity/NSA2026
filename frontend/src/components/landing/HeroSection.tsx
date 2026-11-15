@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Gauge, LogIn, Radar, Rocket, UserPlus } from 'lucide-react';
+import { ArrowRight, Gauge, Radar, Rocket } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function HeroSection() {
@@ -22,25 +22,7 @@ export function HeroSection() {
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            {!user ? (
-              <>
-                <Link
-                  href="/login"
-                  className="tactile-press inline-flex items-center gap-2 rounded-sm bg-plate px-5 py-2.5 text-sm font-semibold text-ink-inverse hover:bg-yogurt"
-                >
-                  <LogIn className="h-4 w-4" aria-hidden="true" />
-                  <span>Sign in</span>
-                </Link>
-
-                <Link
-                  href="/register"
-                  className="tactile-press inline-flex items-center gap-2 rounded-sm border border-line-strong bg-canvas/75 px-5 py-2.5 text-sm font-semibold text-plate hover:bg-blueberry"
-                >
-                  <UserPlus className="h-4 w-4" aria-hidden="true" />
-                  <span>Register</span>
-                </Link>
-              </>
-            ) : isOperator ? (
+            {isOperator ? (
               <>
                 <Link
                   href="/operator"
