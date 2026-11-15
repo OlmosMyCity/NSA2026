@@ -92,7 +92,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   const tEnd = ready?.tEnd ?? Infinity;
   const nowMet = Math.min(Math.max(nowMetRaw, 0), tEnd);
 
-  const phases = ready?.phases ?? [];
+  const phases = useMemo(() => ready?.phases ?? [], [ready?.phases]);
   const items = useMemo(
     () => (mission ? readingsOnTimeline(rows, mission.startDate, phases) : []),
     [rows, mission, phases]

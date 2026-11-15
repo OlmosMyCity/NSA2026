@@ -40,4 +40,4 @@ export interface CreateAstronautInput {
   photoUrl?: string | null;
 }
 
-export interface UpdateAstronautInput extends Partial<CreateAstronautInput> {}
+export type UpdateAstronautInput = Partial<CreateAstronautInput>;

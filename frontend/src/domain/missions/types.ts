@@ -52,5 +52,5 @@ export interface CreateMissionInput {
   patchUrl?: string | null;
 }
 
-export interface UpdateMissionInput extends Partial<CreateMissionInput> {}
+export type UpdateMissionInput = Partial<CreateMissionInput>;
 

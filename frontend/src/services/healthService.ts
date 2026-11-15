@@ -91,7 +91,13 @@ class HealthService {
   async listReadings(
     paramOrAstronautId?: string | Record<string, string | number>,
     limit = 100
-  ): Promise<any> {
+  ): Promise<
+    | ApiHealthReading[]
+    | {
+        data: HealthReading[];
+        pagination: { total: number; currentPage: number; limit: number; totalPages: number };
+      }
+  > {
     if (typeof paramOrAstronautId === 'string') {
       return this.listReadingsForAstronaut(paramOrAstronautId, limit);
     }
