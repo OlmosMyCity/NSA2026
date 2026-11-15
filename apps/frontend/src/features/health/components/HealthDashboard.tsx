@@ -540,7 +540,7 @@ export function HealthDashboard() {
                   </span>
                   <span className="text-[11px] text-stem">{def.unit}</span>
                   {showDelta && (
-                    <span className="twin-value ml-auto rounded bg-status-nominal/15 px-1 py-0.5 text-[10px] font-semibold text-status-nominal">
+                    <span className="twin-value ml-auto text-[11px] font-medium text-status-nominal">
                       {rawDelta > 0 ? `+${rawDelta}` : rawDelta}
                     </span>
                   )}
