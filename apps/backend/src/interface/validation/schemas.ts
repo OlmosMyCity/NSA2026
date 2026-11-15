@@ -1,4 +1,4 @@
-import { Environment, MissionStatus } from "@prisma/client";
+import { CrewLocation, Environment, MissionStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { ValidationError } from "../../domain/errors/AppError.js";
 
@@ -190,6 +190,31 @@ export const updateAstronautSchema = z.object({
 
 export const directivesSchema = z.object({
   directives: requiredNonEmptyString("directives", 2000),
+});
+
+export const crewLocationSchema = z.object({
+  location: z.nativeEnum(CrewLocation, { message: "El campo 'location' no es una ubicación válida." }),
+});
+
+export const createUserByAdminSchema = z.object({
+  name: requiredNonEmptyString("name", 120),
+  email: z
+    .string({ message: "El campo 'email' es obligatorio." })
+    .trim()
+    .email("El email no es válido.")
+    .max(254, "El email es demasiado largo."),
+  // Estas cuentas ven datos de terceros: se exige más que al registro público.
+  password: z
+    .string({ message: "El campo 'password' es obligatorio." })
+    .min(10, "La contraseña debe tener al menos 10 caracteres.")
+    .max(128, "La contraseña es demasiado larga."),
+  role: z.nativeEnum(Role, { message: "El campo 'role' no es un rol válido." }),
+});
+
+export const assignMissionOperatorSchema = z.object({
+  operatorId: z.union([z.string().trim().min(1), z.null()], {
+    message: "El campo 'operatorId' debe ser un id de usuario o null.",
+  }),
 });
 
 export const radiationSimulateSchema = z.object({

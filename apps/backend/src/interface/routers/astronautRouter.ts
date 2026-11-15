@@ -12,6 +12,7 @@ import { authorizeRoles } from "../middlewares/authorizeRoles.js";
 import { imageUpload } from "../middlewares/imageUpload.js";
 import { astronautSummaryRouter } from "./healthReadingRouter.js";
 import { DigitalTwinController } from "../controllers/DigitalTwinController.js";
+import { operatorController } from "./operatorRouter.js";
 
 const astronautRepo = new PrismaAstronautRepository();
 const listAstronautsUseCase = new ListAstronautsUseCase(astronautRepo);
@@ -36,6 +37,7 @@ astronautRouter.post("/digital-twin/evaluate", authenticate, digitalTwinControll
 astronautRouter.use("/", astronautSummaryRouter); // GET /:id/summary
 astronautRouter.get("/:id/digital-twin", authenticate, digitalTwinController.getDigitalTwin);
 astronautRouter.post("/:id/simulate", authenticate, digitalTwinController.simulate);
+astronautRouter.patch("/:id/location", authenticate, operatorController.updateLocation);
 astronautRouter.get("/:id", controller.getById);
 // Imagen opcional: multipart con el campo "photo" o JSON con "photoUrl" ya resuelta.
 const photoUpload = imageUpload("photo", "astronauts", "photoUrl");

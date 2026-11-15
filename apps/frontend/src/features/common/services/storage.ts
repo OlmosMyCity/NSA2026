@@ -9,7 +9,7 @@ export interface StoredUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'OPERATOR';
   astronautId?: string;
 }
 

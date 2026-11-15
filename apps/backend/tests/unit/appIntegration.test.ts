@@ -106,6 +106,40 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     expect(res.status).toBe(403);
   });
 
+  it("la supervisión del operador exige sesión (401) y rol OPERATOR (403)", async () => {
+    const adminToken = tokenService.sign({ id: "admin-test-01", email: "admin@nasa.gov", role: Role.ADMIN });
+    const [anonymous, asCrew, asSurgeon] = await Promise.all([
+      fetch(`${baseUrl}/api/operator/crew`),
+      fetch(`${baseUrl}/api/operator/crew`, { headers: { Authorization: `Bearer ${userToken}` } }),
+      fetch(`${baseUrl}/api/operator/crew`, { headers: { Authorization: `Bearer ${adminToken}` } }),
+    ]);
+
+    expect(anonymous.status).toBe(401);
+    expect(asCrew.status).toBe(403);
+    expect(asSurgeon.status).toBe(403);
+  });
+
+  it("un operador no puede usar las rutas del cirujano ni cambiar ubicaciones sin sesión", async () => {
+    const operatorToken = tokenService.sign({ id: "op-test-01", email: "ops@orbvital.example", role: Role.OPERATOR });
+    const [triage, createUser, location] = await Promise.all([
+      fetch(`${baseUrl}/api/admin/triage`, { headers: { Authorization: `Bearer ${operatorToken}` } }),
+      fetch(`${baseUrl}/api/admin/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${operatorToken}` },
+        body: JSON.stringify({}),
+      }),
+      fetch(`${baseUrl}/api/astronauts/astro-01/location`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location: "EVA" }),
+      }),
+    ]);
+
+    expect(triage.status).toBe(403);
+    expect(createUser.status).toBe(403);
+    expect(location.status).toBe(401);
+  });
+
   it("debe retornar error 404 en JSON (y nunca HTML) cuando la ruta no existe", async () => {
     const res = await fetch(`${baseUrl}/api/ruta-inexistente`);
     const contentType = res.headers.get("content-type") || "";

@@ -1,4 +1,4 @@
-import { PrismaClient, Role, Environment, MissionStatus } from "@prisma/client";
+import { PrismaClient, Role, Environment, MissionStatus, CrewLocation } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { evaluateReading, type HealthReadingInput } from "../src/application/health/evaluateReading.js";
 
@@ -36,7 +36,16 @@ async function main() {
     },
   });
 
-  console.log("✅ Usuarios creados: Admin (Flight Surgeon) y User (Comandante).");
+  const operatorUser = await prisma.user.create({
+    data: {
+      email: "ops@orbvital.example",
+      name: "Mission Operations",
+      passwordHash: await bcrypt.hash("GroundOps#2026", saltRounds),
+      role: Role.OPERATOR,
+    },
+  });
+
+  console.log("✅ Usuarios creados: Admin (Flight Surgeon), User (Comandante) y Operator (Tierra).");
 
   // 3. Misión principal Artemis IV
   const missionStartDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // Hace 14 días
@@ -51,6 +60,7 @@ async function main() {
       startDate: missionStartDate,
       patchUrl: null,
       createdById: adminUser.id,
+      operatorId: operatorUser.id,
     },
   });
 
@@ -98,6 +108,8 @@ async function main() {
         role: c.role,
         age: c.age,
         photoUrl: c.photoUrl,
+        currentLocation: CrewLocation.HABITAT,
+        locationUpdatedAt: new Date(),
       },
     });
     astronauts.push(astro);

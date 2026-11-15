@@ -1,4 +1,5 @@
 import { PaginationMeta } from '@/features/missions/domain/types';
+import type { CrewLocation } from '@/features/operator/domain/types';
 
 export type { PaginationMeta };
 
@@ -10,6 +11,8 @@ export interface Astronaut {
   role: string;
   age: number;
   photoUrl?: string | null;
+  currentLocation?: CrewLocation | null;
+  locationUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

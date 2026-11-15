@@ -7,7 +7,7 @@ export interface MockUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'OPERATOR';
   passwordHash?: string;
   astronautId?: string;
 }
@@ -36,6 +36,8 @@ export interface MockAstronaut {
   role: string;
   age: number;
   photoUrl?: string | null;
+  currentLocation?: string | null;
+  locationUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -87,6 +89,12 @@ const INITIAL_USERS: MockUser[] = [
     name: 'Reid Wiseman',
     role: 'USER',
     astronautId: 'astro-01',
+  },
+  {
+    id: 'user-operator-01',
+    email: 'ops@orbvital.example',
+    name: 'Mission Operations',
+    role: 'OPERATOR',
   },
 ];
 

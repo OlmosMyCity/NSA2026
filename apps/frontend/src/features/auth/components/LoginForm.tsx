@@ -10,7 +10,7 @@ import { AlertCircle } from 'lucide-react';
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,11 +24,12 @@ export function LoginForm() {
     }
   }, [searchParams]);
 
+  // Cada rol aterriza en su vista: el operador no tiene panel de salud propio.
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.push(user?.role === 'OPERATOR' ? '/operator' : '/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user?.role, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +44,6 @@ export function LoginForm() {
     try {
       setIsSubmitting(true);
       await login({ email: email.trim(), password });
-      router.push('/');
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);

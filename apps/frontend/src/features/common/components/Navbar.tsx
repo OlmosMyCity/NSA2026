@@ -17,6 +17,7 @@ import {
   X,
   Gauge,
   Orbit,
+  Radar,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -61,6 +62,20 @@ export function Navbar() {
     navLinks.push({ href: '/admin', label: 'Surgeon', icon: ShieldAlert });
   }
 
+  // El operador no tiene salud propia que registrar: ve la supervisión y la misión.
+  const visibleLinks =
+    user?.role === 'OPERATOR'
+      ? [
+          { href: '/', label: 'Home', icon: Activity },
+          { href: '/operator', label: 'Oversight', icon: Radar },
+          { href: '/missions', label: 'Missions', icon: Rocket },
+          { href: '/visualizer', label: '3D Orbit', icon: Orbit },
+        ]
+      : navLinks;
+
+  const roleLabel =
+    user?.role === 'ADMIN' ? 'Flight Surgeon' : user?.role === 'OPERATOR' ? 'Mission Operator' : 'Astronaut';
+
   return (
     <header className="sticky top-0 z-50 w-full chrome-translucent">
       <div className="mx-auto flex h-16 max-w-container items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -81,7 +96,7 @@ export function Navbar() {
 
         {/* Desktop navigation */}
         <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
-          {navLinks.map((link) => {
+          {visibleLinks.map((link) => {
             const Icon = link.icon;
             const isActive =
               pathname === link.href ||
@@ -117,7 +132,7 @@ export function Navbar() {
                   {user.name}
                 </span>
                 <span className="text-[11px] font-medium text-berry">
-                  {user.role === 'ADMIN' ? 'Flight Surgeon' : 'Astronaut'}
+                  {roleLabel}
                 </span>
               </div>
               <button
@@ -167,7 +182,7 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-b border-line bg-surface/95 backdrop-blur-xl px-4 pt-3 pb-5 lg:hidden animate-materialize">
           <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
-            {navLinks.map((link) => {
+            {visibleLinks.map((link) => {
               const Icon = link.icon;
               const isActive =
                 pathname === link.href ||
@@ -196,7 +211,7 @@ export function Navbar() {
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-blueberry">{user.name}</span>
                     <span className="text-xs font-medium text-berry">
-                      {user.role === 'ADMIN' ? 'Flight Surgeon' : 'Astronaut'}
+                      {roleLabel}
                     </span>
                   </div>
                   <button

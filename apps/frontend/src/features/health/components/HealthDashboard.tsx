@@ -18,6 +18,8 @@ import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
 import { useFreshnessPhase } from '../hooks/useFreshnessPhase';
 import { FreshnessRing } from './FreshnessRing';
+import { LocationControl } from './LocationControl';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import {
   evaluateDigitalTwinRemote,
   type DecisionResult,
@@ -89,6 +91,9 @@ function scenarioKey(s: WhatIfState): string {
 
 export function HealthDashboard() {
   const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
+  const { user } = useAuth();
+  // Location is declared by the crew member for themselves, or by the flight surgeon.
+  const canSetLocation = !!astronautId && (user?.role === 'ADMIN' || user?.astronautId === astronautId);
   const { rows, latest, isLoading, error, refetch } = useHealthReadings(astronautId);
   const [selected, setSelected] = useState<BodyZoneId | null>(null);
   const [hovered, setHovered] = useState<BodyZoneId | null>(null);
@@ -273,6 +278,7 @@ export function HealthDashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-4">
           {crewSelector}
+          {canSetLocation && astronautId && <LocationControl astronautId={astronautId} />}
           <span className="twin-panel inline-flex items-center gap-3 px-3 py-1.5">
             <span className="inline-flex items-center gap-2">
               <span className="twin-label">{whatIf.active ? 'Simulated status' : 'Status'}</span>

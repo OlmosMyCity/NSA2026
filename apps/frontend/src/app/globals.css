@@ -322,6 +322,13 @@ a {
   transition: stroke-dashoffset 1s linear, stroke var(--duration-ui) var(--ease-out-expo);
 }
 
+/* Tarjetas de tripulación: entrada escalonada, solo en la primera carga */
+@keyframes crew-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.crew-card-enter { animation: crew-card-enter var(--duration-panel) var(--ease-out-expo) both; }
+
 /* El recordatorio entra desde arriba y sale por el mismo camino. */
 @keyframes reminder-enter {
   from { opacity: 0; transform: translateY(-12px); }
@@ -336,6 +343,7 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .freshness-arc { transition: none; }
+  .crew-card-enter { animation: none; }
   @keyframes reminder-enter { from { opacity: 0; transform: translateY(0); } to { opacity: 1; transform: translateY(0); } }
   @keyframes reminder-exit  { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(0); } }
 }

@@ -1,4 +1,5 @@
 import { ENV } from '@/features/common/config/env';
+import type { CrewLocation } from '@/features/operator/domain/types';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb, MockAstronaut } from '@/features/common/mocks/mockDb';
 import {
@@ -113,6 +114,20 @@ class AstronautService {
     }
 
     return httpClient.put<Astronaut>(`/astronauts/${id}`, input);
+  }
+
+  /** El tripulante (o el cirujano de vuelo) declara dónde se encuentra. */
+  async updateLocation(id: string, location: CrewLocation): Promise<void> {
+    if (ENV.USE_MOCKS) {
+      const astronaut = mockDb.astronauts.find((a) => a.id === id && !a.deletedAt);
+      if (!astronaut) throw new Error('Astronaut not found.');
+      astronaut.currentLocation = location;
+      astronaut.locationUpdatedAt = new Date().toISOString();
+      mockDb.save();
+      return;
+    }
+
+    await httpClient.patch(`/astronauts/${id}/location`, { location });
   }
 
   async delete(id: string): Promise<void> {
