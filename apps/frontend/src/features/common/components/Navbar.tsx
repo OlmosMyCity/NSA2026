@@ -65,18 +65,16 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full chrome-translucent">
       <div className="mx-auto flex h-16 max-w-container items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand identity */}
-        <Link href="/" className="flex items-center gap-2.5 group tactile-press">
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm border border-line-strong bg-blueberry text-plate font-mono font-bold text-xs tracking-tight">
-            OV
+        <Link href="/" className="flex items-center tactile-press">
+          <span
+            className="text-base font-bold tracking-[-0.02em] text-[#FFFFFF] leading-none"
+            style={{
+              fontFamily:
+                'ui-rounded, "SF Pro Rounded", var(--font-sans), system-ui, -apple-system, sans-serif',
+            }}
+          >
+            Orbvital
           </span>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-tight text-blueberry leading-none">
-              Orbvital
-            </span>
-            <span className="font-mono text-[10px] text-stem leading-tight mt-0.5 uppercase tracking-wider">
-              Artemis IV // HRP
-            </span>
-          </div>
         </Link>
 
         {/* Desktop navigation */}
