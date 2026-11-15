@@ -36,6 +36,8 @@ import {
   resetVisionHttp,
   tickSimulatorHttp,
 } from '../services/visionService';
+import { MockVisionSimulator } from '../services/visionMock';
+import { ENV } from '@/features/common/config/env';
 
 const SYNC_INTERVAL_SEC = 30;
 
@@ -56,7 +58,7 @@ export function VisionBiometricsPanel() {
   const [simBpm, setSimBpm] = useState<number>(72);
   const [streaming, setStreaming] = useState<boolean>(true);
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'offline'>('connecting');
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'mock-live' | 'offline'>('connecting');
   const [telemetry, setTelemetry] = useState<AstronautTelemetryFrame | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
 
@@ -72,6 +74,7 @@ export function VisionBiometricsPanel() {
   } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const mockSimRef = useRef<MockVisionSimulator | null>(null);
   const awaitingRef = useRef<boolean>(false);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -220,6 +223,30 @@ export function VisionBiometricsPanel() {
 
   // WebSocket connection to ai/vision with automatic HTTP streaming fallback
   useEffect(() => {
+    // Modo mock: telemetría simulada en el navegador, sin conectar con ai/vision (:8000)
+    if (ENV.USE_MOCKS) {
+      const sim = new MockVisionSimulator();
+      mockSimRef.current = sim;
+      setWsStatus('mock-live');
+      const MOCK_FRAME_MS = 100; // ~10 FPS
+      const mockLoop = setInterval(() => {
+        if (!streamingRef.current) return;
+        const frame = sim.next({
+          camera_mode: cameraModeRef.current,
+          context: contextRef.current,
+          sim_bpm: simBpmRef.current,
+          sim_state: simStateRef.current,
+          video: sourceRef.current === 'webcam' ? webcamVideoRef.current : null,
+        });
+        latestTelemetryRef.current = frame;
+        setTelemetry(frame);
+      }, MOCK_FRAME_MS);
+      return () => {
+        clearInterval(mockLoop);
+        mockSimRef.current = null;
+      };
+    }
+
     const wsUrl = getVisionWsUrl();
     if (!wsUrl) {
       setWsStatus('offline');
@@ -452,7 +479,9 @@ export function VisionBiometricsPanel() {
   }, [autoSyncEnabled, streaming, syncToDbNow]);
 
   const handleResetPipeline = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (mockSimRef.current) {
+      mockSimRef.current.reset();
+    } else if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'reset' }));
     } else {
       void resetVisionHttp();
@@ -506,14 +535,14 @@ export function VisionBiometricsPanel() {
 
           <span
             className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
-              wsStatus === 'connected' || wsStatus === 'http-live'
+              wsStatus === 'connected' || wsStatus === 'http-live' || wsStatus === 'mock-live'
                 ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
                 : wsStatus === 'connecting'
                 ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
                 : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
             }`}
           >
-            {wsStatus === 'connected' || wsStatus === 'http-live' ? (
+            {wsStatus === 'connected' || wsStatus === 'http-live' || wsStatus === 'mock-live' ? (
               <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
               <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
@@ -523,6 +552,8 @@ export function VisionBiometricsPanel() {
                 ? `Vision WS Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
                 : wsStatus === 'http-live'
                 ? `Vision HTTP Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
+                : wsStatus === 'mock-live'
+                ? `Vision Mock Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
                 : wsStatus === 'connecting'
                 ? 'Connecting to Vision...'
                 : 'Vision Service Offline'}
