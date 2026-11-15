@@ -1,8 +1,0 @@
-{
-  "name": "orbvital-nsa2026",
-  "private": true,
-  "workspaces": [
-    "apps/backend",
-    "packages/radiation-engine"
-  ]
-}

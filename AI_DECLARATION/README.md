@@ -18,7 +18,7 @@ This folder is that declaration:
 
 | Tool | Model | Used for |
 | --- | --- | --- |
-| **Claude Code** (Anthropic) | Claude Opus 5.5 | Code audit, bug fixing, refactoring, tests and documentation in `apps/frontend`, `apps/backend` and `ai/vision`. |
+| **Claude Code** (Anthropic) | Claude Opus 5.5 | Code audit, bug fixing, refactoring, tests and documentation in `frontend`, `backend` and `vision`. |
 
 ### Where (traceable in Git)
 
@@ -42,7 +42,7 @@ AI-assisted commits already in `main` (11 of 91 at the time of writing):
 | Commit | Date | Change |
 | --- | --- | --- |
 | `c9abc14` | 2026-11-15 | feat(vision): in-browser mock transport for /vision |
-| `293a91e` | 2026-11-15 | fix(vision): prefer the real ai/vision service in mock mode |
+| `293a91e` | 2026-11-15 | fix(vision): prefer the real vision service in mock mode |
 | `edf9c9a` | 2026-11-15 | fix(frontend): allow camera for same origin so /vision webcam works |
 | `f40204b` | 2026-11-15 | fix(vision): explain why the webcam could not start |
 | `f9491a0` | 2026-11-15 | feat(vision): animated 3D anatomical head |
@@ -68,20 +68,20 @@ These models are part of what OrbVital does. They are features of the solution, 
 
 | Component | Model / technique | Where | Purpose |
 | --- | --- | --- | --- |
-| Clinical decision layer | Google Gemini, model id `gemini-decision-1` (server-side only, key `GEMINI_API_KEY`) | `apps/backend/src/application/health/decisionService.ts` | Second opinion on escalation to the flight surgeon over a deterministic rule engine; there is an offline fallback (`DEMO_OFFLINE`). |
-| Contactless vital signs | FER+ emotion model (`emotion-ferplus-8.onnx`, ONNX Runtime) | `ai/vision` | Mood and stress estimation from the camera. |
-| Contactless vital signs | Google MediaPipe Face Landmarker (`face_landmarker.task`) | `ai/vision` | Face landmarks for rPPG heart rate, PERCLOS fatigue and sleep metrics. |
+| Clinical decision layer | Google Gemini, model id `gemini-decision-1` (server-side only, key `GEMINI_API_KEY`) | `backend/src/service/health/decisionService.ts` | Second opinion on escalation to the flight surgeon over a deterministic rule engine; there is an offline fallback (`DEMO_OFFLINE`). |
+| Contactless vital signs | FER+ emotion model (`emotion-ferplus-8.onnx`, ONNX Runtime) | `vision` | Mood and stress estimation from the camera. |
+| Contactless vital signs | Google MediaPipe Face Landmarker (`face_landmarker.task`) | `vision` | Face landmarks for rPPG heart rate, PERCLOS fatigue and sleep metrics. |
 | Signal vs. noise attribution | scikit-learn model trained by the team (`train_model.py`) | `ai/biology/signal_noise_engine` | Separates physiological signal from environmental noise in trends. |
 
-The clinical status that is stored and shown to the flight surgeon comes from a deterministic, tested rule table (`HEALTH_BANDS` in `apps/backend/src/application/health/evaluateReading.ts`), not from a generative model.
+The clinical status that is stored and shown to the flight surgeon comes from a deterministic, tested rule table (`HEALTH_BANDS` in `backend/src/service/health/evaluateReading.ts`), not from a generative model.
 
 ---
 
 ## 3. Generated media, NASA branding and third-party assets
 
 - The AI-assisted work in this repository is source code, tests and documentation. It does not include any NASA logo, flag, insignia or mission patch, and it does not modify NASA branding.
-- Third-party assets are credited in their own folders, for example `apps/frontend/public/anatomy/CREDITS.md` (BodyParts3D, CC BY 4.0) and `apps/frontend/public/visualizer/assets/CREDITS.md`.
-- ☐ **TEAM TO CONFIRM:** whether any image, icon, video or slide was AI-generated (for example `apps/frontend/public/images/web1.jpg`, `apps/frontend/public/icon.svg`, the project demo video or the presentation). Any such file must carry a visible watermark (for example "AI-generated") or metadata, be listed in `ai-usage.json` → `generated_media`, and must not contain NASA branding.
+- Third-party assets are credited in their own folders, for example `frontend/public/anatomy/CREDITS.md` (BodyParts3D, CC BY 4.0) and `frontend/public/visualizer/assets/CREDITS.md`.
+- ☐ **TEAM TO CONFIRM:** whether any image, icon, video or slide was AI-generated (for example `frontend/public/images/web1.jpg`, `frontend/public/icon.svg`, the project demo video or the presentation). Any such file must carry a visible watermark (for example "AI-generated") or metadata, be listed in `ai-usage.json` → `generated_media`, and must not contain NASA branding.
 
 ---
 

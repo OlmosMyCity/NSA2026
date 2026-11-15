@@ -17,7 +17,7 @@
         "unit, parity and end-to-end tests",
         "documentation, including this declaration"
       ],
-      "paths": ["apps/frontend", "apps/backend", "ai/vision", "AI_DECLARATION"],
+      "paths": ["frontend", "backend", "vision", "AI_DECLARATION"],
       "traceability": {
         "commit_author": "Claude",
         "commit_trailers": [
@@ -52,19 +52,19 @@
       "vendor": "Google",
       "model": "gemini-decision-1",
       "execution": "server-side only (GEMINI_API_KEY); offline fallback with DEMO_OFFLINE",
-      "paths": ["apps/backend/src/application/health/decisionService.ts"],
+      "paths": ["backend/src/service/health/decisionService.ts"],
       "note": "Stored clinical status comes from the deterministic HEALTH_BANDS rule table, not from a generative model."
     },
     {
       "component": "Contactless mood and stress estimation",
       "model": "FER+ emotion-ferplus-8.onnx (ONNX Runtime)",
-      "paths": ["ai/vision"]
+      "paths": ["vision"]
     },
     {
       "component": "Face landmarks for rPPG heart rate, PERCLOS fatigue and sleep",
       "vendor": "Google",
       "model": "MediaPipe Face Landmarker (face_landmarker.task)",
-      "paths": ["ai/vision"]
+      "paths": ["vision"]
     },
     {
       "component": "Signal vs. noise attribution",
@@ -76,8 +76,8 @@
     "status": "to_confirm",
     "rule": "Every AI-generated image, video or slide must carry a visible watermark or metadata and must not contain NASA logos, flags, insignia or mission identifiers.",
     "candidates_to_review": [
-      "apps/frontend/public/images/web1.jpg",
-      "apps/frontend/public/icon.svg",
+      "frontend/public/images/web1.jpg",
+      "frontend/public/icon.svg",
       "project demo video",
       "presentation slides"
     ],
