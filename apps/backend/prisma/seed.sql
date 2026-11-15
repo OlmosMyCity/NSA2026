@@ -33,6 +33,25 @@ UPDATE health_readings SET "supersedesId" = NULL
 WHERE id IN (SELECT id FROM seed_reading_chain) AND "supersedesId" IS NOT NULL;
 DELETE FROM health_readings WHERE id IN (SELECT id FROM seed_reading_chain);
 
+-- Limpiar misiones y astronautas legados que no pertenecen a mission-01..06 / astro-01..07
+CREATE TEMP TABLE legacy_missions ON COMMIT DROP AS
+SELECT id FROM missions
+WHERE id NOT IN ('mission-01', 'mission-02', 'mission-03', 'mission-04', 'mission-05', 'mission-06');
+
+CREATE TEMP TABLE legacy_astros ON COMMIT DROP AS
+SELECT id FROM astronauts
+WHERE id NOT IN ('astro-01', 'astro-02', 'astro-03', 'astro-04', 'astro-05', 'astro-06', 'astro-07')
+   OR "missionId" IN (SELECT id FROM legacy_missions);
+
+DELETE FROM directives WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM incidents  WHERE "astronautId" IN (SELECT id FROM legacy_astros)
+                          OR "missionId"   IN (SELECT id FROM legacy_missions);
+UPDATE health_readings SET "supersedesId" = NULL
+WHERE "astronautId" IN (SELECT id FROM legacy_astros) AND "supersedesId" IS NOT NULL;
+DELETE FROM health_readings WHERE "astronautId" IN (SELECT id FROM legacy_astros);
+DELETE FROM astronauts      WHERE id IN (SELECT id FROM legacy_astros);
+DELETE FROM missions        WHERE id IN (SELECT id FROM legacy_missions);
+
 -- Usuarios
 INSERT INTO users ("id", "email", "name", "passwordHash", "role", "state", "createdAt", "updatedAt", "deletedAt") VALUES
   ('user-admin-01', 'elena.rodriguez@nasa.gov', 'Dra. Elena Rodriguez', '$2b$10$7zcOXlYzmyJA0i57Wf4H8ePpxDrfRJGRBCYm05zzGxV9NCDJXE27S', 'ADMIN', 'ACTIVE', (timezone('utc', now()) - interval '-161 milliseconds'), (timezone('utc', now()) - interval '-161 milliseconds'), NULL),
