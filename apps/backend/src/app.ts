@@ -11,6 +11,7 @@ import { missionRouter } from "./interface/routers/missionRouter.js";
 import { astronautRouter } from "./interface/routers/astronautRouter.js";
 import { readingRouter } from "./interface/routers/healthReadingRouter.js";
 import { adminRouter } from "./interface/routers/adminRouter.js";
+import { operatorRouter } from "./interface/routers/operatorRouter.js";
 import { radiationRouter } from "./interface/routers/radiationRouter.js";
 import { uploadRouter } from "./interface/routers/uploadRouter.js";
 import { incidentRouter } from "./interface/routers/incidentRouter.js";
@@ -106,6 +107,7 @@ export function createApp(): Express {
   app.use("/api/astronauts", astronautRouter);
   app.use("/api/readings", readingRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/operator", operatorRouter);
   app.use("/api/radiation/simulate", sensitiveMutationLimiter);
   app.use("/api/radiation", radiationRouter);
   app.use("/api/incidents", incidentRouter);

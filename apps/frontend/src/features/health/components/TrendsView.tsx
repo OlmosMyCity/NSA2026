@@ -104,6 +104,9 @@ export function TrendsView() {
           <p className="mt-1 text-sm text-stem max-w-2xl">
             Vital sign history across nominal, watch, and critical bands.
           </p>
+          <p className="mt-1 text-xs text-stem">
+            Historical data, not your current status. Live vitals count as current for 15 minutes.
+          </p>
         </div>
         {crewSelector}
       </header>

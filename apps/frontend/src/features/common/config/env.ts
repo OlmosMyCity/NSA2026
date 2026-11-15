@@ -7,6 +7,10 @@ export const ENV = {
   API_HOST: process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:4000/api',
   VISION_URL: process.env.NEXT_PUBLIC_VISION_URL || 'http://localhost:8000',
   USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true',
+  /** Minutos de vigencia de los signos vivos; debe coincidir con FRESHNESS_WINDOW_MIN del backend. */
+  FRESHNESS_WINDOW_MIN: Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN) > 0
+    ? Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN)
+    : 15,
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   SUPABASE_BUCKET: process.env.NEXT_PUBLIC_SUPABASE_BUCKET || 'artemis-assets',

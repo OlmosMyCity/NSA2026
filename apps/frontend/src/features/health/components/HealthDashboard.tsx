@@ -22,9 +22,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AlertTriangle, ArrowLeft, FlaskConical, RefreshCw, Rotate3d } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, AlertTriangle, ArrowLeft, FlaskConical, RefreshCw, Rotate3d, TimerOff } from 'lucide-react';
 import { EmptyState } from '@/features/common/components/EmptyState';
 import { Skeleton } from '@/features/common/components/Skeleton';
+import { serverNow } from '@/features/common/services/serverClock';
 import { radiationService, type NOAAStormScale } from '@/features/radiation/services/radiationService';
 import { routineService } from '@/features/routine/services/routineService';
 import { INDICATOR_IDS, INDICATORS } from '../domain/indicators';
@@ -37,6 +39,10 @@ import { STATUS_THEME } from '../domain/status-theme';
 import type { BodyZoneId, IndicatorEvaluation, IndicatorId } from '../domain/types';
 import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
+import { useFreshnessPhase } from '../hooks/useFreshnessPhase';
+import { FreshnessRing } from './FreshnessRing';
+import { LocationControl } from './LocationControl';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import {
   evaluateDigitalTwinRemote,
   type DecisionResult,
@@ -113,6 +119,9 @@ function scenarioKey(
 export function HealthDashboard() {
   const { astronautId, setAstronautId, crew, missionEnvironment, missionName, isResolving } =
     useActiveAstronaut();
+  const { user } = useAuth();
+  // Location is declared by the crew member for themselves, or by the flight surgeon.
+  const canSetLocation = !!astronautId && (user?.role === 'ADMIN' || user?.astronautId === astronautId);
   const { rows, zones: baseZones, latest, isLoading, error, refetch } = useHealthReadings(astronautId);
   const [selected, setSelected] = useState<BodyZoneId | null>(null);
   const [hovered, setHovered] = useState<BodyZoneId | null>(null);
@@ -171,10 +180,16 @@ export function HealthDashboard() {
     [rows, whatIf, baselineReading]
   );
 
+  // Live vitals expire 15 min after the reading. A What-If scenario is a simulation, so it never locks.
+  const freshnessPhase = useFreshnessPhase(latest?.takenAt);
+  const isLocked = !whatIf.active && freshnessPhase === 'expired';
+
   // Local rules: instant, zero tokens. Drives the 3D colors and the official status.
   const zones = useMemo(
-    () => (whatIf.active ? summarizeZones(effectiveRows.flatMap(toIndicatorReadings)) : baseZones),
-    [whatIf.active, effectiveRows, baseZones]
+    () => summarizeZones(effectiveRows.flatMap(toIndicatorReadings), null, whatIf.active ? undefined : serverNow()),
+    // freshnessPhase re-evaluates expiry when the window closes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [whatIf.active, effectiveRows, freshnessPhase]
   );
 
   const dataKey = `${astronautId ?? ''}:${rows.length}:${latest?.id ?? ''}:${missionEnvironment}`;
@@ -217,7 +232,8 @@ export function HealthDashboard() {
 
   // Initial triage whenever the underlying readings or astronaut mission context change.
   useEffect(() => {
-    if (rows.length === 0) return;
+    // Expired vitals are not triaged: the model must not rule on a stale reading.
+    if (rows.length === 0 || freshnessPhase === 'expired') return;
     setWhatIf(INITIAL_WHAT_IF);
     void runTriage(INITIAL_WHAT_IF);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,8 +270,14 @@ export function HealthDashboard() {
     whatIf.shielding !== 'CREW_CABIN_NOMINAL' ||
     whatIf.rehearseSolarStorm;
 
-  const overall =
-    latest && !whatIf.active ? API_STATUS[latest.status] : worstStatus(Object.values(zones).map((z) => z.status));
+  const overall = isLocked
+    ? 'unknown'
+    : latest && !whatIf.active
+    ? API_STATUS[latest.status]
+    : worstStatus(Object.values(zones).map((z) => z.status));
+
+  // Triage computed on a reading that has since expired is not shown as current.
+  const shownResult = isLocked ? null : result;
 
   if (isResolving || isLoading) {
     return (
@@ -345,14 +367,40 @@ export function HealthDashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-4">
           {crewSelector}
-          <span className="twin-panel inline-flex items-center gap-2 px-3 py-1.5">
-            <span className="twin-label">
-              {hasSimulatedChanges ? 'Simulated status' : whatIf.active ? 'Simulated baseline' : 'Status'}
+          {canSetLocation && astronautId && <LocationControl astronautId={astronautId} />}
+          <span className="twin-panel inline-flex items-center gap-3 px-3 py-1.5">
+            <span className="inline-flex items-center gap-2">
+              <span className="twin-label">
+                {hasSimulatedChanges ? 'Simulated status' : whatIf.active ? 'Simulated baseline' : 'Status'}
+              </span>
+              <StatusBadge status={overall} compact />
             </span>
-            <StatusBadge status={overall} compact />
+            {!whatIf.active && latest && <FreshnessRing takenAt={latest.takenAt} />}
           </span>
         </div>
       </header>
+
+      {isLocked && (
+        <div
+          role="status"
+          className="twin-panel animate-swap flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <TimerOff className="mt-0.5 h-5 w-5 shrink-0 text-stem" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-blueberry">Live vitals expired</p>
+              <p className="mt-0.5 max-w-prose text-[13px] text-stem">
+                Heart rate, blood pressure, SpO₂ and temperature are older than 15 minutes, so your current
+                status is unknown. Past readings stay available in Trends as history.
+              </p>
+            </div>
+          </div>
+          <Link href="/readings/new" className="twin-btn twin-btn-primary">
+            <Activity className="h-3.5 w-3.5" aria-hidden="true" />
+            Measure now
+          </Link>
+        </div>
+      )}
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]">
         <div className="min-w-0 space-y-4">
@@ -423,9 +471,13 @@ export function HealthDashboard() {
             <ZoneInspector
               zone={selected}
               summary={zones[selected]}
-              twinZone={result ? result.twin.zones[selected] : null}
+              twinZone={shownResult ? shownResult.twin.zones[selected] : null}
               isStale={isStale}
             />
+          ) : isLocked ? (
+            <p className="animate-swap ui-callout text-[13px] text-stem">
+              Triage is paused. It runs again on your next measurement.
+            </p>
           ) : (
             <TwinOverview
               zones={zones}

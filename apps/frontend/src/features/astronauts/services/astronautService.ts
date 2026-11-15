@@ -7,6 +7,7 @@
  */
 
 import { ENV } from '@/features/common/config/env';
+import type { CrewLocation } from '@/features/operator/domain/types';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb, MockAstronaut } from '@/features/common/mocks/mockDb';
 import {
@@ -122,6 +123,31 @@ class AstronautService {
     }
 
     return httpClient.put<Astronaut>(`/astronauts/${id}`, input);
+  }
+
+  /** La ubicación no viaja en las rutas públicas de astronautas: se consulta con sesión. */
+  async getLocation(id: string): Promise<CrewLocation | null> {
+    if (ENV.USE_MOCKS) {
+      const astronaut = mockDb.astronauts.find((a) => a.id === id && !a.deletedAt);
+      return (astronaut?.currentLocation as CrewLocation | undefined) ?? null;
+    }
+
+    const res = await httpClient.get<{ currentLocation: CrewLocation | null }>(`/astronauts/${id}/location`);
+    return res.currentLocation;
+  }
+
+  /** El tripulante (o el cirujano de vuelo) declara dónde se encuentra. */
+  async updateLocation(id: string, location: CrewLocation): Promise<void> {
+    if (ENV.USE_MOCKS) {
+      const astronaut = mockDb.astronauts.find((a) => a.id === id && !a.deletedAt);
+      if (!astronaut) throw new Error('Astronaut not found.');
+      astronaut.currentLocation = location;
+      astronaut.locationUpdatedAt = new Date().toISOString();
+      mockDb.save();
+      return;
+    }
+
+    await httpClient.patch(`/astronauts/${id}/location`, { location });
   }
 
   async delete(id: string): Promise<void> {

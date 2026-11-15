@@ -8,8 +8,8 @@ import { PaginatedResult } from "./Mission.js";
 
 export type { PaginatedResult };
 
-/** Astronaut domain entity augmented with lightweight assigned mission metadata. */
-export type AstronautWithMission = Astronaut & {
+/** Sin ubicación: se consulta aparte, con sesión (ver IOperatorCrewRepository). */
+export type AstronautWithMission = Omit<Astronaut, "currentLocation" | "locationUpdatedAt"> & {
   mission?: {
     id: string;
     name: string;

@@ -9,7 +9,7 @@ export interface MockUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'USER' | 'OPERATOR';
   passwordHash?: string;
   astronautId?: string;
 }
@@ -24,6 +24,7 @@ export interface MockMission {
   endDate?: string | null;
   patchUrl?: string | null;
   createdById: string;
+  operatorId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -38,6 +39,8 @@ export interface MockAstronaut {
   role: string;
   age: number;
   photoUrl?: string | null;
+  currentLocation?: string | null;
+  locationUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -90,6 +93,12 @@ const INITIAL_USERS: MockUser[] = [
     role: 'USER',
     astronautId: 'astro-01',
   },
+  {
+    id: 'user-operator-01',
+    email: 'ops@orbvital.example',
+    name: 'Mission Operations',
+    role: 'OPERATOR',
+  },
 ];
 
 const INITIAL_MISSIONS: MockMission[] = [
@@ -103,6 +112,7 @@ const INITIAL_MISSIONS: MockMission[] = [
     startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
+    operatorId: 'user-operator-01',
     createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
     updatedAt: new Date().toISOString(),
   },

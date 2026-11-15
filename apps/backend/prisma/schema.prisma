@@ -11,6 +11,18 @@ generator client {
 enum Role {
   ADMIN
   USER
+  /// Supervisión desde Tierra: ve el resumen de la tripulación de sus misiones, sin valores clínicos.
+  OPERATOR
+}
+
+/// Lugar donde se encuentra un tripulante, declarado por él o por el cirujano de vuelo.
+enum CrewLocation {
+  CREW_CABIN
+  HABITAT
+  ROVER
+  EVA
+  STORM_SHELTER
+  MEDICAL_BAY
 }
 
 enum UserState {
@@ -67,6 +79,7 @@ model User {
   deletedAt    DateTime?
 
   missions              Mission[]       @relation("MissionCreator")
+  operatedMissions      Mission[]       @relation("MissionOperator")
   astronaut             Astronaut?
   acknowledgedIncidents Incident[]      @relation("IncidentAcknowledger")
   closedIncidents       Incident[]      @relation("IncidentCloser")
@@ -87,6 +100,9 @@ model Mission {
   patchUrl    String?
   createdById String
   createdBy   User          @relation("MissionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  /// Operador en Tierra responsable de la tripulación de esta misión.
+  operatorId  String?
+  operator    User?         @relation("MissionOperator", fields: [operatorId], references: [id], onDelete: SetNull)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
@@ -94,6 +110,7 @@ model Mission {
   astronauts Astronaut[]
   incidents  Incident[]
 
+  @@index([operatorId])
   @@map("missions")
 }
 
@@ -107,6 +124,8 @@ model Astronaut {
   role      String
   age       Int
   photoUrl  String?
+  currentLocation   CrewLocation?
+  locationUpdatedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

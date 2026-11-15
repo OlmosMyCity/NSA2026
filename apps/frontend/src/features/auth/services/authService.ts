@@ -51,6 +51,21 @@ class AuthService {
         return response;
       }
 
+      if (email === 'ops@orbvital.example' && password === 'GroundOps#2026') {
+        const response: AuthResponse = {
+          user: {
+            id: 'user-operator-01',
+            email: 'ops@orbvital.example',
+            name: 'Mission Operations',
+            role: 'OPERATOR',
+          },
+          token: `simulated-jwt-token-operator-${Date.now()}`,
+        };
+        authStorage.setToken(response.token);
+        authStorage.setUser(response.user);
+        return response;
+      }
+
       // Check whether this is a newly registered mock user
       const existingUser = mockDb.users.find((u) => u.email.toLowerCase() === email);
       if (existingUser && password.length >= 6) {

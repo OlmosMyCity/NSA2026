@@ -1,4 +1,5 @@
-export type Role = 'ADMIN' | 'USER';
+/** `OPERATOR`: supervisión desde Tierra, sin acceso a valores clínicos. */
+export type Role = 'ADMIN' | 'USER' | 'OPERATOR';
 
 export interface AuthUser {
   id: string;

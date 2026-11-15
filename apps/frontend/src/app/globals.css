@@ -318,6 +318,38 @@ a {
   animation: content-swap 200ms var(--ease-out-expo) both;
 }
 
+/* --- Freshness: countdown arc and reminder --- */
+/* Un temporizador avanza a velocidad constante: aquí lo lineal es lo correcto. */
+.freshness-arc {
+  transition: stroke-dashoffset 1s linear, stroke var(--duration-ui) var(--ease-out-expo);
+}
+
+/* Tarjetas de tripulación: entrada escalonada, solo en la primera carga */
+@keyframes crew-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.crew-card-enter { animation: crew-card-enter var(--duration-panel) var(--ease-out-expo) both; }
+
+/* El recordatorio entra desde arriba y sale por el mismo camino. */
+@keyframes reminder-enter {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes reminder-exit {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+.reminder-enter { animation: reminder-enter var(--duration-panel) var(--ease-out-expo) both; }
+.reminder-exit  { animation: reminder-exit 200ms var(--ease-out-expo) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .freshness-arc { transition: none; }
+  .crew-card-enter { animation: none; }
+  @keyframes reminder-enter { from { opacity: 0; transform: translateY(0); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes reminder-exit  { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(0); } }
+}
+
 /* ==========================================================================
    Digital Twin console primitives
    ========================================================================== */

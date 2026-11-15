@@ -1,40 +1,209 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Request, Response } from "express";
-import { Role } from "@prisma/client";
-import { prisma } from "../../src/infrastructure/database/prismaClient.js";
-import { AdminTriageController } from "../../src/interface/controllers/AdminTriageController.js";
+import { HealthReading, HealthStatus, Incident } from "@prisma/client";
+import { GetTriageOverviewUseCase } from "../../src/application/use-cases/admin/GetTriageOverviewUseCase.js";
+import {
+  ListAstronautDirectivesUseCase,
+  SendClinicalDirectiveUseCase,
+} from "../../src/application/use-cases/admin/SendClinicalDirectiveUseCase.js";
+import { CrewTriageRecord, ICrewTriageRepository } from "../../src/domain/repository/ICrewTriageRepository.js";
 import { IDirectiveRepository } from "../../src/domain/repository/IDirectiveRepository.js";
 import { NotFoundError } from "../../src/domain/errors/AppError.js";
 
-describe("Fase 2 - AdminTriageController (Directivas sin tocar HealthReading)", () => {
+const TAKEN_AT = new Date("2026-11-14T10:00:00Z");
+
+function reading(status: HealthStatus, overrides: Partial<HealthReading> = {}): HealthReading {
+  return {
+    id: `reading-${status}`,
+    astronautId: "astro",
+    heartRateBpm: 88,
+    systolicMmHg: 124,
+    diastolicMmHg: 81,
+    glucoseMgDl: 101,
+    temperatureC: 36.9,
+    spo2Pct: 97,
+    sleepHours: 6.5,
+    mood: 3,
+    status,
+    alerts: [{ message: "FC elevada" }, "SpO2 baja"],
+    recommendation: "Reposo",
+    notes: null,
+    takenAt: TAKEN_AT,
+    createdAt: TAKEN_AT,
+    updatedAt: TAKEN_AT,
+    deletedAt: null,
+    ...overrides,
+  } as HealthReading;
+}
+
+function record(id: string, latestReading: HealthReading | null): CrewTriageRecord {
+  return {
+    astronautId: id,
+    astronautName: `Crew ${id}`,
+    crewRole: "Pilot",
+    photoUrl: null,
+    missionId: "mission-1",
+    missionName: "Artemis IV",
+    environment: "LUNAR_BASE",
+    latestReading,
+    latestDirective: null,
+  };
+}
+
+function crewRepo(overrides: Partial<ICrewTriageRepository> = {}): ICrewTriageRepository {
+  return {
+    listCrewWithLatestReading: vi.fn().mockResolvedValue([]),
+    findAstronautName: vi.fn().mockResolvedValue(null),
+    findActiveRadiationIncident: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  };
+}
+
+const withCrew = (records: CrewTriageRecord[]) =>
+  crewRepo({ listCrewWithLatestReading: vi.fn().mockResolvedValue(records) });
+
+describe("GetTriageOverviewUseCase", () => {
+  it("un tripulante sin lecturas es NO_DATA y no trae valores clínicos supuestos", async () => {
+    const { crew, metrics } = await new GetTriageOverviewUseCase(withCrew([record("a", null)])).execute();
+
+    expect(crew[0]).toMatchObject({
+      status: "NO_DATA",
+      heartRate: null,
+      bloodPressure: null,
+      spo2: null,
+      glucose: null,
+      temperature: null,
+      sleepHours: null,
+      mood: null,
+      lastReadingAt: null,
+      alerts: [],
+      priorityBoosted: false,
+    });
+    expect(metrics).toEqual({ totalCrew: 1, criticalCount: 0, warningCount: 0, nominalCount: 0, noDataCount: 1 });
+  });
+
+  it("proyecta la última lectura real y normaliza las alertas", async () => {
+    const { crew } = await new GetTriageOverviewUseCase(
+      withCrew([record("a", reading(HealthStatus.WARNING))])
+    ).execute();
+
+    expect(crew[0]).toMatchObject({
+      status: "WARNING",
+      heartRate: 88,
+      bloodPressure: "124/81",
+      spo2: 97,
+      alerts: ["FC elevada", "SpO2 baja"],
+      lastReadingAt: "2026-11-14T10:00:00.000Z",
+    });
+  });
+
+  it("marca la vigencia de la última lectura con la hora del servidor", async () => {
+    const records = [record("a", reading(HealthStatus.OK)), record("b", null)];
+    const at = (iso: string) =>
+      new GetTriageOverviewUseCase(withCrew(records), async () => null, () => new Date(iso)).execute();
+
+    const fresh = await at("2026-11-14T10:14:59Z");
+    expect(fresh.serverTime).toBe("2026-11-14T10:14:59.000Z");
+    expect(fresh.crew.find((c) => c.astronautId === "a")).toMatchObject({
+      isFresh: true,
+      expiresAt: "2026-11-14T10:15:00.000Z",
+    });
+    expect(fresh.crew.find((c) => c.astronautId === "b")).toMatchObject({ isFresh: false, expiresAt: null });
+
+    const expired = await at("2026-11-14T10:15:00Z");
+    expect(expired.crew.find((c) => c.astronautId === "a")?.isFresh).toBe(false);
+  });
+
+  it("ordena crítico, vigilancia, sin datos y nominal", async () => {
+    const { crew, metrics } = await new GetTriageOverviewUseCase(
+      withCrew([
+        record("ok", reading(HealthStatus.OK)),
+        record("none", null),
+        record("crit", reading(HealthStatus.CRITICAL)),
+        record("warn", reading(HealthStatus.WARNING)),
+      ])
+    ).execute();
+
+    expect(crew.map((c) => c.astronautId)).toEqual(["crit", "warn", "none", "ok"]);
+    expect(metrics).toEqual({ totalCrew: 4, criticalCount: 1, warningCount: 1, nominalCount: 1, noDataCount: 1 });
+  });
+
+  it("expone la última directiva del tripulante", async () => {
+    const rec = record("a", reading(HealthStatus.OK));
+    rec.latestDirective = {
+      id: "dir-1",
+      astronautId: "a",
+      issuedById: "admin-1",
+      incidentId: null,
+      content: "Reposo 4 h",
+      acknowledgedAt: null,
+      createdAt: TAKEN_AT,
+      updatedAt: TAKEN_AT,
+    } as never;
+
+    const { crew } = await new GetTriageOverviewUseCase(withCrew([rec])).execute();
+
+    expect(crew[0].latestDirective).toEqual({
+      id: "dir-1",
+      content: "Reposo 4 h",
+      incidentId: null,
+      acknowledgedAt: null,
+      createdAt: "2026-11-14T10:00:00.000Z",
+    });
+  });
+
+  it("Fase 6: muestra incidente de radiación >= S3, sube prioridad de lectura CRITICAL y adapta protocolo a refugio", async () => {
+    const incident = {
+      id: "inc-rad-1",
+      title: "Tormenta solar S4_SEVERE",
+      description: "Flujo elevado de protones",
+      severity: "CRITICAL",
+      status: "OPEN",
+      openedAt: TAKEN_AT,
+      metadata: { stormScale: "S4_SEVERE" },
+    } as unknown as Incident;
+
+    const useCase = new GetTriageOverviewUseCase(
+      crewRepo({
+        listCrewWithLatestReading: vi.fn().mockResolvedValue([
+          record("astro-ok", null),
+          record("astro-crit", reading(HealthStatus.CRITICAL, { recommendation: "Protocolo hipoxia" })),
+        ]),
+        findActiveRadiationIncident: vi.fn().mockResolvedValue(incident),
+      }),
+      async () => ({ currentTelemetry: { stormScale: "S4_SEVERE" } }) as never
+    );
+
+    const payload = await useCase.execute();
+
+    expect(payload.stormScale).toBe("S4_SEVERE");
+    expect(payload.activeRadiationIncident).toEqual(
+      expect.objectContaining({ id: "inc-rad-1", stormScale: "S4_SEVERE" })
+    );
+    expect(payload.crew[0].astronautId).toBe("astro-crit");
+    expect(payload.crew[0].priorityBoosted).toBe(true);
+    expect(payload.crew[0].triagePriorityScore).toBe(0);
+    expect(payload.crew[0].adaptedProtocol).toContain("REFUGIO ANTITORMENTA");
+    expect(payload.crew[1].priorityBoosted).toBe(false);
+  });
+
+  it("sin tormenta no informa incidente de radiación activo", async () => {
+    const payload = await new GetTriageOverviewUseCase(withCrew([])).execute();
+    expect(payload).toMatchObject({ stormScale: "S0_NOMINAL", activeRadiationIncident: null });
+  });
+});
+
+describe("Fase 2 - Directivas sin tocar HealthReading", () => {
   const directiveRepo: IDirectiveRepository = {
     create: vi.fn(),
     findByAstronautId: vi.fn(),
     acknowledge: vi.fn(),
   };
 
-  const controller = new AdminTriageController(directiveRepo);
-
-  function makeRes(): Response {
-    const res: Partial<Response> = {};
-    res.status = vi.fn().mockReturnValue(res);
-    res.json = vi.fn().mockReturnValue(res);
-    return res as Response;
-  }
-
   beforeEach(() => {
-    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
-  it("escribe en Directive y deja de tocar HealthReading.recommendation o crear lecturas ficticias", async () => {
-    vi.spyOn(prisma.astronaut, "findFirst").mockResolvedValue({
-      id: "astro-1",
-      name: "Elena Rodriguez",
-    } as never);
-    const readingUpdateSpy = vi.spyOn(prisma.healthReading, "update");
-    const readingCreateSpy = vi.spyOn(prisma.healthReading, "create");
-
+  it("escribe en Directive; el caso de uso no tiene forma de tocar lecturas", async () => {
     const fakeDirective = {
       id: "dir-1",
       astronautId: "astro-1",
@@ -47,133 +216,46 @@ describe("Fase 2 - AdminTriageController (Directivas sin tocar HealthReading)", 
     };
     vi.mocked(directiveRepo.create).mockResolvedValue(fakeDirective);
 
-    const req = {
-      params: { id: "astro-1" },
-      user: { id: "admin-1", email: "admin@nasa.gov", role: Role.ADMIN },
-      body: {
-        directives: "Hidratación y reposo 4 horas en cabina.",
-        incidentId: "inc-1",
-      },
-    } as unknown as Request;
-    const res = makeRes();
-    const next = vi.fn();
+    const useCase = new SendClinicalDirectiveUseCase(
+      crewRepo({ findAstronautName: vi.fn().mockResolvedValue("Elena Rodriguez") }),
+      directiveRepo
+    );
 
-    await controller.sendClinicalDirectives(req, res, next);
+    const result = await useCase.execute({
+      astronautId: "astro-1",
+      issuedById: "admin-1",
+      incidentId: "inc-1",
+      content: "Hidratación y reposo 4 horas en cabina.",
+    });
 
-    expect(next).not.toHaveBeenCalled();
     expect(directiveRepo.create).toHaveBeenCalledWith({
       astronautId: "astro-1",
       issuedById: "admin-1",
       incidentId: "inc-1",
       content: "Hidratación y reposo 4 horas en cabina.",
     });
-    expect(readingUpdateSpy).not.toHaveBeenCalled();
-    expect(readingCreateSpy).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: true,
-        directive: fakeDirective,
-      })
+    expect(result).toEqual({ astronautName: "Elena Rodriguez", directive: fakeDirective });
+  });
+
+  it("acepta directivas para un tripulante sin lecturas", async () => {
+    vi.mocked(directiveRepo.create).mockResolvedValue({ id: "dir-2" } as never);
+    const useCase = new SendClinicalDirectiveUseCase(
+      crewRepo({ findAstronautName: vi.fn().mockResolvedValue("Crew sin lecturas") }),
+      directiveRepo
     );
+    await expect(useCase.execute({ astronautId: "astro-2", content: "Medir signos vitales." })).resolves.toMatchObject({
+      astronautName: "Crew sin lecturas",
+    });
   });
 
   it("retorna NotFoundError si el astronauta no existe", async () => {
-    vi.spyOn(prisma.astronaut, "findFirst").mockResolvedValue(null);
-
-    const req = {
-      params: { id: "astro-missing" },
-      user: { id: "admin-1", email: "admin@nasa.gov", role: Role.ADMIN },
-      body: { directives: "Mantener protocolo nominal." },
-    } as unknown as Request;
-    const res = makeRes();
-    const next = vi.fn();
-
-    await controller.sendClinicalDirectives(req, res, next);
-
-    expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
-    expect(directiveRepo.create).not.toHaveBeenCalled();
-  });
-
-  it("Fase 6: muestra incidente de radiación >= S3, sube prioridad de lectura CRITICAL y adapta protocolo a refugio", async () => {
-    const stormController = new AdminTriageController(directiveRepo, async () => ({
-      currentTelemetry: { stormScale: "S4_SEVERE" },
-    }) as never);
-
-    vi.spyOn(prisma.astronaut, "findMany").mockResolvedValue([
-      {
-        id: "astro-ok",
-        name: "Nominal Astro",
-        missionId: "m-1",
-        mission: { id: "m-1", name: "Artemis IV", environment: "LUNAR_BASE" },
-        role: "Pilot",
-        createdAt: new Date(),
-        photoUrl: null,
-        readings: [],
-        directives: [],
-      },
-      {
-        id: "astro-crit",
-        name: "Critical Astro",
-        missionId: "m-1",
-        mission: { id: "m-1", name: "Artemis IV", environment: "LUNAR_BASE" },
-        role: "Specialist",
-        createdAt: new Date(),
-        photoUrl: null,
-        readings: [
-          {
-            status: "CRITICAL",
-            heartRateBpm: 120,
-            systolicMmHg: 145,
-            diastolicMmHg: 95,
-            spo2Pct: 89,
-            glucoseMgDl: 95,
-            temperatureC: 36.7,
-            sleepHours: 6,
-            mood: 3,
-            alerts: [],
-            recommendation: "Protocolo hipoxia",
-            takenAt: new Date(),
-          },
-        ],
-        directives: [],
-      },
-    ] as never);
-
-    vi.spyOn(prisma.incident, "findFirst").mockResolvedValue({
-      id: "inc-rad-1",
-      title: "Tormenta solar S4_SEVERE",
-      description: "Flujo elevado de protones",
-      severity: "CRITICAL",
-      status: "OPEN",
-      openedAt: new Date(),
-      metadata: { stormScale: "S4_SEVERE" },
-    } as never);
-
-    const req = {} as unknown as Request;
-    const res = makeRes();
-    const next = vi.fn();
-
-    await stormController.getTriageOverview(req, res, next);
-
-    expect(next).not.toHaveBeenCalled();
-    const payload = vi.mocked(res.json).mock.calls[0][0] as {
-      crew: Array<{
-        astronautId: string;
-        priorityBoosted: boolean;
-        triagePriorityScore: number;
-        adaptedProtocol: string | null;
-      }>;
-      activeRadiationIncident: { id: string; stormScale: string } | null;
-    };
-
-    expect(payload.activeRadiationIncident).toEqual(
-      expect.objectContaining({ id: "inc-rad-1", stormScale: "S4_SEVERE" })
+    const send = new SendClinicalDirectiveUseCase(crewRepo(), directiveRepo);
+    await expect(send.execute({ astronautId: "missing", content: "Mantener protocolo nominal." })).rejects.toBeInstanceOf(
+      NotFoundError
     );
-    expect(payload.crew[0].astronautId).toBe("astro-crit");
-    expect(payload.crew[0].priorityBoosted).toBe(true);
-    expect(payload.crew[0].triagePriorityScore).toBe(0);
-    expect(payload.crew[0].adaptedProtocol).toContain("REFUGIO ANTITORMENTA");
-    expect(payload.crew[1].priorityBoosted).toBe(false);
+    expect(directiveRepo.create).not.toHaveBeenCalled();
+
+    const list = new ListAstronautDirectivesUseCase(crewRepo(), directiveRepo);
+    await expect(list.execute("missing")).rejects.toBeInstanceOf(NotFoundError);
   });
 });
