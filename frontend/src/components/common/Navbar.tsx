@@ -18,6 +18,7 @@ import {
   Gauge,
   Orbit,
   Radar,
+  ScanFace,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -56,6 +57,7 @@ export function Navbar() {
     { href: '/missions', label: 'Missions', icon: Rocket },
     { href: '/visualizer', label: '3D Orbit', icon: Orbit },
     { href: '/astronauts', label: 'Crew', icon: Users },
+    { href: '/profile', label: 'My Biometrics', icon: ScanFace },
   ];
 
   if (user?.role === 'ADMIN') {

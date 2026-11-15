@@ -120,6 +120,7 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
         recommendation: data.recommendation,
         notes: data.notes,
         takenAt: data.takenAt || new Date(),
+        recordedById: data.recordedById ?? null,
       },
     });
   }

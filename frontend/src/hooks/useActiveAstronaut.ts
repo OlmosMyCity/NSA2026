@@ -2,12 +2,11 @@
 
 /**
  * @module health/hooks/useActiveAstronaut
- * Resolves the active astronaut context for `/dashboard` and `/trends`.
+ * Resolves the active astronaut context for `/dashboard`, `/trends`, and `/vision`.
  */
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ENV } from '@/config/env';
 import { useAuth } from '@/context/AuthContext';
 import { astronautService } from '@/services/astronautService';
 import type { Astronaut } from '@/domain/astronauts/types';
@@ -17,9 +16,9 @@ import type { MissionEnvironment } from '../services/digitalTwinService';
 const DEMO_ASTRONAUT_ID = 'astro-01';
 
 /**
- * Resuelve el astronautId activo para My Health (/dashboard) y /trends:
- * - Tripulante (USER): siempre el suyo; sin astronauta vinculado, `undefined` (la vista
- *   muestra un aviso). Nunca otro tripulante: el backend respondería 403.
+ * Resuelve el astronautId activo para My Health (/dashboard), /trends y /vision:
+ * - Tripulante (USER): su propio astronauta por defecto, con visibilidad de compañeros de su misma misión
+ *   para asistencia en misión y reconocimiento facial en `/vision`.
  * - ADMIN: el de `?astronautId=` (enlace "Analyze trends" de la consola) o el primero del crew.
  * Además resuelve la misión asignada (`missionName`, `missionEnvironment`) para el gemelo digital.
  */
@@ -28,6 +27,7 @@ export function useActiveAstronaut() {
   const requestedId = useSearchParams().get('astronautId');
   const [crew, setCrew] = useState<Astronaut[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const [ownAstronautId, setOwnAstronautId] = useState<string | undefined>(undefined);
   const [activeAstronaut, setActiveAstronaut] = useState<Astronaut | null>(null);
   const [missionEnvironment, setMissionEnvironment] = useState<MissionEnvironment>('LUNAR_BASE');
   const [missionName, setMissionName] = useState<string | null>(null);
@@ -38,34 +38,31 @@ export function useActiveAstronaut() {
     let active = true;
 
     const resolve = async () => {
-      if (ENV.USE_MOCKS) {
-        if (!active) return;
-        const requested = user?.role === 'ADMIN' ? requestedId : null;
-        setSelectedId(requested ?? user?.astronautId ?? DEMO_ASTRONAUT_ID);
-        setIsResolving(false);
-        return;
-      }
-
-      const isAdmin = user?.role === 'ADMIN';
-      if (!isAdmin) {
-        if (!active) return;
-        setSelectedId(user?.astronautId);
-        setIsResolving(false);
-        return;
-      }
-
       try {
         const res = await astronautService.list({ limit: 50 });
         if (!active) return;
-        setCrew(res.data);
+
+        const isAdmin = user?.role === 'ADMIN';
+        const ownAstro = res.data.find(
+          (a) => a.userId === user?.id || a.id === user?.astronautId
+        );
+        setOwnAstronautId(ownAstro?.id ?? user?.astronautId);
+        // Regla de negocio: cualquier miembro de la misión puede asistir/seleccionar a compañeros de su misma misión
+        const visibleCrew =
+          isAdmin || !ownAstro
+            ? res.data
+            : res.data.filter((a) => a.missionId === ownAstro.missionId);
+
+        setCrew(visibleCrew);
         setSelectedId((prev) => {
-          if (prev && res.data.some((a) => a.id === prev)) return prev;
-          if (requestedId && res.data.some((a) => a.id === requestedId)) return requestedId;
-          return res.data[0]?.id;
+          if (prev && visibleCrew.some((a) => a.id === prev)) return prev;
+          if (requestedId && visibleCrew.some((a) => a.id === requestedId)) return requestedId;
+          return ownAstro?.id ?? user?.astronautId ?? visibleCrew[0]?.id ?? DEMO_ASTRONAUT_ID;
         });
       } catch {
         if (!active) return;
-        setSelectedId(user?.astronautId);
+        setOwnAstronautId(user?.astronautId);
+        setSelectedId(user?.astronautId ?? DEMO_ASTRONAUT_ID);
       } finally {
         if (active) setIsResolving(false);
       }
@@ -75,7 +72,7 @@ export function useActiveAstronaut() {
     return () => {
       active = false;
     };
-  }, [authLoading, user?.astronautId, user?.role, requestedId]);
+  }, [authLoading, user?.id, user?.astronautId, user?.role, requestedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -114,6 +111,7 @@ export function useActiveAstronaut() {
   return {
     astronautId: selectedId,
     setAstronautId: setSelectedId,
+    ownAstronautId,
     crew,
     activeAstronaut,
     missionEnvironment,

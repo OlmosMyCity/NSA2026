@@ -59,6 +59,9 @@ export const safeImageUrlSchema = z
   .refine(
     (val) => {
       if (val === undefined || val === null) return true;
+      if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(val)) {
+        return val.length <= 7 * 1024 * 1024;
+      }
       try {
         const parsed = new URL(val);
         return parsed.protocol === "https:";
@@ -66,7 +69,7 @@ export const safeImageUrlSchema = z
         return false;
       }
     },
-    { message: "La URL de imagen debe usar protocolo HTTPS válido." }
+    { message: "La URL de imagen debe usar protocolo HTTPS o data URI de imagen válido." }
   );
 
 const requiredNonEmptyString = (label: string, maxLen: number) =>
@@ -280,8 +283,21 @@ export const visionIngestSchema = z.object({
   cameraMode: z.string().trim().max(40).optional(),
   context: z.string().trim().max(40).optional(),
   fatigueLevel: z.string().trim().max(80).optional(),
+  identityConfidence: finiteNumber("identityConfidence", 0, 100).optional(),
   notes: z.string().trim().max(1000).nullable().optional(),
   takenAt: optionalDateSchema,
+});
+
+export const enrollFaceBiometricSchema = z.object({
+  imageUrl: safeImageUrlSchema.refine((v) => typeof v === "string" && v.length > 0, {
+    message: "El campo 'imageUrl' es obligatorio.",
+  }),
+  label: z.string().trim().max(80).nullable().optional(),
+  embedding: z
+    .array(finiteNumber("embedding", -10, 10))
+    .min(16, "El vector biométrico debe tener al menos 16 dimensiones.")
+    .max(512, "El vector biométrico no puede exceder 512 dimensiones."),
+  qualityScore: finiteNumber("qualityScore", 0, 100).optional(),
 });
 
 /**

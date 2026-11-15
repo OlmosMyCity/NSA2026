@@ -8,6 +8,8 @@ from src.config import (
     MEDIAPIPE_FACE_LANDMARKER_PATH,
     MEDIAPIPE_FACE_LANDMARKER_URL,
     MODELS_DIR,
+    SFACE_ONNX_PATH,
+    SFACE_ONNX_URL,
 )
 
 
@@ -35,7 +37,12 @@ def ensure_models() -> dict:
         MEDIAPIPE_FACE_LANDMARKER_PATH,
         "MediaPipe Face Landmarker Task",
     )
-    return {"ferplus_onnx": fer_ok, "mediapipe_landmarker": mp_ok}
+    sface_ok = download_file(
+        SFACE_ONNX_URL,
+        SFACE_ONNX_PATH,
+        "OpenCV SFace Recognition ONNX Model",
+    )
+    return {"ferplus_onnx": fer_ok, "mediapipe_landmarker": mp_ok, "sface_onnx": sface_ok}
 
 
 if __name__ == "__main__":

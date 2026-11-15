@@ -18,7 +18,7 @@ export default function EditAstronautPage() {
 
   return (
     <AppLayout>
-      <RouteGuard requiredRole="ADMIN">
+      <RouteGuard requiredRole={['ADMIN', 'USER']}>
         <div className="py-6 sm:py-10">
           {isLoading ? (
             <div className="mx-auto max-w-2xl">

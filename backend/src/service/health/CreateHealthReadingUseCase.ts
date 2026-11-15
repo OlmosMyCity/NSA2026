@@ -95,6 +95,7 @@ export class CreateHealthReadingUseCase {
       recommendation: evaluation.recommendation,
       notes: dto.notes,
       takenAt: dto.takenAt,
+      recordedById: dto.recordedById ?? null,
     });
 
     // 3. Open deduplicated medical incidents for triggered alerts

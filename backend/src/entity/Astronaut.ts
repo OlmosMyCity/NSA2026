@@ -14,6 +14,9 @@ export type AstronautWithMission = Omit<Astronaut, "currentLocation" | "location
     id: string;
     name: string;
   };
+  _count?: {
+    faceSamples?: number;
+  };
 };
 
 /** Input payload required to enroll an astronaut in a mission. */

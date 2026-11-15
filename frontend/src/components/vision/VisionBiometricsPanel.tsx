@@ -1,21 +1,28 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle,
   Brain,
   Camera,
+  CheckCircle2,
   Eye,
   HeartPulse,
+  Lock,
   Moon,
+  ScanFace,
+  Upload,
   Video,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 import { useActiveAstronaut } from '@/hooks/useActiveAstronaut';
+import { astronautService } from '@/services/astronautService';
 import type {
   AstronautTelemetryFrame,
   CameraMode,
+  EnrolledCrewProfile,
   MonitoringContext,
   VisionSource,
 } from '../../domain/vision/types';
@@ -25,10 +32,12 @@ import {
   getVisionWsUrl,
   ingestVisionTelemetry,
   resetVisionHttp,
+  syncVisionGalleryHttp,
   tickSimulatorHttp,
 } from '../../services/visionService';
 import { MockVisionSimulator } from '../../mocks/visionMock';
 import dynamic from 'next/dynamic';
+import { ENV } from '@/config/env';
 
 const SyntheticHead3D = dynamic(() => import('./SyntheticHead3D'), {
   ssr: false,
@@ -38,7 +47,6 @@ const SyntheticHead3D = dynamic(() => import('./SyntheticHead3D'), {
     </div>
   ),
 });
-import { ENV } from '@/config/env';
 
 const SYNC_INTERVAL_MS = 30_000;
 const DEFAULT_CAMERA_MODE: CameraMode = 'rgb_pos';
@@ -52,37 +60,245 @@ export function VisionBiometricsPanel() {
   const [context, setContext] = useState<MonitoringContext>('cabin_active');
   const [streaming, setStreaming] = useState<boolean>(true);
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'mock-live' | 'offline'>('connecting');
+  const [wsStatus, setWsStatus] = useState<
+    'connecting' | 'connected' | 'http-live' | 'mock-live' | 'offline'
+  >('connecting');
   const [telemetry, setTelemetry] = useState<AstronautTelemetryFrame | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
+
+  const [enrolledProfiles, setEnrolledProfiles] = useState<EnrolledCrewProfile[]>([]);
+  const [isIngestingNow, setIsIngestingNow] = useState<boolean>(false);
+  const [lastIngestInfo, setLastIngestInfo] = useState<{
+    astronautName: string;
+    time: string;
+    bpm: number;
+  } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const mockSimRef = useRef<MockVisionSimulator | null>(null);
   const awaitingRef = useRef<boolean>(false);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const hudCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const isSyncingRef = useRef<boolean>(false);
 
-  // Latest refs for intervals so timers don't reset on every frame
+  // Latest refs for intervals and 60fps canvas animation loop
   const latestTelemetryRef = useRef<AstronautTelemetryFrame | null>(null);
   const astronautIdRef = useRef<string | undefined>(astronautId);
+  const crewRef = useRef(crew);
+  const enrolledProfilesRef = useRef<EnrolledCrewProfile[]>([]);
   const sourceRef = useRef<VisionSource>(source);
   const contextRef = useRef<MonitoringContext>(context);
   const streamingRef = useRef<boolean>(streaming);
 
   useEffect(() => {
     astronautIdRef.current = astronautId;
+    if (mockSimRef.current) {
+      mockSimRef.current.setGallery(enrolledProfilesRef.current, astronautId);
+    }
   }, [astronautId]);
+
+  useEffect(() => {
+    crewRef.current = crew;
+  }, [crew]);
+
   useEffect(() => {
     sourceRef.current = source;
   }, [source]);
+
   useEffect(() => {
     contextRef.current = context;
   }, [context]);
+
   useEffect(() => {
     streamingRef.current = streaming;
   }, [streaming]);
+
+  // Load mission facial biometric gallery and push to Vision AI
+  const loadGallery = useCallback(async () => {
+    try {
+      const gallery = await astronautService.getBiometricGallery();
+      const formatted: EnrolledCrewProfile[] = gallery
+        .filter((g) => g.embeddings && g.embeddings.length > 0)
+        .map((g) => ({
+          astronaut_id: g.astronautId,
+          astronaut_name: g.astronautName,
+          role: g.role,
+          embeddings: g.embeddings,
+        }));
+      enrolledProfilesRef.current = formatted;
+      setEnrolledProfiles(formatted);
+
+      void syncVisionGalleryHttp(formatted);
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'sync_gallery',
+            profiles: formatted,
+          })
+        );
+      }
+      if (mockSimRef.current) {
+        mockSimRef.current.setGallery(formatted, astronautIdRef.current);
+      }
+    } catch {
+      // Non-fatal if gallery cannot be fetched yet
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadGallery();
+  }, [loadGallery]);
+
+  // Auto-select recognized crew member when Vision AI matches a face
+  useEffect(() => {
+    const idMetrics = telemetry?.identity;
+    if (idMetrics?.recognized && idMetrics.astronaut_id) {
+      if (astronautId !== idMetrics.astronaut_id) {
+        setAstronautId(idMetrics.astronaut_id);
+      }
+    }
+  }, [telemetry?.identity, astronautId, setAstronautId]);
+
+  // 60 FPS Smooth Interpolated YOLO Bounding Box & Identity Overlay
+  useEffect(() => {
+    let animId = 0;
+    let curBox: [number, number, number, number] | null = null;
+    let boxAlpha = 0;
+
+    const renderHud = () => {
+      const canvas = hudCanvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+        const targetW = Math.round(rect.width * dpr);
+        const targetH = Math.round(rect.height * dpr);
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (ctx && targetW > 0 && targetH > 0) {
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          const w = rect.width;
+          const h = rect.height;
+          ctx.clearRect(0, 0, w, h);
+
+          const frame = latestTelemetryRef.current;
+          const faceDetected = Boolean(frame?.face_detected);
+          const rawNorm = frame?.identity?.bbox_norm;
+          const targetNorm: [number, number, number, number] | null =
+            faceDetected && rawNorm && rawNorm.length === 4
+              ? [rawNorm[0], rawNorm[1], rawNorm[2], rawNorm[3]]
+              : faceDetected
+                ? [0.31, 0.15, 0.38, 0.66]
+                : null;
+
+          if (targetNorm) {
+            boxAlpha = Math.min(1, boxAlpha + 0.12);
+            if (!curBox) {
+              curBox = [...targetNorm];
+            } else {
+              // Exponential lerp at 60Hz for buttery-smooth YOLO tracking
+              const k = 0.24;
+              curBox[0] += (targetNorm[0] - curBox[0]) * k;
+              curBox[1] += (targetNorm[1] - curBox[1]) * k;
+              curBox[2] += (targetNorm[2] - curBox[2]) * k;
+              curBox[3] += (targetNorm[3] - curBox[3]) * k;
+            }
+          } else {
+            boxAlpha = Math.max(0, boxAlpha - 0.1);
+            if (boxAlpha <= 0.01) curBox = null;
+          }
+
+          if (curBox && boxAlpha > 0.02 && frame) {
+            const bx = curBox[0] * w;
+            const by = curBox[1] * h;
+            const bw = curBox[2] * w;
+            const bh = curBox[3] * h;
+
+            const id = frame.identity;
+            const isRecognized = Boolean(id?.recognized && id?.astronaut_name);
+            const mainColor = isRecognized
+              ? 'rgba(52, 211, 153, 0.95)' // Emerald nominal
+              : 'rgba(251, 191, 36, 0.95)'; // Amber caution (locked)
+            const fillTint = isRecognized
+              ? 'rgba(16, 185, 129, 0.07)'
+              : 'rgba(245, 158, 11, 0.07)';
+
+            ctx.globalAlpha = boxAlpha;
+
+            // Subtle YOLO box fill + outer frame
+            ctx.fillStyle = fillTint;
+            ctx.fillRect(bx, by, bw, bh);
+
+            ctx.strokeStyle = mainColor;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(bx, by, bw, bh);
+
+            // Bold YOLO Tactical Corner Brackets
+            const cornerLen = Math.max(14, Math.min(bw, bh) * 0.14);
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            // Top-left
+            ctx.moveTo(bx, by + cornerLen);
+            ctx.lineTo(bx, by);
+            ctx.lineTo(bx + cornerLen, by);
+            // Top-right
+            ctx.moveTo(bx + bw - cornerLen, by);
+            ctx.lineTo(bx + bw, by);
+            ctx.lineTo(bx + bw, by + cornerLen);
+            // Bottom-left
+            ctx.moveTo(bx, by + bh - cornerLen);
+            ctx.lineTo(bx, by + bh);
+            ctx.lineTo(bx + cornerLen, by + bh);
+            // Bottom-right
+            ctx.moveTo(bx + bw - cornerLen, by + bh);
+            ctx.lineTo(bx + bw, by + bh);
+            ctx.lineTo(bx + bw, by + bh - cornerLen);
+            ctx.stroke();
+
+            // YOLO Top Label Banner
+            const bpmTxt =
+              frame.heart_rate.bpm > 0 ? `${frame.heart_rate.bpm.toFixed(0)} BPM` : 'CALIB';
+            const labelText = isRecognized
+              ? `${id!.astronaut_name!.toUpperCase()} · ${id!.confidence.toFixed(1)}% | ${bpmTxt}`
+              : (id?.enrolled_count ?? 0) === 0
+                ? 'NO FACE ID ENROLLED · INGESTION LOCKED'
+                : 'UNRECOGNIZED SUBJECT · INGESTION LOCKED';
+
+            ctx.font = 'bold 11px ui-monospace, SFMono-Regular, Menlo, monospace';
+            const textMetrics = ctx.measureText(labelText);
+            const pillW = textMetrics.width + 16;
+            const pillH = 22;
+            const pillX = Math.max(6, Math.min(w - pillW - 6, bx));
+            const pillY = by > pillH + 8 ? by - pillH - 4 : by + 4;
+
+            ctx.fillStyle = isRecognized
+              ? 'rgba(6, 78, 59, 0.92)'
+              : 'rgba(120, 53, 15, 0.92)';
+            ctx.fillRect(pillX, pillY, pillW, pillH);
+            ctx.strokeStyle = mainColor;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(pillX, pillY, pillW, pillH);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(labelText, pillX + 8, pillY + pillH / 2);
+          }
+
+          ctx.restore();
+        }
+      }
+      animId = requestAnimationFrame(renderHud);
+    };
+
+    animId = requestAnimationFrame(renderHud);
+    return () => cancelAnimationFrame(animId);
+  }, []);
 
   // Manage local webcam stream when source === 'webcam'
   useEffect(() => {
@@ -98,7 +314,9 @@ export function VisionBiometricsPanel() {
         return;
       }
       if (!navigator.mediaDevices?.getUserMedia) {
-        setWebcamError('This browser does not support camera capture. Switched back to cabin feed.');
+        setWebcamError(
+          'This browser does not support camera capture. Switched back to cabin feed.'
+        );
         setSource('simulator');
         return;
       }
@@ -122,12 +340,12 @@ export function VisionBiometricsPanel() {
             name === 'NotAllowedError' || name === 'SecurityError'
               ? 'camera permission denied (check the lock icon in the address bar)'
               : name === 'NotFoundError' || name === 'OverconstrainedError'
-              ? 'no camera found on this device'
-              : name === 'NotReadableError' || name === 'AbortError'
-              ? 'camera is in use by another app (Zoom, Teams, OBS, Python service...)'
-              : err instanceof Error
-              ? err.message
-              : 'unknown error';
+                ? 'no camera found on this device'
+                : name === 'NotReadableError' || name === 'AbortError'
+                  ? 'camera is in use by another app (Zoom, Teams, OBS, Python service...)'
+                  : err instanceof Error
+                    ? err.message
+                    : 'unknown error';
           setWebcamError(`Could not access local camera: ${reason}. Switched back to cabin feed.`);
           setSource('simulator');
         }
@@ -174,7 +392,10 @@ export function VisionBiometricsPanel() {
     function startMock() {
       if (unmounted || mode === 'mock') return;
       mode = 'mock';
-      if (!mockSimRef.current) mockSimRef.current = new MockVisionSimulator();
+      if (!mockSimRef.current) {
+        mockSimRef.current = new MockVisionSimulator();
+        mockSimRef.current.setGallery(enrolledProfilesRef.current, astronautIdRef.current);
+      }
       awaitingRef.current = false;
       setWsStatus('mock-live');
       if (wsUrl) reconnectTimer = setTimeout(probeRealService, MOCK_PROBE_MS);
@@ -186,6 +407,7 @@ export function VisionBiometricsPanel() {
       if (unmounted || mode !== 'mock') return;
       if (health?.status === 'ok') {
         mockSimRef.current = null;
+        void syncVisionGalleryHttp(enrolledProfilesRef.current);
         if (wsUrl!.includes('.vercel.app')) {
           mode = 'http';
           setWsStatus('http-live');
@@ -204,6 +426,7 @@ export function VisionBiometricsPanel() {
       if (health?.status === 'ok') {
         mode = 'http';
         awaitingRef.current = false;
+        void syncVisionGalleryHttp(enrolledProfilesRef.current);
         setWsStatus('http-live');
       } else if (ENV.USE_MOCKS) {
         startMock();
@@ -226,6 +449,14 @@ export function VisionBiometricsPanel() {
         wsOpened = true;
         setWsStatus('connected');
         awaitingRef.current = false;
+        if (enrolledProfilesRef.current.length > 0) {
+          ws.send(
+            JSON.stringify({
+              type: 'sync_gallery',
+              profiles: enrolledProfilesRef.current,
+            })
+          );
+        }
       };
 
       ws.onmessage = (event) => {
@@ -402,22 +633,40 @@ export function VisionBiometricsPanel() {
     };
   }, []);
 
+  /**
+   * Strict Ingestion by Facial Recognition:
+   * Only persists telemetry when the subject in front of the sensor is positively
+   * recognized against an enrolled crew member's facial biometric profile.
+   */
   const syncTelemetry = useCallback(async () => {
-    const targetAstro = astronautIdRef.current;
     const frame = latestTelemetryRef.current;
-    if (!targetAstro || !frame || isSyncingRef.current) return;
+    if (!frame || isSyncingRef.current) return;
+
+    const recognizedId = frame.identity?.recognized ? frame.identity.astronaut_id : null;
+    if (!recognizedId) return;
 
     isSyncingRef.current = true;
+    setIsIngestingNow(true);
     try {
-      await ingestVisionTelemetry(targetAstro, frame);
+      const res = await ingestVisionTelemetry(recognizedId, frame);
+      const matchedName =
+        frame.identity?.astronaut_name ||
+        crewRef.current.find((c) => c.id === recognizedId)?.name ||
+        recognizedId;
+      setLastIngestInfo({
+        astronautName: matchedName,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        bpm: res.derivedVitals.heartRateBpm,
+      });
     } catch {
       // Background telemetry persistence failure does not block live view
     } finally {
       isSyncingRef.current = false;
+      setIsIngestingNow(false);
     }
   }, []);
 
-  // Silent background persistence to crew health record every 30s
+  // Silent background persistence every 30s ONLY when face is recognized
   useEffect(() => {
     if (!streaming) return;
     const timer = setInterval(() => {
@@ -439,6 +688,8 @@ export function VisionBiometricsPanel() {
   const hr = telemetry?.heart_rate;
   const mood = telemetry?.mood;
   const sleep = telemetry?.sleep;
+  const identity = telemetry?.identity;
+  const isRecognized = Boolean(identity?.recognized && identity?.astronaut_id);
   const isLive = wsStatus === 'connected' || wsStatus === 'http-live' || wsStatus === 'mock-live';
 
   return (
@@ -448,33 +699,25 @@ export function VisionBiometricsPanel() {
         <div>
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-berry">
             <Video className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Contactless Optical Biometrics</span>
+            <span>Contactless Optical Biometrics · Face ID Routing</span>
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
             Crew Optical Biometrics &amp; Fatigue
           </h1>
           <p className="mt-1 text-xs text-stem">
-            Contactless HR, HRV, stress, and ocular fatigue.
+            Real-time YOLO face recognition automatically routes contactless vitals to the
+            identified crew member.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {crew.length > 0 && (
-            <label className="flex items-center gap-2 text-xs font-medium text-stem">
-              <span>Crew</span>
-              <select
-                value={astronautId ?? ''}
-                onChange={(e) => setAstronautId(e.target.value)}
-                className="twin-select w-auto min-w-[9rem] font-semibold"
-              >
-                {crew.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <Link
+            href="/profile"
+            className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+          >
+            <ScanFace className="h-3.5 w-3.5 text-berry" />
+            <span>Manage Face ID ({enrolledProfiles.length} enrolled)</span>
+          </Link>
 
           <span
             className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
@@ -500,6 +743,77 @@ export function VisionBiometricsPanel() {
           </span>
         </div>
       </header>
+
+      {/* Strict Facial Recognition Status Banner */}
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border px-4 py-3 text-xs backdrop-blur-md ${
+          isRecognized
+            ? 'border-[var(--status-nominal-border)] bg-emerald-950/35 text-status-nominal'
+            : 'border-[var(--status-caution-border)] bg-amber-950/35 text-status-caution'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          {isRecognized ? (
+            <ScanFace className="h-4 w-4 shrink-0 text-status-nominal" />
+          ) : (
+            <Lock className="h-4 w-4 shrink-0 text-status-caution" />
+          )}
+          <div>
+            {isRecognized ? (
+              <p className="font-semibold">
+                Identified Subject:{' '}
+                <strong className="underline underline-offset-2">{identity?.astronaut_name}</strong>{' '}
+                <span className="font-mono">({identity?.confidence.toFixed(1)}% match)</span> —
+                Strict Ingestion Unlocked
+              </p>
+            ) : enrolledProfiles.length === 0 ? (
+              <p className="font-semibold">
+                Strict Mode Active: No crew facial biometrics enrolled yet. Ingestion is locked
+                until at least 1 crew member enrolls Face ID.
+              </p>
+            ) : (
+              <p className="font-semibold">
+                Strict Mode Active: Subject in camera does not match any enrolled crew Face ID.
+                Ingestion is paused to prevent misattribution.
+              </p>
+            )}
+            {lastIngestInfo && (
+              <p className="mt-0.5 text-[11px] text-stem font-mono">
+                Last ingested reading: {lastIngestInfo.astronautName} ({lastIngestInfo.bpm} BPM) at{' '}
+                {lastIngestInfo.time}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isRecognized ? (
+            <button
+              type="button"
+              onClick={() => void syncTelemetry()}
+              disabled={isIngestingNow}
+              className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-status-nominal px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:opacity-90 disabled:opacity-50"
+            >
+              {isIngestingNow ? (
+                <span>Ingesting…</span>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Ingest to {identity?.astronaut_name} Now</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <Link
+              href="/profile"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-blueberry px-3.5 py-1.5 text-xs font-semibold text-plate hover:bg-berry"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>Enroll Crew Face Photos</span>
+            </Link>
+          )}
+        </div>
+      </div>
 
       {webcamError && (
         <div className="rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 p-3 text-xs font-medium text-status-critical backdrop-blur-md">
@@ -542,7 +856,7 @@ export function VisionBiometricsPanel() {
             </div>
           </div>
 
-          {/* Sensor Feed Viewport */}
+          {/* Sensor Feed Viewport with 60 FPS Interpolated YOLO Canvas Overlay */}
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line bg-slate-950">
             <video
               ref={webcamVideoRef}
@@ -554,35 +868,52 @@ export function VisionBiometricsPanel() {
             {source !== 'webcam' && (
               <div className="absolute inset-0">
                 <SyntheticHead3D telemetry={telemetry} />
-                <div className="hud-scanline pointer-events-none absolute inset-x-0 h-16" aria-hidden="true" />
+                <div
+                  className="hud-scanline pointer-events-none absolute inset-x-0 h-16"
+                  aria-hidden="true"
+                />
               </div>
             )}
+
+            {/* 60 FPS Smooth YOLO Detection & Identity Canvas */}
+            <canvas
+              ref={hudCanvasRef}
+              className="pointer-events-none absolute inset-0 h-full w-full"
+            />
+
             {(source === 'webcam' || telemetry) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className={`rounded-pill border px-2.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-md ${
-                      telemetry?.face_detected
+                      isRecognized
                         ? 'border-[var(--status-nominal-border)] bg-slate-950/75 text-status-nominal'
                         : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
                     }`}
                   >
-                    {source !== 'webcam'
-                      ? 'CABIN SUBJECT · 3D'
+                    {isRecognized
+                      ? `ID LOCKED: ${identity?.astronaut_name?.toUpperCase()}`
                       : telemetry?.face_detected
-                      ? 'SUBJECT LOCKED'
-                      : 'SCANNING SUBJECT...'}
+                        ? 'UNVERIFIED SUBJECT · LOCKED'
+                        : 'SCANNING SUBJECT...'}
                   </span>
                   {telemetry && (
                     <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
-                      {telemetry.heart_rate.bpm > 0 ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM` : 'CALIBRATING'} · {telemetry.mood.dominant_mood}
+                      {telemetry.heart_rate.bpm > 0
+                        ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM`
+                        : 'CALIBRATING'}{' '}
+                      · {telemetry.mood.dominant_mood}
                     </span>
                   )}
                 </div>
                 {telemetry && (
-                  <div className="flex items-center justify-start gap-2 font-mono text-[10px] text-blueberry">
+                  <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-blueberry">
                     <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
-                      STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS {telemetry.sleep.perclos.toFixed(1)}%
+                      STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS{' '}
+                      {telemetry.sleep.perclos.toFixed(1)}%
+                    </span>
+                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
+                      {isRecognized ? 'AUTO-INGEST: ARMED' : 'AUTO-INGEST: PAUSED'}
                     </span>
                   </div>
                 )}

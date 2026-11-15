@@ -11,6 +11,7 @@ import {
   Trash2,
   Rocket,
   ShieldCheck,
+  ScanFace,
 } from 'lucide-react';
 
 interface AstronautCardProps {
@@ -20,8 +21,9 @@ interface AstronautCardProps {
 
 export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps) {
   const { user, isAdmin } = useAuth();
-  // Solo el Flight Surgeon o el propio tripulante pueden registrar sus mediciones.
-  const canLogReading = isAdmin || user?.astronautId === astronaut.id;
+  const canEditBiometrics = isAdmin || user?.role === 'USER';
+  const canLogReading = isAdmin || user?.role === 'USER';
+  const faceSamplesCount = astronaut._count?.faceSamples ?? 0;
 
   return (
     <article className="surface-card group flex flex-col justify-between p-5 transition-colors hover:border-line-strong">
@@ -65,14 +67,27 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
           </div>
         </div>
 
-        <div className="mt-5 flex items-center gap-2 text-xs">
-          <Rocket className="h-3.5 w-3.5 flex-shrink-0 text-berry" aria-hidden="true" />
-          <div className="truncate">
-            <span className="text-stem">Mission: </span>
-            <span className="font-semibold text-blueberry">
-              {astronaut.mission?.name || 'Active Crewed Mission'}
-            </span>
+        <div className="mt-5 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 truncate">
+            <Rocket className="h-3.5 w-3.5 flex-shrink-0 text-berry" aria-hidden="true" />
+            <div className="truncate">
+              <span className="text-stem">Mission: </span>
+              <span className="font-semibold text-blueberry">
+                {astronaut.mission?.name || 'Active Crewed Mission'}
+              </span>
+            </div>
           </div>
+          <span
+            className={`inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 font-mono text-[10px] font-semibold ${
+              faceSamplesCount > 0
+                ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
+                : 'border-line bg-surface-tinted text-stem'
+            }`}
+            title="Enrolled facial recognition samples"
+          >
+            <ScanFace className="h-3 w-3" />
+            <span>{faceSamplesCount > 0 ? `Face ID (${faceSamplesCount})` : 'No Face ID'}</span>
+          </span>
         </div>
       </div>
 
@@ -89,26 +104,29 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
           <span />
         )}
 
-        {isAdmin && (
+        {canEditBiometrics && (
           <div className="flex items-center gap-3">
             <Link
               href={`/astronauts/${astronaut.id}/edit`}
-              className="tactile-press text-stem hover:text-blueberry"
-              title="Edit astronaut"
-              aria-label={`Edit profile for ${astronaut.name}`}
+              className="tactile-press inline-flex items-center gap-1 text-stem hover:text-blueberry"
+              title="Edit astronaut & facial biometrics"
+              aria-label={`Edit profile and facial biometrics for ${astronaut.name}`}
             >
               <Edit2 className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium">Biometrics</span>
             </Link>
 
-            <button
-              type="button"
-              onClick={() => onDeleteRequest(astronaut)}
-              className="tactile-press text-stem hover:text-status-critical"
-              title="Remove crew member"
-              aria-label={`Remove ${astronaut.name}`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onDeleteRequest(astronaut)}
+                className="tactile-press text-stem hover:text-status-critical"
+                title="Remove crew member"
+                aria-label={`Remove ${astronaut.name}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         )}
       </div>

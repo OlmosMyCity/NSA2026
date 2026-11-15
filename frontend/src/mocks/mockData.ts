@@ -7,7 +7,7 @@ import { evaluateVitals } from '@/domain/health/evaluate';
 import type { ApiHealthReading } from '@/domain/health/api-adapter';
 import type { Vitals } from '@/domain/health/types';
 import type { Mission } from '@/domain/missions/types';
-import type { Astronaut } from '@/domain/astronauts/types';
+import type { Astronaut, FaceBiometricSample } from '@/domain/astronauts/types';
 
 /** Lectura tal como la devuelve el backend, con los campos de auditoría. */
 export type MockReading = ApiHealthReading & { createdAt: string; updatedAt: string };
@@ -43,6 +43,7 @@ export interface MockState {
   astronauts: MockAstronaut[];
   readings: MockReading[];
   directives: MockDirective[];
+  faceSamples: FaceBiometricSample[];
 }
 
 const DAY = 86_400_000;
@@ -365,5 +366,6 @@ export function seedState(): MockState {
     astronauts: ASTRONAUTS.map((a) => ({ ...a })),
     readings: SCHEDULED_READINGS.map((r) => ({ ...r })),
     directives: [],
+    faceSamples: [],
   };
 }

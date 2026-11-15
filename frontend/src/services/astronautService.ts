@@ -1,6 +1,14 @@
 import { httpClient } from '@/services/httpClient';
 import type { CrewLocation } from '@/domain/operator/types';
-import type { Astronaut, AstronautFilters, CreateAstronautInput, PaginatedAstronauts, UpdateAstronautInput } from '../domain/astronauts/types';
+import type {
+  Astronaut,
+  AstronautFilters,
+  CreateAstronautInput,
+  FaceBiometricSample,
+  MissionBiometricProfile,
+  PaginatedAstronauts,
+  UpdateAstronautInput,
+} from '../domain/astronauts/types';
 
 /** En modo mock, httpClient responde con el backend simulado (src/mocks). */
 export const astronautService = {
@@ -25,5 +33,28 @@ export const astronautService = {
 
   updateLocation: async (id: string, location: CrewLocation): Promise<void> => {
     await httpClient.patch(`/astronauts/${id}/location`, { location });
+  },
+
+  listBiometrics: async (astronautId: string): Promise<FaceBiometricSample[]> => {
+    const res = await httpClient.get<{ data: FaceBiometricSample[] }>(`/astronauts/${astronautId}/biometrics`);
+    return res.data;
+  },
+
+  getBiometricGallery: async (missionId?: string): Promise<MissionBiometricProfile[]> => {
+    const params: Record<string, string> = {};
+    if (missionId) params.missionId = missionId;
+    const res = await httpClient.get<{ data: MissionBiometricProfile[] }>('/astronauts/biometrics/gallery', {
+      params,
+    });
+    return res.data;
+  },
+
+  enrollBiometric: (
+    astronautId: string,
+    input: { imageUrl: string; label?: string; embedding: number[]; qualityScore?: number }
+  ) => httpClient.post<FaceBiometricSample>(`/astronauts/${astronautId}/biometrics`, input),
+
+  deleteBiometric: async (astronautId: string, sampleId: string): Promise<void> => {
+    await httpClient.delete(`/astronauts/${astronautId}/biometrics/${sampleId}`);
   },
 };

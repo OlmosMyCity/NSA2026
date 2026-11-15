@@ -30,7 +30,13 @@ from pydantic import BaseModel, Field
 
 from src.config import FERPLUS_ONNX_PATH, MEDIAPIPE_FACE_LANDMARKER_PATH
 from src.pipeline import AstronautBiometricsPipeline
-from src.schemas import AstronautTelemetryFrame, CameraMode, MonitoringContext
+from src.schemas import (
+    AstronautTelemetryFrame,
+    BiometricExtractResponse,
+    CameraMode,
+    EnrolledCrewProfile,
+    MonitoringContext,
+)
 from src.vision.synthetic_stream import SimulationConfig, SyntheticAstronautGenerator
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -120,6 +126,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 global_pipeline = AstronautBiometricsPipeline()
 global_simulator = SyntheticAstronautGenerator()
 _global_sim_time: float = 0.0
+_global_gallery: list[EnrolledCrewProfile] = []
 
 
 @app.get("/", include_in_schema=False)
@@ -201,6 +208,63 @@ async def step_simulator_telemetry(body: SimulatorTickRequest) -> AstronautTelem
         context=body.context,
         include_annotated_frame=body.include_hud,
     )
+
+
+class GallerySyncRequest(BaseModel):
+    profiles: list[EnrolledCrewProfile] = Field(default_factory=list)
+
+
+class BiometricBase64ExtractRequest(BaseModel):
+    image_b64: str
+
+
+@app.post(
+    "/api/biometrics/gallery",
+    dependencies=[Depends(_require_service_token)],
+)
+async def sync_biometric_gallery(body: GallerySyncRequest) -> Dict[str, Any]:
+    global _global_gallery
+    _global_gallery = body.profiles
+    enrolled = global_pipeline.set_gallery(body.profiles)
+    return {"status": "synced", "enrolled_count": enrolled}
+
+
+@app.post(
+    "/api/biometrics/extract",
+    response_model=BiometricExtractResponse,
+    dependencies=[Depends(_require_service_token)],
+)
+async def extract_biometric_sample_upload(
+    file: UploadFile | None = File(default=None),
+    image_b64: str | None = Form(default=None),
+) -> BiometricExtractResponse:
+    frame_bgr: np.ndarray | None = None
+    if file is not None:
+        raw_bytes = await _read_bounded_upload(file, MAX_FRAME_BYTES)
+        if raw_bytes:
+            arr = np.frombuffer(raw_bytes, dtype=np.uint8)
+            frame_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    elif image_b64:
+        frame_bgr = _decode_base64_image(image_b64)
+
+    if frame_bgr is None:
+        raise HTTPException(status_code=400, detail="Valid image upload or image_b64 required")
+
+    return global_pipeline.extract_biometric(frame_bgr)
+
+
+@app.post(
+    "/api/biometrics/extract-json",
+    response_model=BiometricExtractResponse,
+    dependencies=[Depends(_require_service_token)],
+)
+async def extract_biometric_sample_json(
+    body: BiometricBase64ExtractRequest,
+) -> BiometricExtractResponse:
+    frame_bgr = _decode_base64_image(body.image_b64)
+    if frame_bgr is None:
+        raise HTTPException(status_code=400, detail="Invalid base64 image")
+    return global_pipeline.extract_biometric(frame_bgr)
 
 
 @app.post(
@@ -338,7 +402,8 @@ def _decode_base64_image(data_uri: str) -> np.ndarray | None:
 
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(ws: WebSocket) -> None:
-    """Real-time WebSocket stream supporting `tick` (30 FPS simulator), `frame` (base64 webcam), `config`, and `reset` commands."""
+    """Real-time WebSocket stream supporting `tick` (30 FPS simulator), `frame` (base64 webcam), `sync_gallery`, `config`, and `reset` commands."""
+    global _global_gallery
     ok, _reason = _is_token_valid(ws.headers.get("x-service-token"))
     if not ok:
         await ws.close(code=1008)
@@ -346,6 +411,8 @@ async def websocket_telemetry(ws: WebSocket) -> None:
 
     await ws.accept()
     session_pipeline = AstronautBiometricsPipeline()
+    if _global_gallery:
+        session_pipeline.set_gallery(_global_gallery)
     simulator = SyntheticAstronautGenerator(SimulationConfig(target_bpm=72.0, state="nominal"))
     sim_ts = 0.0
     camera_mode = CameraMode.RGB_POS
@@ -381,6 +448,19 @@ async def websocket_telemetry(ws: WebSocket) -> None:
                 session_pipeline.reset()
                 sim_ts = 0.0
                 await ws.send_json({"type": "ack", "status": "reset"})
+                continue
+
+            if msg_type == "sync_gallery":
+                raw_profiles = msg.get("profiles", [])
+                if isinstance(raw_profiles, list):
+                    try:
+                        parsed_profiles = [EnrolledCrewProfile(**p) for p in raw_profiles if isinstance(p, dict)]
+                        _global_gallery = parsed_profiles
+                        enrolled = session_pipeline.set_gallery(parsed_profiles)
+                        global_pipeline.set_gallery(parsed_profiles)
+                        await ws.send_json({"type": "ack", "status": "gallery_synced", "enrolled_count": enrolled})
+                    except Exception:
+                        await ws.send_json({"type": "error", "detail": "Invalid gallery profiles"})
                 continue
 
             if msg_type == "config":

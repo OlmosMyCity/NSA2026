@@ -56,6 +56,32 @@ export interface HeartRateMetrics {
   status: string;
 }
 
+export interface IdentityMetrics {
+  recognized: boolean;
+  astronaut_id?: string | null;
+  astronaut_name?: string | null;
+  confidence: number;
+  similarity: number;
+  enrolled_count: number;
+  status: 'recognized' | 'unknown' | 'empty_gallery' | 'no_face' | string;
+  bbox_norm?: number[] | null;
+}
+
+export interface EnrolledCrewProfile {
+  astronaut_id: string;
+  astronaut_name: string;
+  role?: string;
+  embeddings: number[][];
+}
+
+export interface BiometricExtractResponse {
+  face_detected: boolean;
+  embedding: number[];
+  quality_score: number;
+  bbox_norm?: number[] | null;
+  backend: string;
+}
+
 export interface AstronautTelemetryFrame {
   timestamp: number;
   frame_index: number;
@@ -68,6 +94,7 @@ export interface AstronautTelemetryFrame {
   mood: MoodMetrics;
   sleep: SleepMetrics;
   heart_rate: HeartRateMetrics;
+  identity?: IdentityMetrics;
   annotated_frame_jpeg_b64?: string | null;
 }
 

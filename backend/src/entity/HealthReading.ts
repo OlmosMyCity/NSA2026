@@ -38,6 +38,7 @@ export interface CreateHealthReadingDTO {
   mood: number;
   notes?: string | null;
   takenAt?: Date;
+  recordedById?: string | null;
 }
 
 /**
@@ -70,6 +71,7 @@ export interface NewHealthReadingData {
   recommendation: string;
   notes?: string | null;
   takenAt?: Date;
+  recordedById?: string | null;
 }
 
 /** Persisted biomedical reading including deterministic clinical status, alerts, and soft-delete metadata. */
@@ -97,5 +99,6 @@ export interface HealthReadingEntity {
   invalidatedAt: Date | null;
   invalidatedReason: string | null;
   invalidatedById: string | null;
+  recordedById?: string | null;
   supersedesId: string | null;
 }

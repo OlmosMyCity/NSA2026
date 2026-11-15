@@ -76,6 +76,34 @@ class HeartRateMetrics(BaseModel):
     status: str = Field("calibrating", description="calibrating, locked, low_signal, or no_face")
 
 
+class IdentityMetrics(BaseModel):
+    recognized: bool = Field(False, description="True if face matches an enrolled crew member")
+    astronaut_id: Optional[str] = Field(None, description="Matched astronaut ID")
+    astronaut_name: Optional[str] = Field(None, description="Matched astronaut full name")
+    confidence: float = Field(0.0, ge=0.0, le=100.0, description="Match confidence percentage (0-100)")
+    similarity: float = Field(0.0, ge=0.0, le=1.0, description="Raw cosine similarity")
+    enrolled_count: int = Field(0, ge=0, description="Number of crew members with enrolled biometrics")
+    status: str = Field("no_face", description="recognized, unknown, empty_gallery, or no_face")
+    bbox_norm: Optional[List[float]] = Field(
+        None, description="Normalized [x, y, w, h] in 0..1 for 60fps YOLO overlay"
+    )
+
+
+class EnrolledCrewProfile(BaseModel):
+    astronaut_id: str
+    astronaut_name: str
+    role: Optional[str] = None
+    embeddings: List[List[float]] = Field(default_factory=list)
+
+
+class BiometricExtractResponse(BaseModel):
+    face_detected: bool
+    embedding: List[float] = Field(default_factory=list)
+    quality_score: float = Field(0.0, ge=0.0, le=100.0)
+    bbox_norm: Optional[List[float]] = None
+    backend: str = "hybrid_128d"
+
+
 class AstronautTelemetryFrame(BaseModel):
     """Complete per-frame biometric telemetry packet emitted over REST and WebSocket endpoints."""
 
@@ -90,6 +118,7 @@ class AstronautTelemetryFrame(BaseModel):
     mood: MoodMetrics
     sleep: SleepMetrics
     heart_rate: HeartRateMetrics
+    identity: IdentityMetrics = Field(default_factory=IdentityMetrics)
     annotated_frame_jpeg_b64: Optional[str] = Field(
         None, description="Optional Base64-encoded JPEG frame with biometric HUD overlay"
     )

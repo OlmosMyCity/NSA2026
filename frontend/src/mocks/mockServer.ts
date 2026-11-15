@@ -51,8 +51,8 @@ function load(): MockState {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const stored = JSON.parse(raw) as Partial<MockState> & Omit<MockState, 'directives'>;
-        return { ...stored, directives: stored.directives ?? [] };
+        const stored = JSON.parse(raw) as Partial<MockState> & Omit<MockState, 'directives' | 'faceSamples'>;
+        return { ...stored, directives: stored.directives ?? [], faceSamples: stored.faceSamples ?? [] };
       }
     } catch {
       // Estado corrupto: se vuelve a sembrar.
@@ -130,7 +130,22 @@ const matches = (q: string | null, ...fields: string[]) => !q || fields.some((f)
 
 const withMission = (a: MockAstronaut) => {
   const m = db.missions.find((x) => x.id === a.missionId);
-  return { ...a, mission: m ? { id: m.id, name: m.name } : undefined };
+  const faceSamplesCount = (db.faceSamples ?? []).filter((s) => s.astronautId === a.id).length;
+  return {
+    ...a,
+    mission: m ? { id: m.id, name: m.name } : undefined,
+    _count: { faceSamples: faceSamplesCount },
+  };
+};
+
+const isSameMissionOrAdmin = (user: TokenUser, targetAstronautId: string): boolean => {
+  if (user.role === 'ADMIN') return true;
+  const ownId = ownAstronautId(user.id);
+  if (!ownId) return false;
+  if (ownId === targetAstronautId) return true;
+  const ownAstro = db.astronauts.find((a) => a.id === ownId && !a.deletedAt);
+  const targetAstro = db.astronauts.find((a) => a.id === targetAstronautId && !a.deletedAt);
+  return Boolean(ownAstro && targetAstro && ownAstro.missionId === targetAstro.missionId);
 };
 
 const withAstronaut = (r: MockReading) => {
@@ -338,6 +353,89 @@ const routes: Array<[string, RegExp, Handler]> = [
         query,
       ),
   ],
+  [
+    'GET',
+    /^\/astronauts\/biometrics\/gallery$/,
+    ({ query, user }) => {
+      let missionId = query.get('missionId');
+      if (!missionId && user && user.role === 'USER') {
+        const ownId = ownAstronautId(user.id);
+        const ownAstro = db.astronauts.find((a) => a.id === ownId && !a.deletedAt);
+        missionId = ownAstro?.missionId ?? null;
+      }
+      const astros = db.astronauts.filter((a) => !a.deletedAt && (!missionId || a.missionId === missionId));
+      return {
+        data: astros.map((a) => {
+          const samples = (db.faceSamples ?? []).filter((s) => s.astronautId === a.id);
+          return {
+            astronautId: a.id,
+            astronautName: a.name,
+            role: a.role,
+            missionId: a.missionId,
+            photoUrl: a.photoUrl ?? null,
+            sampleCount: samples.length,
+            embeddings: samples.map((s) => s.embedding),
+          };
+        }),
+      };
+    },
+  ],
+  [
+    'GET',
+    /^\/astronauts\/([^/]+)\/biometrics$/,
+    ({ params }) => ({
+      data: (db.faceSamples ?? []).filter((s) => s.astronautId === params[0]),
+    }),
+  ],
+  [
+    'POST',
+    /^\/astronauts\/([^/]+)\/biometrics$/,
+    (ctx) => {
+      const user = requireUser(ctx);
+      const astronautId = ctx.params[0];
+      if (!isSameMissionOrAdmin(user, astronautId)) {
+        fail(403, 'You can only manage facial biometrics for crew members of your own mission.');
+      }
+      const astro = findActive(db.astronauts, astronautId, 'Astronaut');
+      const existing = (db.faceSamples ?? []).filter((s) => s.astronautId === astronautId);
+      if (existing.length >= 5) {
+        fail(400, 'Maximum of 5 facial biometric samples per crew member reached.');
+      }
+      const { body } = ctx;
+      const sample = {
+        id: newId('face'),
+        astronautId,
+        imageUrl: str(body.imageUrl) ?? '',
+        label: str(body.label) || `Sample #${existing.length + 1}`,
+        embedding: Array.isArray(body.embedding) ? (body.embedding as number[]) : [],
+        qualityScore: typeof body.qualityScore === 'number' ? body.qualityScore : 92,
+        uploadedById: user.id,
+        createdAt: now(),
+      };
+      db.faceSamples = [...(db.faceSamples ?? []), sample];
+      if (!astro.photoUrl && sample.imageUrl) {
+        astro.photoUrl = sample.imageUrl;
+      }
+      persist();
+      return [201, sample];
+    },
+  ],
+  [
+    'DELETE',
+    /^\/astronauts\/([^/]+)\/biometrics\/([^/]+)$/,
+    (ctx) => {
+      const user = requireUser(ctx);
+      const [astronautId, sampleId] = ctx.params;
+      if (!isSameMissionOrAdmin(user, astronautId)) {
+        fail(403, 'You can only manage facial biometrics for crew members of your own mission.');
+      }
+      db.faceSamples = (db.faceSamples ?? []).filter(
+        (s) => !(s.astronautId === astronautId && s.id === sampleId),
+      );
+      persist();
+      return [204, null];
+    },
+  ],
   ['GET', /^\/astronauts\/([^/]+)$/, ({ params }) => withMission(findActive(db.astronauts, params[0], 'Astronaut'))],
   [
     'POST',
@@ -366,7 +464,10 @@ const routes: Array<[string, RegExp, Handler]> = [
     'PUT',
     /^\/astronauts\/([^/]+)$/,
     (ctx) => {
-      requireAdmin(ctx);
+      const user = requireUser(ctx);
+      if (!isSameMissionOrAdmin(user, ctx.params[0])) {
+        fail(403, 'You can only update crew members of your own mission.');
+      }
       const astronaut = findActive(db.astronauts, ctx.params[0], 'Astronaut');
       const { body } = ctx;
       Object.assign(astronaut, {
@@ -447,7 +548,7 @@ const routes: Array<[string, RegExp, Handler]> = [
       const { body } = ctx;
       const astronautId = str(body.astronautId);
       if (!astronautId || VITAL_FIELDS.some((f) => body[f] === undefined)) fail(400, 'All vital signs and astronautId are required.');
-      if (user.role !== 'ADMIN' && ownAstronautId(user.id) !== astronautId) fail(403, "You cannot log readings for another crew member.");
+      if (!isSameMissionOrAdmin(user, astronautId!)) fail(403, "You can only log readings for crew members of your own mission.");
       findActive(db.astronauts, astronautId!, 'Astronaut');
       const vitals = Object.fromEntries(VITAL_FIELDS.map((f) => [f, Number(body[f])])) as unknown as Vitals;
       const reading = buildReading(newId('read'), astronautId!, vitals, str(body.takenAt) ?? now(), str(body.notes) || null);
@@ -467,7 +568,7 @@ const routes: Array<[string, RegExp, Handler]> = [
       const { body } = ctx;
       const astronautId = str(body.astronautId);
       if (!astronautId) fail(400, 'The astronaut ID is required.');
-      if (user.role !== 'ADMIN' && ownAstronautId(user.id) !== astronautId) fail(403, "You cannot log telemetry for another crew member.");
+      if (!isSameMissionOrAdmin(user, astronautId!)) fail(403, "You can only log telemetry for crew members of your own mission.");
       findActive(db.astronauts, astronautId!, 'Astronaut');
       const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
       const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
@@ -688,7 +789,8 @@ const routes: Array<[string, RegExp, Handler]> = [
     'POST',
     /^\/uploads\/(astronauts|missions)$/,
     (ctx) => {
-      requireAdmin(ctx);
+      if (ctx.params[0] === 'missions') requireAdmin(ctx);
+      else requireUser(ctx);
       const url = str(ctx.body.fileUrl);
       if (!url) fail(400, "Attach an image file in the 'file' field.");
       return [201, { url }];

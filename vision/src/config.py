@@ -22,6 +22,16 @@ MEDIAPIPE_FACE_LANDMARKER_URL = (
     "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
     "face_landmarker/float16/1/face_landmarker.task"
 )
+SFACE_ONNX_PATH = MODELS_DIR / "face_recognition_sface_2021dec.onnx"
+SFACE_ONNX_URL = (
+    "https://github.com/opencv/opencv_zoo/raw/main/models/"
+    "face_recognition_sface/face_recognition_sface_2021dec.onnx"
+)
+
+# Face Identity Recognition Configuration
+FACE_EMBEDDING_DIM: int = 128
+FACE_MATCH_THRESHOLD: float = 0.56
+FACE_SMOOTHING_WINDOW: int = 5
 
 # rPPG Heart Rate & HRV Configuration
 RPPG_BUFFER_SECONDS: float = 12.0
