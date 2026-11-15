@@ -170,7 +170,7 @@ async def step_simulator_telemetry(body: SimulatorTickRequest) -> AstronautTelem
         state=body.sim_state,
         nir_mode=(body.camera_mode == CameraMode.NIR_IR),
     )
-    _global_sim_time += 1.0 / 15.0
+    _global_sim_time += 1.0 / 20.0
     frame = global_simulator.next_frame(_global_sim_time)
     return global_pipeline.process_frame(
         frame_bgr=frame,

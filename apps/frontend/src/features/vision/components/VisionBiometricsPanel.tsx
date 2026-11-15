@@ -394,12 +394,12 @@ export function VisionBiometricsPanel() {
                   });
               },
               'image/jpeg',
-              0.72
+              0.65
             );
           }
         }
       }
-    }, 180);
+    }, 50);
 
     return () => {
       unmounted = true;
@@ -675,7 +675,7 @@ export function VisionBiometricsPanel() {
               </div>
             )}
             <video ref={webcamVideoRef} autoPlay playsInline muted className="hidden" />
-            <canvas ref={captureCanvasRef} width={480} height={360} className="hidden" />
+            <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />
           </div>
 
           {/* Source & Mode Controls */}
