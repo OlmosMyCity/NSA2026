@@ -9,7 +9,9 @@
  * risk reduction, and locks the habitat environment to the astronaut's real mission.
  */
 
+import Link from 'next/link';
 import {
+  ArrowRight,
   Check,
   CheckCircle2,
   Loader2,
@@ -377,7 +379,11 @@ export function ScenarioDock({
               ? 'Scenario changed since the last triage.'
               : 'Triage is up to date.'}
         </p>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Link href="/routine" className="twin-btn twin-btn-ghost">
+            Open routine
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
           <button
             type="button"
             onClick={onReset}

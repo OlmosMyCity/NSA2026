@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Rocket } from 'lucide-react';
 import { AppLayout } from '@/components/common/AppLayout';
+import { MissionTabs } from '@/components/common/MissionTabs';
 import { useAuth } from '@/context/AuthContext';
 import { astronautService } from '@/services/astronautService';
 import { missionService } from '@/services/missionService';
@@ -63,7 +64,8 @@ export default function VisualizerPage() {
 
   return (
     <AppLayout>
-      <div className="py-6 sm:py-8 space-y-6">
+      <div className="space-y-6 py-4 sm:py-6">
+        <MissionTabs />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-line pb-5">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-blueberry">

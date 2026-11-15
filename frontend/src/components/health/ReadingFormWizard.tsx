@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import {
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+} from 'lucide-react';
 import { healthService } from '../../services/healthService';
 import { evaluateVitals } from '../../domain/health/evaluate';
 import { API_STATUS } from '../../domain/health/api-adapter';
@@ -45,7 +53,7 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
     try {
       setIsSubmitting(true);
       await healthService.createReading({ astronautId: crew.selectedId, ...vitals, notes: notes.trim() || null });
-      router.push('/routine?recorded=true');
+      router.push('/dashboard?recorded=true');
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to log telemetry to the system.');
     } finally {
@@ -60,10 +68,19 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
       <div className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-blueberry">Log Vital Signs</h1>
-          <StatusBadge status={API_STATUS[evaluation.status]} />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/vision"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+            >
+              <Camera className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+              <span>Optical Camera Check-in</span>
+            </Link>
+            <StatusBadge status={API_STATUS[evaluation.status]} />
+          </div>
         </div>
         <p className="mt-1.5 text-sm text-stem">
-          Record vitals for onboard clinical triage.
+          Step 1 of 4 · Record vitals onboard, then inspect the 3D Digital Twin to prioritize countermeasures.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-6 border-b border-line text-xs font-semibold">

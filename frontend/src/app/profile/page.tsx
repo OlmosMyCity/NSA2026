@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/common/AppLayout';
+import { MissionTabs } from '@/components/common/MissionTabs';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { useAuth } from '@/context/AuthContext';
 import { astronautService } from '@/services/astronautService';
@@ -66,8 +67,10 @@ export default function BiometricProfilePage() {
   return (
     <AppLayout>
       <RouteGuard requiredRole={['ADMIN', 'USER']}>
-        <div className="mx-auto max-w-4xl space-y-6 py-4 sm:py-6">
-          <header className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-6 py-4 sm:py-6">
+          <MissionTabs />
+          <div className="mx-auto max-w-4xl space-y-6">
+            <header className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-berry">
                 <ScanFace className="h-3.5 w-3.5" />
@@ -180,6 +183,7 @@ export default function BiometricProfilePage() {
               />
             </div>
           )}
+          </div>
         </div>
       </RouteGuard>
     </AppLayout>

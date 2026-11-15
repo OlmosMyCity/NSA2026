@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { authStorage, StoredUser } from '../../services/storage';
 import {
-  Activity,
   HeartPulse,
   CalendarCheck2,
   Rocket,
-  Users,
   ShieldAlert,
+  ChevronRight,
   LogIn,
   LogOut,
   Menu,
@@ -18,7 +17,6 @@ import {
   Gauge,
   Orbit,
   Radar,
-  ScanFace,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -49,31 +47,57 @@ export function Navbar() {
     router.push('/login');
   };
 
-  const navLinks = [
-    { href: '/', label: 'Home', icon: Activity },
-    { href: '/dashboard', label: 'My Health', icon: Gauge },
-    { href: '/readings/new', label: 'Log Reading', icon: HeartPulse },
-    { href: '/routine', label: 'Routine', icon: CalendarCheck2 },
-    { href: '/missions', label: 'Missions', icon: Rocket },
-    { href: '/visualizer', label: '3D Orbit', icon: Orbit },
-    { href: '/astronauts', label: 'Crew', icon: Users },
-    { href: '/profile', label: 'My Biometrics', icon: ScanFace },
+  type NavItem = {
+    href: string;
+    label: string;
+    icon: typeof HeartPulse;
+    dividerBefore?: boolean;
+  };
+
+  // Flujo lineal de 4 pasos para la tripulación (+ enlace clínico para Flight Surgeon).
+  const navLinks: NavItem[] = [
+    { href: '/readings/new', label: '1. Check-in', icon: HeartPulse },
+    { href: '/dashboard', label: '2. Digital Twin', icon: Gauge },
+    { href: '/routine', label: '3. Routine', icon: CalendarCheck2 },
+    { href: '/missions', label: '4. Mission', icon: Rocket },
   ];
 
   if (user?.role === 'ADMIN') {
-    navLinks.push({ href: '/admin', label: 'Surgeon', icon: ShieldAlert });
+    navLinks.push({
+      href: '/admin',
+      label: 'Surgeon',
+      icon: ShieldAlert,
+      dividerBefore: true,
+    });
   }
 
-  // El operador no tiene salud propia que registrar: ve la supervisión y la misión.
-  const visibleLinks =
-    user?.role === 'OPERATOR'
-      ? [
-          { href: '/', label: 'Home', icon: Activity },
-          { href: '/operator', label: 'Oversight', icon: Radar },
-          { href: '/missions', label: 'Missions', icon: Rocket },
-          { href: '/visualizer', label: '3D Orbit', icon: Orbit },
-        ]
-      : navLinks;
+  const isOperator = user?.role === 'OPERATOR';
+
+  // El operador no tiene salud propia que registrar: sigue el flujo lineal de supervisión.
+  const visibleLinks: NavItem[] = isOperator
+    ? [
+        { href: '/operator', label: '1. Oversight', icon: Radar },
+        { href: '/missions', label: '2. Missions', icon: Rocket },
+        { href: '/visualizer', label: '3. 3D Orbit', icon: Orbit },
+      ]
+    : navLinks;
+
+  const isLinkActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href === '/dashboard' && (pathname === '/trends' || pathname === '/vision')) {
+      return true;
+    }
+    if (href === '/missions') {
+      if (pathname.startsWith('/missions/')) return true;
+      if (
+        !isOperator &&
+        (pathname === '/visualizer' || pathname === '/astronauts' || pathname === '/profile')
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   const roleLabel =
     user?.role === 'ADMIN' ? 'Flight Surgeon' : user?.role === 'OPERATOR' ? 'Mission Operator' : 'Astronaut';
@@ -96,29 +120,34 @@ export function Navbar() {
 
         {/* Desktop navigation */}
         <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
-          {visibleLinks.map((link) => {
+          {visibleLinks.map((link, index) => {
             const Icon = link.icon;
-            const isActive =
-              pathname === link.href ||
-              (link.href === '/dashboard' && (pathname === '/trends' || pathname === '/vision'));
+            const isActive = isLinkActive(link.href);
 
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`tactile-press flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-plate text-ink-inverse font-semibold'
-                    : 'text-stem hover:bg-surface-tinted hover:text-blueberry'
-                }`}
-              >
-                <Icon
-                  className={`h-3.5 w-3.5 ${
-                    isActive ? 'text-ink-inverse' : 'text-berry'
+              <div key={link.href} className="flex items-center gap-1">
+                {index > 0 &&
+                  (link.dividerBefore ? (
+                    <span className="mx-1 h-4 w-px bg-line shrink-0" aria-hidden="true" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-stem/50 shrink-0" aria-hidden="true" />
+                  ))}
+                <Link
+                  href={link.href}
+                  className={`tactile-press flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'bg-plate text-ink-inverse font-semibold'
+                      : 'text-stem hover:bg-surface-tinted hover:text-blueberry'
                   }`}
-                />
-                <span>{link.label}</span>
-              </Link>
+                >
+                  <Icon
+                    className={`h-3.5 w-3.5 ${
+                      isActive ? 'text-ink-inverse' : 'text-berry'
+                    }`}
+                  />
+                  <span>{link.label}</span>
+                </Link>
+              </div>
             );
           })}
         </nav>
@@ -184,9 +213,7 @@ export function Navbar() {
           <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
             {visibleLinks.map((link) => {
               const Icon = link.icon;
-              const isActive =
-                pathname === link.href ||
-                (link.href === '/dashboard' && pathname === '/trends');
+              const isActive = isLinkActive(link.href);
 
               return (
                 <Link
