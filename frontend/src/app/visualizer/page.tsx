@@ -80,7 +80,7 @@ export default function VisualizerPage() {
             {isAdmin && missions.length > 0 && (
               <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <label className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-stem">
-                  <span>Mission Control View:</span>
+                  <span>Mission:</span>
                   <select
                     aria-label="Select mission"
                     value={selectedMissionId}
@@ -89,7 +89,7 @@ export default function VisualizerPage() {
                   >
                     {missions.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({m.status.replace('_', ' ')})
+                        {m.name}
                       </option>
                     ))}
                   </select>
@@ -119,7 +119,7 @@ export default function VisualizerPage() {
             )}
 
             {selectedMissionId ? (
-              <MissionHealthView missionId={selectedMissionId} />
+              <MissionHealthView key={selectedMissionId} missionId={selectedMissionId} />
             ) : loadingMissions ? (
               <div className="surface-card p-8 text-center text-sm text-stem">
                 Loading active mission simulation…
