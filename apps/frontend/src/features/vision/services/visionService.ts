@@ -36,6 +36,7 @@ export async function analyzeWebcamFrameHttp(params: {
   blob: Blob;
   camera_mode: CameraMode;
   context: MonitoringContext;
+  include_hud?: boolean;
 }): Promise<AstronautTelemetryFrame> {
   const base = getVisionBaseUrl();
   if (!base) throw new Error('Vision URL not reachable');
@@ -43,7 +44,7 @@ export async function analyzeWebcamFrameHttp(params: {
   form.append('file', params.blob, 'frame.jpg');
   form.append('camera_mode', params.camera_mode);
   form.append('context', params.context);
-  form.append('include_hud', 'true');
+  form.append('include_hud', params.include_hud ? 'true' : 'false');
   const res = await fetch(`${base}/api/analyze/frame`, {
     method: 'POST',
     body: form,
@@ -136,7 +137,7 @@ export async function ingestVisionTelemetry(
       status: evaluation.status,
       alerts: evaluation.alerts,
       recommendation: evaluation.recommendation,
-      notes: `[Vision AI Auto-Sync] Cam: ${frame.camera_mode} | Mood: ${frame.mood.dominant_mood}`,
+      notes: undefined,
       takenAt: now,
       createdAt: now,
       updatedAt: now,

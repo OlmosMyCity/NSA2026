@@ -1,5 +1,3 @@
-import { ENV, isReachableServiceUrl } from '@/features/common/config/env';
-import { httpClient } from '@/features/common/services/httpClient';
 import type { ApiHealthReading } from '../domain/api-adapter';
 
 export type ShieldingType = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
@@ -263,43 +261,6 @@ class BiodosimetryService {
     payload: BiodosimetryPayload;
     useLiveBridge?: boolean;
   }): Promise<BiodosimetryTriageResult> {
-    if (!ENV.USE_MOCKS && params.useLiveBridge) {
-      try {
-        const res = await httpClient.post<{ triage: BiodosimetryResponse }>(
-          '/health-readings/biodosimetry-triage',
-          {
-            astronautId: params.astronautId,
-            shieldingType: params.shieldingType,
-            biomarkers: {
-              gammaH2axFociPerCell: params.payload.gammaH2axFociPerCell,
-              urine8OhdgNgMg: params.payload.urine8OhdgNgMg,
-              fdxrFoldChange: params.payload.fdxrFoldChange,
-            },
-          }
-        );
-        return { source: 'backend-bridge', triage: res.triage };
-      } catch {
-        // Fallback a microservicio directo o simulación local
-      }
-    }
-
-    if (isReachableServiceUrl(ENV.SIGNAL_NOISE_URL)) {
-      try {
-        const res = await fetch(`${ENV.SIGNAL_NOISE_URL}/api/biodosimetry/attribution`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(params.payload),
-          signal: AbortSignal.timeout(2500),
-        });
-        if (res.ok) {
-          const triage = (await res.json()) as BiodosimetryResponse;
-          return { source: 'signal-noise-fastapi', triage };
-        }
-      } catch {
-        // Microservicio FastAPI no disponible en este entorno: usar simulación determinística local
-      }
-    }
-
     return {
       source: 'local-simulation',
       triage: computeLocalFallback(params.payload),

@@ -30,7 +30,7 @@ function buildMockOverview(): OperatorCrewOverview {
 
       const freshness = evaluateFreshness(latest?.takenAt, now);
       const isFresh = freshness.phase === 'fresh' || freshness.phase === 'expiring';
-      const zones = summarizeZones(latest ? toIndicatorReadings(latest as ApiHealthReading) : [], now);
+      const zones = summarizeZones(latest ? toIndicatorReadings(latest as ApiHealthReading) : [], null, now);
       const zoneStatus = Object.fromEntries(
         Object.values(zones).map((z) => [z.zone, z.status])
       ) as Record<BodyZoneId, HealthStatus>;

@@ -150,14 +150,13 @@ export function MoleculeViewer3D({ pdbPath, title, focusedResidue }: MoleculeVie
 
       {status === 'loading' && (
         <div className="pointer-events-none absolute inset-0 top-9 flex items-center justify-center bg-canvas/85 font-mono text-xs text-stem">
-          Loading A100 PDB structure...
+          Loading 3D molecular structure...
         </div>
       )}
 
       {status === 'error' && (
         <div className="absolute inset-0 top-9 flex flex-col items-center justify-center gap-2 bg-canvas/95 p-4 text-center font-mono text-xs text-status-critical">
           <p>{errorMsg}</p>
-          <p className="text-[11px] text-stem">Source: {pdbPath}</p>
           <button
             type="button"
             onClick={() => setReloadNonce((n) => n + 1)}

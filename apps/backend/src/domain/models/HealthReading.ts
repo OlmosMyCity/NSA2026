@@ -11,6 +11,8 @@ export interface HealthReadingFilters {
   status?: HealthStatus;
   from?: Date;
   to?: Date;
+  /** Incluir lecturas invalidadas (auditoría). Por defecto solo las válidas. */
+  includeInvalid?: boolean;
 }
 
 export interface CreateHealthReadingDTO {
@@ -27,17 +29,35 @@ export interface CreateHealthReadingDTO {
   takenAt?: Date;
 }
 
-export interface UpdateHealthReadingDTO {
-  heartRateBpm?: number;
-  systolicMmHg?: number;
-  diastolicMmHg?: number;
-  glucoseMgDl?: number;
-  temperatureC?: number;
-  spo2Pct?: number;
-  sleepHours?: number;
-  mood?: number;
+/**
+ * P1 — Los datos de salud solo se agregan.
+ * Una lectura no se edita ni se borra: se invalida con un motivo, o se corrige
+ * registrando una lectura nueva que la reemplaza (supersedesId).
+ */
+export interface InvalidateHealthReadingDTO {
+  reason: string;
+  invalidatedById: string | null;
+}
+
+export interface CorrectHealthReadingDTO extends Omit<CreateHealthReadingDTO, "astronautId"> {
+  reason: string;
+}
+
+/** Datos ya evaluados que el repositorio persiste para una lectura nueva. */
+export interface NewHealthReadingData {
+  astronautId: string;
+  heartRateBpm: number;
+  systolicMmHg: number;
+  diastolicMmHg: number;
+  glucoseMgDl: number;
+  temperatureC: number;
+  spo2Pct: number;
+  sleepHours: number;
+  mood: number;
+  status: HealthStatus;
+  alerts: object;
+  recommendation: string;
   notes?: string | null;
-  recommendation?: string | null;
   takenAt?: Date;
 }
 
@@ -59,5 +79,11 @@ export interface HealthReadingEntity {
   takenAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  /** @deprecated usar isValid */
   deletedAt: Date | null;
+  isValid: boolean;
+  invalidatedAt: Date | null;
+  invalidatedReason: string | null;
+  invalidatedById: string | null;
+  supersedesId: string | null;
 }

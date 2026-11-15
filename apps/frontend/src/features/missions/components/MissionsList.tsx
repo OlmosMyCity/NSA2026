@@ -25,41 +25,49 @@ import {
 
 const SAMPLE_MISSIONS = [
   {
+    name: 'Artemis II — Crewed Lunar Free-Return',
+    description:
+      '9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.',
+    environment: 'SPACECRAFT' as Environment,
+    status: 'IN_PROGRESS' as const,
+    daysAgo: 4,
+  },
+  {
     name: 'ISS Expedition 72 — Low Earth Orbit',
     description:
-      'Crew Dragon / Falcon 9 orbital operations at 420 km LEO aboard the International Space Station for circadian alignment and fluid shift tracking.',
+      'Orbital science aboard the International Space Station at 408–420 km LEO, 51.6° inclination, and 7.66 km/s (~90 min orbital period) with Crew Dragon and Soyuz MS crew rotations.',
     environment: 'STATION' as Environment,
     status: 'IN_PROGRESS' as const,
     daysAgo: 1,
   },
   {
-    name: 'Shackleton Base — Lunar Rover Traverse',
+    name: 'Lunar Reconnaissance Orbiter (LRO)',
     description:
-      'Starship HLS descent and pressurized rover EVA traverse along Shackleton Crater rim with real-time SpO2 and radiation shelter telemetry.',
-    environment: 'ROVER' as Environment,
+      'Launched on Atlas V 401 into a 50 km circular lunar polar mapping orbit over Shackleton Crater and the lunar south pole.',
+    environment: 'LUNAR_BASE' as Environment,
     status: 'IN_PROGRESS' as const,
     daysAgo: 1,
   },
   {
-    name: 'Ares I — Mars Transit & Deep Space Cruise',
+    name: 'Mars 2020 Perseverance — Jezero Crater',
     description:
-      'Interplanetary transit trajectory toward Mars for deep-space GCR/SPE radiation countermeasures and autonomous biodosimetry.',
+      'Launched on ULA Atlas V 541 on a 202-day interplanetary cruise to Jezero Crater, Mars, monitoring deep-space GCR/SPE radiation exposure.',
     environment: 'MARS_BASE' as Environment,
     status: 'IN_PROGRESS' as const,
     daysAgo: 4,
   },
   {
-    name: 'Europa Clipper — Jupiter Outer-System Cruise',
+    name: 'Europa Clipper — Jupiter Orbit Cruise',
     description:
-      'Outer-system deep-space trajectory toward Jupiter and Europa evaluating high-energy GCR shielding and autonomous DNA repair kinetics.',
+      'Launched Oct 14, 2024 on SpaceX Falcon Heavy on a 5.5-year trajectory with Mars and Earth gravity assists toward Jupiter arrival in April 2030.',
     environment: 'SPACECRAFT' as Environment,
     status: 'IN_PROGRESS' as const,
     daysAgo: 5,
   },
   {
-    name: 'Vesper I — Venus Gravity-Assist Flyby',
+    name: 'Parker Solar Probe — Venus Gravity Assist',
     description:
-      'Inner-system solar-flux flyby around Venus testing high-intensity SPE storm early warning and oral radioprotector schedules.',
+      'Launched Aug 12, 2018 on ULA Delta IV Heavy executing seven Venus gravity-assist flybys to tighten its inner-system solar perihelion.',
     environment: 'SPACECRAFT' as Environment,
     status: 'IN_PROGRESS' as const,
     daysAgo: 2,
@@ -137,7 +145,7 @@ export function MissionsList() {
             Missions &amp; Habitats
           </h1>
           <p className="mt-1.5 text-sm text-stem">
-            Operational environments where crew physiological health is monitored.
+            Active crew habitats and trajectories.
           </p>
         </div>
 

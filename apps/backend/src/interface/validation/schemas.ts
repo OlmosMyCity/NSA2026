@@ -100,34 +100,21 @@ export const createHealthReadingSchema = z.object({
   ...healthVitalsShape,
 });
 
-export const updateHealthReadingSchema = z.object({
-    heartRateBpm: healthVitalsShape.heartRateBpm.optional(),
-    systolicMmHg: healthVitalsShape.systolicMmHg.optional(),
-    diastolicMmHg: healthVitalsShape.diastolicMmHg.optional(),
-    glucoseMgDl: healthVitalsShape.glucoseMgDl.optional(),
-    temperatureC: healthVitalsShape.temperatureC.optional(),
-    spo2Pct: healthVitalsShape.spo2Pct.optional(),
-    sleepHours: healthVitalsShape.sleepHours.optional(),
-    mood: healthVitalsShape.mood.optional(),
-    notes: healthVitalsShape.notes,
-    recommendation: z
-      .string()
-      .trim()
-      .max(2000, "La recomendación no puede exceder 2000 caracteres.")
-      .nullable()
-      .optional(),
-    takenAt: z
-      .union([z.string(), z.date(), z.undefined()])
-      .transform((val, ctx) => {
-        if (val === undefined) return undefined;
-        const date = val instanceof Date ? val : new Date(val);
-        if (isNaN(date.getTime())) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de 'takenAt' inválido." });
-          return z.NEVER;
-        }
-        return date;
-      }),
-  });
+// P1: las lecturas no se editan. Se invalidan con motivo o se corrigen con una lectura nueva.
+const readingChangeReason = z
+  .string({ required_error: "El motivo es obligatorio." })
+  .trim()
+  .min(5, "El motivo debe tener al menos 5 caracteres.")
+  .max(500, "El motivo no puede exceder 500 caracteres.");
+
+export const invalidateHealthReadingSchema = z.object({
+  reason: readingChangeReason,
+});
+
+export const correctHealthReadingSchema = z.object({
+  ...healthVitalsShape,
+  reason: readingChangeReason,
+});
 
 export const createMissionSchema = z
   .object({

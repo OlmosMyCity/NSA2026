@@ -17,7 +17,8 @@ export function IncidentNotificationCenter() {
 
   useEffect(() => {
     const token = authStorage.getToken();
-    if (!token) return;
+    // En modo mock no hay backend que emita incidentes por SSE
+    if (!token || ENV.USE_MOCKS) return;
 
     const controller = new AbortController();
     let active = true;

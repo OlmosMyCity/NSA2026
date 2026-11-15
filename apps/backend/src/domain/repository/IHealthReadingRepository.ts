@@ -1,6 +1,8 @@
 import { HealthReading, HealthStatus } from "@prisma/client";
 import {
   HealthReadingFilters,
+  InvalidateHealthReadingDTO,
+  NewHealthReadingData,
   PaginatedResult,
 } from "../models/HealthReading.js";
 
@@ -32,40 +34,14 @@ export interface AstronautHealthSummary {
 export interface IHealthReadingRepository {
   findMany(filters: HealthReadingFilters): Promise<PaginatedResult<HealthReading>>;
   findById(id: string): Promise<HealthReading | null>;
-  create(data: {
-    astronautId: string;
-    heartRateBpm: number;
-    systolicMmHg: number;
-    diastolicMmHg: number;
-    glucoseMgDl: number;
-    temperatureC: number;
-    spo2Pct: number;
-    sleepHours: number;
-    mood: number;
-    status: HealthStatus;
-    alerts: object;
-    recommendation: string;
-    notes?: string | null;
-    takenAt?: Date;
-  }): Promise<HealthReading>;
-  update(
-    id: string,
-    data: {
-      heartRateBpm?: number;
-      systolicMmHg?: number;
-      diastolicMmHg?: number;
-      glucoseMgDl?: number;
-      temperatureC?: number;
-      spo2Pct?: number;
-      sleepHours?: number;
-      mood?: number;
-      status?: HealthStatus;
-      alerts?: object;
-      recommendation?: string | null;
-      notes?: string | null;
-      takenAt?: Date;
-    }
-  ): Promise<HealthReading | null>;
-  softDelete(id: string): Promise<boolean>;
+  create(data: NewHealthReadingData): Promise<HealthReading>;
+  /** P1: marca la lectura como inválida (definitivo). No se borra ni se editan sus valores. */
+  invalidate(id: string, data: InvalidateHealthReadingDTO): Promise<HealthReading>;
+  /** P1: crea la lectura corregida e invalida la original en una sola transacción. */
+  createCorrection(
+    supersedesId: string,
+    reading: NewHealthReadingData,
+    invalidation: InvalidateHealthReadingDTO
+  ): Promise<HealthReading>;
   getAstronautHealthSummary(astronautId: string): Promise<AstronautHealthSummary | null>;
 }

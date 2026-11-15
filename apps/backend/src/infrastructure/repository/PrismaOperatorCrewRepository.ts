@@ -17,7 +17,7 @@ export class PrismaOperatorCrewRepository implements IOperatorCrewRepository {
       include: {
         mission: { select: { id: true, name: true, environment: true } },
         readings: {
-          where: { deletedAt: null },
+          where: { isValid: true },
           orderBy: { takenAt: "desc" },
           take: RECENT_READINGS,
         },

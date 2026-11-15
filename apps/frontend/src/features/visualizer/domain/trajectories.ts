@@ -8,21 +8,21 @@ import { getCustomBlobUrl, getMissionSimConfig } from './missionSimulationConfig
  * and supports custom uploaded trajectory JSONs and launch vehicles.
  */
 const TRAJECTORIES_BY_ID: Record<string, string> = {
-  'mission-01': 'data/mission.json',
-  'mission-02': 'data/mission_iss_leo.json',
-  'mission-03': 'data/mission_lunar_base.json',
-  'mission-04': 'data/mission_mars_transit.json',
-  'mission-05': 'data/mission_jupiter_europa.json',
-  'mission-06': 'data/mission_venus_flyby.json',
+  'mission-01': 'data/artemis_ii.json',
+  'mission-02': 'data/iss.json',
+  'mission-03': 'data/lro.json',
+  'mission-04': 'data/mars2020.json',
+  'mission-05': 'data/europa_clipper.json',
+  'mission-06': 'data/parker_solar_probe.json',
 };
 
 const DATA_FILES = {
-  cislunar: 'data/mission.json',
-  leo: 'data/mission_iss_leo.json',
-  lunarBase: 'data/mission_lunar_base.json',
-  mars: 'data/mission_mars_transit.json',
-  jupiter: 'data/mission_jupiter_europa.json',
-  venus: 'data/mission_venus_flyby.json',
+  cislunar: 'data/artemis_ii.json',
+  leo: 'data/iss.json',
+  lunarBase: 'data/lro.json',
+  mars: 'data/mars2020.json',
+  jupiter: 'data/europa_clipper.json',
+  venus: 'data/parker_solar_probe.json',
 } as const;
 
 export type TrajectoryMissionInput =
@@ -45,24 +45,24 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
 
   const text = `${missionOrId.name} ${missionOrId.description ?? ''}`.toLowerCase();
 
-  if (/\b(jupiter|europa|jovian|outer system|saturn)\b/.test(text)) {
+  if (/\b(jupiter|europa|jovian|outer system|saturn|clipper)\b/.test(text)) {
     return DATA_FILES.jupiter;
   }
 
-  if (/\b(venus|vesper|mercury|inner system)\b/.test(text)) {
+  if (/\b(venus|parker|solar probe|mercury|inner system)\b/.test(text)) {
     return DATA_FILES.venus;
   }
 
   if (
     missionOrId.environment === 'MARS_BASE' ||
-    /\b(mars|marte|ares|phobos|deimos|interplanetary|tmi)\b/.test(text)
+    /\b(mars|marte|perseverance|jezero|ares|phobos|deimos|interplanetary|tmi)\b/.test(text)
   ) {
     return DATA_FILES.mars;
   }
 
   if (
     missionOrId.environment === 'STATION' ||
-    /\b(iss|leo|earth orbit|low earth|orbital station|órbita terrestre|tierra)\b/.test(text)
+    /\b(iss|expedition 72|leo|earth orbit|low earth|orbital station|órbita terrestre|tierra)\b/.test(text)
   ) {
     return DATA_FILES.leo;
   }
@@ -70,7 +70,7 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
   if (
     missionOrId.environment === 'ROVER' ||
     missionOrId.environment === 'LUNAR_BASE' ||
-    /\b(shackleton|rover|lunar base)\b/.test(text)
+    /\b(lro|reconnaissance orbiter|shackleton|rover|lunar base|50 km)\b/.test(text)
   ) {
     return DATA_FILES.lunarBase;
   }
@@ -80,18 +80,8 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
 
 export function resolveDefaultVehicleId(missionOrId: TrajectoryMissionInput): string {
   if (typeof missionOrId === 'string') return 'auto';
-  switch (missionOrId.environment) {
-    case 'STATION':
-      return 'dragon';
-    case 'MARS_BASE':
-      return 'ares';
-    case 'ROVER':
-      return 'rover';
-    case 'LUNAR_BASE':
-      return /\bartemis\b/i.test(missionOrId.name) ? 'auto' : 'hls';
-    default:
-      return 'auto';
-  }
+  if (missionOrId.environment === 'ROVER') return 'rover';
+  return 'auto';
 }
 
 export function trajectoryUrl(

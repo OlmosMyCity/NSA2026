@@ -14,10 +14,10 @@ function texture(renderer, file) {
   return tex;
 }
 
-/** Halo azul de la atmósfera: brilla en el limbo y se apaga hacia el centro del disco. */
-function atmosphere(radius) {
+/** Halo atmosférico: brilla en el limbo y se apaga hacia el centro del disco. */
+function atmosphere(radius, rgb = [0.32, 0.6, 1.0], scale = 1.025) {
   return new THREE.Mesh(
-    new THREE.SphereGeometry(radius * 1.025, 64, 32),
+    new THREE.SphereGeometry(radius * scale, 64, 32),
     new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -39,7 +39,7 @@ function atmosphere(radius) {
         void main() {
           #include <logdepthbuf_fragment>
           float rim = pow(clamp(-vNormal.z + 0.75, 0.0, 1.0), 5.0);
-          gl_FragColor = vec4(0.32, 0.6, 1.0, 1.0) * rim;
+          gl_FragColor = vec4(${rgb[0].toFixed(2)}, ${rgb[1].toFixed(2)}, ${rgb[2].toFixed(2)}, 1.0) * rim;
         }`,
     })
   );
@@ -123,14 +123,14 @@ export function createScene(container, bodies) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x02040a);
 
-  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1e-5, 1e6);
+  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1e-5, 1e9);
   camera.up.set(0, 0, 1);
   camera.position.set(2, -2, 1);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.minDistance = 1e-3;
-  controls.maxDistance = 8e3;
+  controls.maxDistance = 2e6;
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.3));
   const sun = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -225,6 +225,60 @@ export function createScene(container, bodies) {
     saturn: makePlanet(56, [[0, "#e6d4a3"], [0.5, "#cdb47a"], [1, "#e9dcb8"]], [-3100, 1850, -520], true, true),
   };
 
+  const EXTRA_PALETTES = {
+    venus: { palette: [[0, "#e8c888"], [0.5, "#d4a962"], [1, "#f0d9a8"]], banded: true },
+    mars: { palette: [[0, "#d87c52"], [0.45, "#b34d2e"], [0.85, "#8f371e"], [1, "#e8ddd4"]], banded: false },
+    jupiter: { palette: [[0, "#d9c2a3"], [0.25, "#c68e5c"], [0.5, "#e6d6be"], [0.75, "#b56942"], [1, "#cbb192"]], banded: true },
+    saturn: { palette: [[0, "#e6d4a3"], [0.5, "#cdb47a"], [1, "#e9dcb8"]], banded: true },
+  };
+  const extraMeshes = {};
+  for (const b of bodies.extra || []) {
+    if (solarPlanets[b.id]) solarPlanets[b.id].visible = false;
+    const rUnits = b.radius_km / KM_PER_UNIT;
+    let mesh;
+    if (b.id === "sun") {
+      mesh = new THREE.Group();
+      mesh.add(
+        new THREE.Mesh(
+          zUpSphere(rUnits, 64),
+          new THREE.MeshBasicMaterial({ color: b.color || "#ffd166" })
+        )
+      );
+      const coronaCanvas = document.createElement("canvas");
+      coronaCanvas.width = coronaCanvas.height = 128;
+      const cg = coronaCanvas.getContext("2d");
+      const grad = cg.createRadialGradient(64, 64, 8, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255, 244, 200, 0.95)");
+      grad.addColorStop(0.35, "rgba(255, 195, 85, 0.45)");
+      grad.addColorStop(1, "rgba(255, 140, 30, 0)");
+      cg.fillStyle = grad;
+      cg.fillRect(0, 0, 128, 128);
+      const coronaTex = new THREE.CanvasTexture(coronaCanvas);
+      const corona = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: coronaTex,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          transparent: true,
+        })
+      );
+      corona.scale.setScalar(rUnits * 4.5);
+      mesh.add(corona);
+    } else {
+      const style = EXTRA_PALETTES[b.id] || {
+        palette: [[0, b.color || "#94a3b8"], [0.5, "#64748b"], [1, b.color || "#cbd5e1"]],
+        banded: false,
+      };
+      mesh = new THREE.Mesh(
+        zUpSphere(rUnits, 64),
+        new THREE.MeshStandardMaterial({ map: planetTexture(style.palette, style.banded), roughness: 0.85 })
+      );
+      if (b.id === "venus") mesh.add(atmosphere(rUnits, [0.96, 0.78, 0.42], 1.035));
+    }
+    scene.add(mesh);
+    extraMeshes[b.id] = mesh;
+  }
+
   function resize() {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
@@ -234,7 +288,7 @@ export function createScene(container, bodies) {
   setLineResolution(container.clientWidth, container.clientHeight);
   window.addEventListener("resize", resize);
 
-  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars, solarPlanets };
+  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars, solarPlanets, extraMeshes };
 }
 
 /** Matrix4 de Three.js a partir de una 3×3 por filas y una traslación. */

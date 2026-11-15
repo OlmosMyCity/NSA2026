@@ -5,15 +5,10 @@ import type { DigitalTwinState } from "./digitalTwin.js";
 import {
   ACTION_DESCRIPTIONS,
   decideByRules,
-  detectDiscrepancies,
-  riskScoreToLevel,
-  type DecisionDiscrepancy,
   type DecisionOutcome,
   type RecommendedAction,
   type ZoneScoreEstimate,
 } from "./decisionRules.js";
-
-export type DecisionSource = "gemini-decision-1" | "cache" | "rules-fallback";
 
 export interface InstrumentImageInput {
   mimeType: "image/jpeg" | "image/png" | "image/webp";
@@ -39,17 +34,10 @@ export interface InstrumentImageEstimate {
 }
 
 export interface DecisionResult {
-  /** Valores oficiales gobernados por reglas deterministas. */
   score: Record<BodyZoneId, ZoneScoreEstimate>;
   escalar: boolean;
   accion: RecommendedAction;
   confianza: number;
-  /** Resultado oficial completo (reglas) y estimación cruda del modelo. */
-  official: DecisionOutcome;
-  modelEstimate: DecisionOutcome;
-  discrepancy: DecisionDiscrepancy;
-  source: DecisionSource;
-  disclaimer: "estimación del modelo, no diagnóstico";
   freeTextMoodEstimate?: FreeTextMoodEstimate;
   instrumentEstimate?: InstrumentImageEstimate;
 }
@@ -79,15 +67,6 @@ const SCORE_CRITERIA_LEVELS: string[] = [
   "elevated (2): Uno o más indicadores en ámbar, o combinación de tendencia empeorando + medición vencida + peligro activo en la zona.",
   "critical (3): Cualquier indicador en rojo, o múltiples en ámbar agravados por radiación/ambiente cerrado crítico.",
 ];
-
-const VALID_ACTIONS: readonly RecommendedAction[] = [
-  "re_measure",
-  "rest",
-  "exercise",
-  "shelter_shielding",
-  "contact_ground",
-  "no_action",
-] as const;
 
 function buildQuestions(options?: DecideOptions): Record<string, unknown> {
   const questions: Record<string, unknown> = {};
@@ -197,16 +176,6 @@ function asNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function asAction(
-  value: unknown,
-  fallback: RecommendedAction
-): RecommendedAction {
-  return typeof value === "string" &&
-    (VALID_ACTIONS as readonly string[]).includes(value)
-    ? (value as RecommendedAction)
-    : fallback;
-}
-
 export class DecisionService {
   private readonly cache = new Map<string, DecisionResult>();
   private callsUsed = 0;
@@ -239,11 +208,6 @@ export class DecisionService {
       escalar: official.escalar,
       accion: official.accion,
       confianza: official.confianza,
-      official,
-      modelEstimate: official,
-      discrepancy: detectDiscrepancies(official, official),
-      source: "rules-fallback",
-      disclaimer: "estimación del modelo, no diagnóstico",
     };
   }
 
@@ -256,7 +220,7 @@ export class DecisionService {
 
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      return { ...cached, source: "cache" };
+      return cached;
     }
 
     const canCallApi =
@@ -285,29 +249,19 @@ export class DecisionService {
       });
 
       const answers = response.answers ?? {};
-      const modelScore = {} as Record<BodyZoneId, ZoneScoreEstimate>;
       const confidences: number[] = [];
 
       for (const zone of BODY_ZONES) {
         const ans = answers[`risk_${zone}`];
-        const rawScore = asNumber(ans?.score, official.score[zone].riskScore);
         const conf = asNumber(ans?.confidence, 0.5);
         confidences.push(conf);
-        modelScore[zone] = {
-          zone,
-          riskScore: Number(rawScore.toFixed(2)),
-          riskLevel: riskScoreToLevel(rawScore),
-          confidence: Number(conf.toFixed(3)),
-        };
       }
 
       const noulAns = answers.escalate_flight_surgeon;
-      const noulProb = asNumber(noulAns?.noul, official.escalarProbabilidad);
       const noulConf = asNumber(noulAns?.confidence, 0.5);
       confidences.push(noulConf);
 
       const choiceAns = answers.primary_action;
-      const choiceAction = asAction(choiceAns?.choice, official.accion);
       const choiceConf = asNumber(choiceAns?.confidence, 0.5);
       confidences.push(choiceConf);
 
@@ -317,16 +271,6 @@ export class DecisionService {
           Math.max(1, confidences.length)
         ).toFixed(3)
       );
-
-      const modelEstimate: DecisionOutcome = {
-        score: modelScore,
-        escalar: noulProb >= 0.5,
-        escalarProbabilidad: Number(noulProb.toFixed(3)),
-        accion: choiceAction,
-        confianza: avgConfidence,
-      };
-
-      const discrepancy = detectDiscrepancies(official, modelEstimate);
 
       let freeTextMoodEstimate: FreeTextMoodEstimate | undefined;
       if (answers.mood_from_text) {
@@ -361,16 +305,10 @@ export class DecisionService {
       }
 
       const result: DecisionResult = {
-        // Regla gana siempre como estado oficial
         score: official.score,
         escalar: official.escalar,
         accion: official.accion,
         confianza: avgConfidence,
-        official,
-        modelEstimate,
-        discrepancy,
-        source: "gemini-decision-1",
-        disclaimer: "estimación del modelo, no diagnóstico",
         freeTextMoodEstimate,
         instrumentEstimate,
       };
@@ -394,4 +332,3 @@ export async function decide(
 ): Promise<DecisionResult> {
   return defaultService.decide(state, options);
 }
-

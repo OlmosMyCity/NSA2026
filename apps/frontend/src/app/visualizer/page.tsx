@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Dna, Clock, Rocket } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { astronautService } from '@/features/astronauts/services/astronautService';
@@ -11,17 +10,8 @@ import { missionService } from '@/features/missions/services/missionService';
 import type { Mission } from '@/features/missions/domain/types';
 import { MissionHealthView } from '@/features/visualizer/components/MissionHealthView';
 
-const MolecularTwinSection = dynamic(
-  () =>
-    import('@/features/visualizer/components/MolecularTwinSection').then(
-      (m) => m.MolecularTwinSection
-    ),
-  { ssr: false }
-);
-
 export default function VisualizerPage() {
   const { user, isAuthenticated } = useAuth();
-  const [tab, setTab] = useState<'moment' | 'molecular'>('moment');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [loadingMissions, setLoadingMissions] = useState(true);
@@ -72,44 +62,16 @@ export default function VisualizerPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-line pb-5">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-blueberry">
-              3D Mission &amp; Biophysics Visualizer
+              3D Mission Trajectory Visualizer
             </h1>
             <p className="mt-1.5 text-sm text-stem max-w-2xl">
               Track any mission&apos;s live elapsed-time moment across Earth LEO, Moon, Mars,
-              Venus, or Jupiter, or inspect A100 molecular docking and DNA repair kinetics.
+              Venus, or Jupiter.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTab('moment')}
-              className={`tactile-press inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-xs font-semibold transition ${
-                tab === 'moment'
-                  ? 'bg-blueberry text-white shadow-sm'
-                  : 'border border-line bg-surface text-stem hover:text-blueberry'
-              }`}
-            >
-              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Live Mission Moment</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('molecular')}
-              className={`tactile-press inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-xs font-semibold transition ${
-                tab === 'molecular'
-                  ? 'bg-blueberry text-white shadow-sm'
-                  : 'border border-line bg-surface text-stem hover:text-blueberry'
-              }`}
-            >
-              <Dna className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Molecular Twin (A100)</span>
-            </button>
           </div>
         </div>
 
-        {tab === 'moment' && (
-          <div className="space-y-5">
+        <div className="space-y-5">
             {missions.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +112,7 @@ export default function VisualizerPage() {
             ) : (
               <div className="surface-card p-8 text-center space-y-3">
                 <p className="text-sm text-blueberry font-medium">
-                  Sign in or create a mission to track its live elapsed-time 3D simulation.
+                  Sign in or create a mission to start.
                 </p>
                 <Link
                   href="/missions/new"
@@ -162,9 +124,6 @@ export default function VisualizerPage() {
               </div>
             )}
           </div>
-        )}
-
-        {tab === 'molecular' && <MolecularTwinSection />}
       </div>
     </AppLayout>
   );

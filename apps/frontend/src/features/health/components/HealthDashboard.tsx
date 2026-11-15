@@ -26,7 +26,6 @@ import {
   type DigitalTwinState,
 } from '../services/digitalTwinService';
 import { StatusBadge } from './StatusBadge';
-import { SignalNoisePanel } from './SignalNoisePanel';
 import { INITIAL_WHAT_IF, ScenarioDock, type WhatIfState } from './twin/ScenarioDock';
 import { ZoneSelector } from './twin/ZoneSelector';
 import { ZoneInspector } from './twin/ZoneInspector';
@@ -113,7 +112,7 @@ export function HealthDashboard() {
 
   // Local rules: instant, zero tokens. Drives the 3D colors and the official status.
   const zones = useMemo(
-    () => summarizeZones(effectiveRows.flatMap(toIndicatorReadings), whatIf.active ? undefined : serverNow()),
+    () => summarizeZones(effectiveRows.flatMap(toIndicatorReadings), null, whatIf.active ? undefined : serverNow()),
     // freshnessPhase re-evaluates expiry when the window closes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [whatIf.active, effectiveRows, freshnessPhase]
@@ -243,7 +242,7 @@ export function HealthDashboard() {
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
         <EmptyState
           title="No readings recorded yet"
-          description="Log a first vital-signs reading and the twin will light up zone by zone. You can also explore it with a simulated baseline."
+          description="Log vitals or load a simulated baseline."
           actionHref="/readings/new"
           actionLabel="Log reading"
         />
@@ -375,7 +374,6 @@ export function HealthDashboard() {
               zone={selected}
               summary={zones[selected]}
               twinZone={shownResult ? shownResult.twin.zones[selected] : null}
-              modelScore={shownResult ? shownResult.decision.modelEstimate.score[selected] : null}
               isStale={isStale}
             />
           ) : isLocked ? (
@@ -391,12 +389,6 @@ export function HealthDashboard() {
               isStale={isStale}
               onSelectZone={focusZone}
             />
-          )}
-          {isStale && !isLocked && (
-            <p className="flex items-center gap-1.5 text-[11px] text-status-caution" role="status">
-              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-              Model results are from the previous scenario. Run triage to update.
-            </p>
           )}
         </aside>
       </div>
@@ -452,8 +444,6 @@ export function HealthDashboard() {
           </a>
         </p>
       </section>
-
-      {latest && !isLocked && <SignalNoisePanel astronautId={latest.astronautId} latestReading={latest} />}
     </div>
   );
 }

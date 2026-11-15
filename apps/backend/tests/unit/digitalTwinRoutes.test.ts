@@ -86,15 +86,20 @@ describe("Integración HTTP - Rutas de Gemelo Digital y Decisiones", () => {
       decision: {
         escalar: boolean;
         accion: string;
-        source: string;
-        disclaimer: string;
+        confianza: number;
+        score: Record<string, unknown>;
       };
     };
 
     expect(body.twin.overallStatus).toBe("amber");
     expect(body.decision.escalar).toBe(true);
     expect(body.decision.accion).toBe("shelter_shielding");
-    expect(body.decision.source).toBe("rules-fallback");
-    expect(body.decision.disclaimer).toBe("estimación del modelo, no diagnóstico");
+    expect(body.decision.confianza).toBe(1);
+    expect(body.decision.score).toBeDefined();
+    const rawDecision = body.decision as unknown as Record<string, unknown>;
+    expect(rawDecision.source).toBeUndefined();
+    expect(rawDecision.disclaimer).toBeUndefined();
+    expect(rawDecision.discrepancy).toBeUndefined();
+    expect(rawDecision.modelEstimate).toBeUndefined();
   });
 });

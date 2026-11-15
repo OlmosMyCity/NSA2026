@@ -62,7 +62,7 @@ export function AstronautsList() {
             Flight Crew
           </h1>
           <p className="mt-1.5 text-sm text-stem max-w-2xl">
-            Astronauts assigned to lunar exploration missions and continuous biomedical monitoring.
+            Assigned crew and biomedical profiles.
           </p>
         </div>
 

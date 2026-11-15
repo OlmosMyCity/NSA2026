@@ -36,6 +36,10 @@ const SHIP_LABEL = {
   rover: "Lunar Rover",
   ares: "Ares I Transit",
   gateway: "Gateway",
+  lro: "LRO",
+  mars2020: "Perseverance",
+  clipper: "Europa Clipper",
+  parker: "Parker Solar Probe",
 };
 const VEHICLE_FULL_LABEL = {
   sls: "SLS Block 1B + Orion",
@@ -49,6 +53,10 @@ const VEHICLE_FULL_LABEL = {
   rover: "Pressurized Lunar Rover",
   ares: "Ares I Mars Transit",
   gateway: "Lunar Gateway",
+  lro: "Lunar Reconnaissance Orbiter",
+  mars2020: "Mars 2020 Perseverance",
+  clipper: "Europa Clipper",
+  parker: "Parker Solar Probe",
 };
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */
@@ -81,6 +89,19 @@ async function main() {
   const omegaEarth = bodies.earth.rotation_rate_rad_s;
   const tLast = phases[phases.length - 1].t_end;
   const positionAt = (t) => hermiteState(samples, t).r;
+  const extraBodies = (bodies.extra || []).map((b) => {
+    const bSamples = toTypedSamples({
+      t: mission.samples.t,
+      m: mission.samples.m,
+      phase_index: mission.samples.phase_index,
+      ...b.track,
+    });
+    return {
+      ...b,
+      positionAt: (t) => hermiteState(bSamples, t).r,
+    };
+  });
+  const extraMap = Object.fromEntries(extraBodies.map((b) => [b.id, b]));
 
   const view = createScene($("viewport"), bodies);
   const { scene, camera, controls, renderer } = view;
@@ -109,9 +130,12 @@ async function main() {
     site: mission.landing_site ? labels.add("Landing Site · 86.8° S", { priority: 8, kind: "site" }) : null,
     gateway: nrho ? labels.add("Gateway", { priority: 7 }) : null,
     ship: labels.add("", { priority: 10, kind: "ship" }),
-    pad: labels.add("LC-39B", { priority: 6 }),
+    pad: labels.add(mission.launch_site?.name || "LC-39B", { priority: 6 }),
     l2: labels.add("L2", { priority: 3 }),
   };
+  for (const b of extraBodies) {
+    if (!label[b.id]) label[b.id] = labels.add(b.name || b.id, { priority: 8, kind: "body" });
+  }
   // Embebido: solo la escena (Tierra, Luna, trayectoria y nave); el anfitrión pone el contexto.
   const embedded = isEmbedded(window.location.search);
   const maneuvers = (embedded ? [] : events)
@@ -172,6 +196,7 @@ async function main() {
     const moon = frames.toFrame(frame, frames.moonPosition(t), t);
     if (key === "earth") return earth;
     if (key === "moon") return moon;
+    if (extraMap[key]) return frames.toFrame(frame, extraMap[key].positionAt(t), t);
     if (key === "system") return earth.map((x, i) => (x + moon[i]) / 2);
     return frames.toFrame(frame, positionAt(t), t);
   }
@@ -376,19 +401,37 @@ async function main() {
 
   function updateFollow(elapsed) {
     const t = state.t;
-    const target = nearestBody(positionAt(t), frames.moonPosition(t));
+    const extraAtT = extraBodies.map((b) => ({
+      id: b.id,
+      radius_km: b.radius_km,
+      chase_km: b.chase_km,
+      pos: b.positionAt(t),
+    }));
+    const target = nearestBody(positionAt(t), frames.moonPosition(t), extraAtT);
     if (target.focus !== state.focus || target.frame !== state.frame) {
       setFrame(target.frame);
       state.focus = target.focus;
       follow.force = true;
     }
     if (follow.user) return;
-    const body = focusPosition(target.focus, t, target.frame);
-    const ship = frames.toFrame(target.frame, positionAt(t), t);
-    const radius = target.focus === "moon" ? bodies.moon.radius_km : bodies.earth.radius_km;
-    const shot = chaseCamera(ship.map((x, i) => x - body[i]), radius);
     const k = follow.force || reducedMotion ? 1 : 1 - Math.exp(-elapsed * 3);
     follow.force = false;
+    if (target.focus === "ship") {
+      // Deep space: center directly on the spacecraft/rocket looking forward along its trajectory
+      const st = hermiteState(samples, t);
+      const v = norm(frames.velocityToFrame(target.frame, st.r, st.v, t));
+      const camPos = [-v[0] * 3.2 + 0.9, -v[1] * 3.2 - 1.5, -v[2] * 3.2 + 1.4];
+      camera.position.lerp(tmp.set(...camPos), k);
+      camera.fov += (40 - camera.fov) * k;
+      camera.updateProjectionMatrix();
+      return;
+    }
+    const body = focusPosition(target.focus, t, target.frame);
+    const shipPos = frames.toFrame(target.frame, positionAt(t), t);
+    const radius =
+      target.radius_km ??
+      (target.focus === "moon" ? bodies.moon.radius_km : bodies.earth.radius_km);
+    const shot = chaseCamera(shipPos.map((x, i) => x - body[i]), radius);
     camera.position.lerp(tmp.set(...shot.position).divideScalar(KM_PER_UNIT), k);
     camera.fov += (shot.fov - camera.fov) * k;
     camera.updateProjectionMatrix();
@@ -441,17 +484,21 @@ async function main() {
     view.moon.matrixWorldNeedsUpdate = true;
     ship.position.copy(rel(shipF));
 
+    const defaultVehicleId =
+      mission.vehicle && VEHICLE_FULL_LABEL[mission.vehicle] ? mission.vehicle : null;
     const vehicle = vehicleOverride
       ? { id: vehicleOverride, name: VEHICLE_FULL_LABEL[vehicleOverride] }
-      : events.some((e) => /SRB|MECO|TLI/.test(e.label))
-        ? vehicleAt(t, events)
-        : /iss_leo/i.test(dataUrl)
-          ? { id: "dragon", name: VEHICLE_FULL_LABEL.dragon }
-          : /mars/i.test(dataUrl)
-            ? { id: "ares", name: VEHICLE_FULL_LABEL.ares }
-            : /lunar_base/i.test(dataUrl)
-              ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
-              : vehicleAt(t, events);
+      : defaultVehicleId
+        ? { id: defaultVehicleId, name: VEHICLE_FULL_LABEL[defaultVehicleId] }
+        : events.some((e) => /SRB|MECO|TLI/.test(e.label))
+          ? vehicleAt(t, events)
+          : /iss/i.test(dataUrl)
+            ? { id: "iss", name: VEHICLE_FULL_LABEL.iss }
+            : /mars/i.test(dataUrl)
+              ? { id: "mars2020", name: VEHICLE_FULL_LABEL.mars2020 }
+              : /lro|lunar_base/i.test(dataUrl)
+                ? { id: "lro", name: VEHICLE_FULL_LABEL.lro }
+                : vehicleAt(t, events);
     const shipName =
       landed && mission.landing_site && !vehicleOverride
         ? "HLS · Landing Site, 86.8° S"
@@ -489,12 +536,32 @@ async function main() {
       { center: earthC, radius: bodies.earth.radius_km / KM_PER_UNIT },
       { center: moonC, radius: bodies.moon.radius_km / KM_PER_UNIT },
     ];
+    for (const b of extraBodies) {
+      const bPos = rel(frames.toFrame(frame, b.positionAt(t), t), new THREE.Vector3());
+      const mesh = view.extraMeshes?.[b.id];
+      if (mesh) mesh.position.copy(bPos);
+      occluders.push({ center: bPos, radius: b.radius_km / KM_PER_UNIT });
+      if (label[b.id]) {
+        label[b.id].pos.copy(bPos);
+        label[b.id].pos.z += b.radius_km / KM_PER_UNIT;
+        label[b.id].active = bPos.distanceTo(camera.position) > 3 * (b.radius_km / KM_PER_UNIT);
+      }
+    }
     // La nave no está a escala, pero nunca supera al cuerpo más cercano
     const fovTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const baseTan = Math.tan(THREE.MathUtils.degToRad(baseFov / 2));
     const scaleNear = (p) => {
-      const b = occluders[p.distanceTo(earthC) < p.distanceTo(moonC) ? 0 : 1];
-      const apparent = b.radius / b.center.distanceTo(camera.position) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      if (state.focus === "ship") return 0.036;
+      let nearest = occluders[0];
+      let minDist = p.distanceTo(nearest.center);
+      for (let i = 1; i < occluders.length; i++) {
+        const d = p.distanceTo(occluders[i].center);
+        if (d < minDist) {
+          minDist = d;
+          nearest = occluders[i];
+        }
+      }
+      const apparent = nearest.radius / nearest.center.distanceTo(camera.position) / fovTan;
       return Math.min(Math.max(SHIP_TO_BODY * apparent, SHIP_MIN), SHIP_MAX);
     };
     // Los sprites tienen tamaño fijo en pantalla pero el zoom los agranda: se compensa
@@ -530,6 +597,7 @@ async function main() {
       const fy = focus[1] / KM_PER_UNIT;
       const fz = focus[2] / KM_PER_UNIT;
       for (const [key, planet] of Object.entries(view.solarPlanets)) {
+        if (!planet.visible) continue;
         const [bx, by, bz] = planet.userData.basePos;
         planet.position.set(bx - fx, by - fy, bz - fz);
         if (label[key]) {
@@ -550,7 +618,7 @@ async function main() {
     const padEci = [samples.x[0], samples.y[0], samples.z[0]];
     const padNow = mul3(rotZ(omegaEarth * t), [padEci[0], 0, 0, padEci[1], 0, 0, padEci[2], 0, 0]);
     rel(frames.toFrame(frame, [padNow[0], padNow[3], padNow[6]], t), label.pad.pos);
-    label.pad.active = t < phases[0].t_end;
+    label.pad.active = t < Math.min(phases[0].t_end, 1800);
     rel(frames.toFrame(frame, frames.fromRotating([L2_RATIO * bodies.moon.orbit_radius_km, 0, 0], t), t), label.l2.pos);
     for (const m of maneuvers) rel(frames.toFrame(frame, m.r, m.e.t), m.item.pos);
 

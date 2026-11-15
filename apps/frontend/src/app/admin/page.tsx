@@ -17,8 +17,7 @@ export default function AdminPage() {
                 Flight Surgeon Console
               </h1>
               <p className="mt-1.5 text-sm text-stem max-w-2xl">
-                Orbvital HSOC biomedical monitoring, contingency triage, and clinical directives
-                for crews in transit.
+                Crew biomedical triage and clinical directives.
               </p>
             </div>
 

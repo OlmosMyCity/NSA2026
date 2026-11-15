@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Clock } from 'lucide-react';
 import { toIndicatorReadings } from '@/features/health/domain/api-adapter';
 import { BODY_ZONES } from '@/features/health/domain/education';
+import { getPhaseRegime } from '@/features/health/domain/phaseNorms';
 import { summarizeZones } from '@/features/health/domain/summary';
 import type { BodyZoneId } from '@/features/health/domain/types';
 import { StatusBadge } from '@/features/health/components/StatusBadge';
@@ -30,8 +31,9 @@ interface MissionMomentPanelProps {
 /** Snapshot at this mission elapsed time: flight phase and latest physiological status. */
 export function MissionMomentPanel({ met, nowMet, phase, reading }: MissionMomentPanelProps) {
   const watch = PHASE_WATCH[phase?.id ?? ''] ?? [];
+  const regime = getPhaseRegime(phase?.id ?? null);
   const future = met > nowMet + 60;
-  const zones = reading ? summarizeZones(toIndicatorReadings(reading.reading)) : null;
+  const zones = reading ? summarizeZones(toIndicatorReadings(reading.reading), phase?.id ?? null) : null;
   const gapDays = reading ? (met - reading.met) / 86400 : 0;
 
   return (
@@ -45,6 +47,9 @@ export function MissionMomentPanel({ met, nowMet, phase, reading }: MissionMomen
         </p>
         <p className="mt-0.5 text-sm font-medium text-berry">
           {phase ? (PHASE_NAME_EN[phase.name] ?? phase.name) : 'Pre-launch'}
+        </p>
+        <p className="mt-1.5 text-[11px] leading-snug text-stem" title={regime.source}>
+          <span className="font-semibold text-blueberry/80">{regime.label}:</span> {regime.note}
         </p>
       </header>
 

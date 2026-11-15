@@ -36,7 +36,7 @@ function reading(status: HealthStatus, overrides: Partial<HealthReading> = {}): 
     updatedAt: TAKEN_AT,
     deletedAt: null,
     ...overrides,
-  };
+  } as HealthReading;
 }
 
 function record(id: string, recentReadings: HealthReading[]): OperatorCrewRecord {

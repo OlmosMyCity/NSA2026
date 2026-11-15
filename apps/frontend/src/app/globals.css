@@ -504,3 +504,16 @@ a {
     -webkit-backdrop-filter: none;
   }
 }
+
+/* Línea de escaneo del HUD de Vision AI (sujeto sintético 3D) */
+@keyframes hud-scan {
+  from { top: -4rem; }
+  to   { top: 100%; }
+}
+.hud-scanline {
+  background: linear-gradient(to bottom, transparent, rgb(56 189 248 / 0.12) 70%, rgb(56 189 248 / 0.45) 98%, transparent);
+  animation: hud-scan 3.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-scanline { animation: none; display: none; }
+}

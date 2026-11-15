@@ -11,7 +11,6 @@ import { AstronautRoutineState } from '@/features/routine/domain/types';
 import { StreakBanner } from '@/features/routine/components/StreakBanner';
 import { BadgeGrid } from '@/features/routine/components/BadgeGrid';
 import { RoutineChecklist } from '@/features/routine/components/RoutineChecklist';
-import { SignalNoisePanel } from '@/features/health/components/SignalNoisePanel';
 import { Users, RefreshCw } from 'lucide-react';
 
 export default function RoutinePage() {
@@ -68,7 +67,7 @@ export default function RoutinePage() {
                 Daily HRP Countermeasure Routine
               </h1>
               <p className="mt-1.5 text-sm text-stem max-w-2xl">
-                Resistive exercise plan, biomedical telemetry, and deep-space risk mitigation.
+                Daily exercise, telemetry, and risk mitigation.
               </p>
             </div>
 
@@ -123,8 +122,6 @@ export default function RoutinePage() {
 
                 <RoutineChecklist tasks={routineState.tasks} onToggleTask={handleToggleTask} />
               </div>
-
-              <SignalNoisePanel astronautId={selectedAstronautId || undefined} />
             </div>
           )}
         </div>

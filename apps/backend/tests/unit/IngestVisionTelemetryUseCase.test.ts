@@ -97,6 +97,7 @@ describe("IngestVisionTelemetryUseCase", () => {
           spo2Pct: 98,
           sleepHours: 8,
           mood: 4,
+          notes: null,
           status: HealthStatus.OK,
         }),
       })

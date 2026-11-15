@@ -29,7 +29,8 @@ export interface ZoneSummary {
  */
 export function summarizeZones(
   readings: IndicatorReading[],
-  nowMs?: number
+  phaseId?: string | null,
+  nowMs?: number,
 ): Record<BodyZoneId, ZoneSummary> {
   const latest = latestByIndicator(readings);
   const isExpired = (r: IndicatorReading) =>
@@ -43,7 +44,7 @@ export function summarizeZones(
     const hasExpiredVitals = measured.some(isExpired);
     const evaluations = measured
       .filter((r) => !isExpired(r))
-      .map((r) => evaluateIndicator(r.indicator, r.value));
+      .map((r) => evaluateIndicator(r.indicator, r.value, phaseId));
     result[zone] = {
       zone,
       status: hasExpiredVitals ? 'unknown' : worstStatus(evaluations.map((e) => e.status)),

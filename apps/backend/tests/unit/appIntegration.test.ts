@@ -64,6 +64,12 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
       fetch(`${baseUrl}/api/readings/reading-01`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }),
       fetch(`${baseUrl}/api/readings/reading-01`, { method: "DELETE" }),
     ]);
+    const [invalidateRes, correctRes] = await Promise.all([
+      fetch(`${baseUrl}/api/readings/reading-01/invalidate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "Sensor suelto" }) }),
+      fetch(`${baseUrl}/api/readings/reading-01/corrections`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }),
+    ]);
+    expect(invalidateRes.status).toBe(401);
+    expect(correctRes.status).toBe(401);
 
     expect(listRes.status).toBe(401);
     expect(summaryRes.status).toBe(401);

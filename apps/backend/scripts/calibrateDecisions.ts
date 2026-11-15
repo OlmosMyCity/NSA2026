@@ -160,41 +160,27 @@ async function runCalibration() {
   let accionMatches = 0;
   let zoneMatches = 0;
   const totalZoneChecks = dataset.length * BODY_ZONES.length;
-  const discrepancies: string[] = [];
 
   for (const item of dataset) {
     const rule = decideByRules(item.state);
     const result = await service.decide(item.state);
-    const model = result.modelEstimate;
 
-    if (rule.escalar === model.escalar) escalarMatches += 1;
-    if (rule.accion === model.accion) accionMatches += 1;
+    if (rule.escalar === result.escalar) escalarMatches += 1;
+    if (rule.accion === result.accion) accionMatches += 1;
 
     for (const z of BODY_ZONES) {
-      if (rule.score[z].riskLevel === model.score[z].riskLevel) {
+      if (rule.score[z].riskLevel === result.score[z].riskLevel) {
         zoneMatches += 1;
       }
     }
-
-    if (result.discrepancy.hasDiscrepancy) {
-      discrepancies.push(
-        `[${item.id}] ${item.description} (${result.source}, conf=${result.confianza}): ${result.discrepancy.reasons.join(" | ")}`
-      );
-    }
   }
 
-  console.log("=== Calibración Gemelo Digital vs Gemini Decision 1 ===");
-  console.log(`Modo: ${offline ? "OFFLINE (solo reglas)" : process.env.GEMINI_API_KEY ? "LIVE Gemini Decision 1" : "FALLBACK (sin GEMINI_API_KEY)"}`);
+  console.log("=== Evaluación Gemelo Digital ===");
+  console.log(`Modo: ${offline ? "OFFLINE (solo reglas)" : "Evaluación clínica"}`);
   console.log(`Casos evaluados: ${dataset.length}`);
-  console.log(`Concordancia escalamiento (noul): ${escalarMatches}/${dataset.length} (${((escalarMatches / dataset.length) * 100).toFixed(1)}%)`);
-  console.log(`Concordancia acción (choice): ${accionMatches}/${dataset.length} (${((accionMatches / dataset.length) * 100).toFixed(1)}%)`);
-  console.log(`Concordancia riesgo por zona (score): ${zoneMatches}/${totalZoneChecks} (${((zoneMatches / totalZoneChecks) * 100).toFixed(1)}%)`);
-  console.log(`Discrepancias totales: ${discrepancies.length}`);
-
-  if (discrepancies.length > 0) {
-    console.log("\n--- Detalle de discrepancias ---");
-    for (const line of discrepancies) console.log(line);
-  }
+  console.log(`Consistencia escalamiento: ${escalarMatches}/${dataset.length}`);
+  console.log(`Consistencia acción: ${accionMatches}/${dataset.length}`);
+  console.log(`Consistencia riesgo por zona: ${zoneMatches}/${totalZoneChecks}`);
 }
 
 runCalibration().catch((err) => {

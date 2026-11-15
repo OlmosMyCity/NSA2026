@@ -13,7 +13,6 @@ import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
 import { StatusBadge } from './StatusBadge';
 import { TrendChart } from './TrendChart';
-import { SignalNoisePanel } from './SignalNoisePanel';
 
 const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -75,7 +74,7 @@ export function TrendsView() {
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
         <EmptyState
           title="No history yet"
-          description="Once you log readings, you will see how each physiological indicator evolves over time."
+          description="Log a reading to track vital trends."
           actionHref="/readings/new"
           actionLabel="Log Reading"
         />
@@ -96,8 +95,7 @@ export function TrendsView() {
             Trends
           </h1>
           <p className="mt-1 text-sm text-stem max-w-2xl">
-            How your indicators change over time. Subtle background bands mark nominal, watch, and
-            critical thresholds.
+            Vital sign history across nominal, watch, and critical bands.
           </p>
           <p className="mt-1 text-xs text-stem">
             Historical data, not your current status. Live vitals count as current for 15 minutes.
@@ -281,8 +279,6 @@ export function TrendsView() {
           })}
         </div>
       </section>
-
-      <SignalNoisePanel astronautId={latest?.astronautId} latestReading={latest} />
     </div>
   );
 }

@@ -4,8 +4,6 @@
 export const ENV = {
   API_HOST: process.env.NEXT_PUBLIC_API_HOST || 'http://localhost:4000/api',
   VISION_URL: process.env.NEXT_PUBLIC_VISION_URL || 'http://localhost:8000',
-  SIGNAL_NOISE_URL: process.env.NEXT_PUBLIC_SIGNAL_NOISE_URL || 'http://localhost:8001',
-  BIOPHYSICS_URL: process.env.NEXT_PUBLIC_BIOPHYSICS_URL || 'http://localhost:8002',
   USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true',
   /** Minutos de vigencia de los signos vivos; debe coincidir con FRESHNESS_WINDOW_MIN del backend. */
   FRESHNESS_WINDOW_MIN: Number(process.env.NEXT_PUBLIC_FRESHNESS_WINDOW_MIN) > 0

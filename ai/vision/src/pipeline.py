@@ -215,7 +215,7 @@ class AstronautBiometricsPipeline:
         cv2.rectangle(vis, (0, 0), (w, 34), (18, 16, 14), -1)
         bpm_str = f"{hr.bpm:.1f} BPM" if hr.bpm > 0 else "CALIBRATING"
         hud_text = (
-            f"ORBVITAL // {camera_mode.value.upper()} | HR: {bpm_str} "
+            f"ORBVITAL | HR: {bpm_str} "
             f"| MOOD: {mood.dominant_mood.upper()} | PERCLOS: {sleep.perclos:.0f}%"
         )
         cv2.putText(

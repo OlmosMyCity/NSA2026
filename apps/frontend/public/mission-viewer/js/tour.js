@@ -12,10 +12,21 @@ export const SUNLIT = [0.82, -0.5, 0.3];
 export const TOUR_SHOTS = {
   ascent: { frame: "eci", focus: "ship", distance: 1.6, view: "horizon" },
   parking: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT },
+  leo: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT },
+  heo: { frame: "eci", focus: "earth", distance: 42, dir: SUNLIT },
   transit: { frame: "rot", focus: "system", distance: 620, dir: [0.1, -0.62, 0.78] },
+  outbound: { frame: "rot", focus: "system", distance: 620, dir: [0.1, -0.62, 0.78] },
+  flyby: { frame: "moon", focus: "moon", distance: 24, dir: SUNLIT },
+  return: { frame: "rot", focus: "system", distance: 620, dir: [0.1, -0.62, 0.78] },
+  lunar_orbit: { frame: "moon", focus: "moon", distance: 7, dir: [0.8, -0.45, 0.35] },
   nrho: { frame: "rot", focus: "moon", distance: 170, dir: [0.92, -0.38, 0.08] },
   descent: { frame: "moon", focus: "moon", distance: 9, dir: [0.8, -0.45, -0.4] },
   landing: { frame: "moon", focus: "ship", distance: 0.7, view: "horizon" },
+  cruise: { frame: "eci", focus: "ship", distance: 3.5 },
+  gravity_assist: { frame: "eci", focus: "ship", distance: 3.5 },
+  approach: { frame: "eci", focus: "ship", distance: 3.5 },
+  edl: { frame: "eci", focus: "mars", distance: 14, dir: SUNLIT },
+  perihelion: { frame: "eci", focus: "sun", distance: 45000, dir: SUNLIT },
 };
 export const DEFAULT_SHOT = { frame: "eci", focus: "ship", distance: 3 };
 

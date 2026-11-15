@@ -9,7 +9,7 @@ export class PrismaCrewTriageRepository implements ICrewTriageRepository {
       include: {
         mission: { select: { id: true, name: true, environment: true } },
         readings: {
-          where: { deletedAt: null },
+          where: { isValid: true },
           orderBy: { takenAt: "desc" },
           take: 1,
         },

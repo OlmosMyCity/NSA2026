@@ -97,8 +97,8 @@ describe("decideByRules - Motor determinista de triaje", () => {
   });
 });
 
-describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
-  it("integra respuestas concordantes con etiqueta oficial y confianza", async () => {
+describe("DecisionService - Evaluación clínica, caché, tope y fallback", () => {
+  it("integra evaluación oficial y confianza", async () => {
     const { client, createMock } = makeMockClient({
       risk_heart: { score: 0.1, confidence: 0.94 },
       risk_brain: { score: 0.1, confidence: 0.92 },
@@ -113,15 +113,17 @@ describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
     const result = await service.decide(makeState());
 
     expect(createMock).toHaveBeenCalledTimes(1);
-    expect(result.source).toBe("gemini-decision-1");
-    expect(result.disclaimer).toBe("estimación del modelo, no diagnóstico");
     expect(result.escalar).toBe(false);
     expect(result.accion).toBe("no_action");
-    expect(result.discrepancy.hasDiscrepancy).toBe(false);
     expect(result.confianza).toBeGreaterThan(0.9);
+    const raw = result as unknown as Record<string, unknown>;
+    expect(raw.discrepancy).toBeUndefined();
+    expect(raw.modelEstimate).toBeUndefined();
+    expect(raw.source).toBeUndefined();
+    expect(raw.disclaimer).toBeUndefined();
   });
 
-  it("cuando el modelo discrepa de la regla, gana la regla y se reporta discrepancia", async () => {
+  it("prevalece siempre la decisión clínica de reglas sin exponer discrepancias internas", async () => {
     const { client } = makeMockClient({
       risk_heart: { score: 0.2, confidence: 0.85 },
       risk_brain: { score: 0.2, confidence: 0.85 },
@@ -138,11 +140,9 @@ describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
 
     expect(result.escalar).toBe(true);
     expect(result.accion).toBe("contact_ground");
-    expect(result.modelEstimate.escalar).toBe(false);
-    expect(result.discrepancy.hasDiscrepancy).toBe(true);
-    expect(result.discrepancy.escalarDiscrepancy).toBe(true);
-    expect(result.discrepancy.accionDiscrepancy).toBe(true);
-    expect(result.discrepancy.zoneDiscrepancies).toContain("heart");
+    const raw = result as unknown as Record<string, unknown>;
+    expect(raw.discrepancy).toBeUndefined();
+    expect(raw.modelEstimate).toBeUndefined();
   });
 
   it("usa caché por hash del estado e ignora evaluatedAt volátil", async () => {
@@ -163,12 +163,11 @@ describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
     const r1 = await service.decide(s1);
     const r2 = await service.decide(s2);
 
-    expect(r1.source).toBe("gemini-decision-1");
-    expect(r2.source).toBe("cache");
+    expect(r2).toEqual(r1);
     expect(createMock).toHaveBeenCalledTimes(1);
   });
 
-  it("respeta el tope de llamadas y cae a rules-fallback al superarlo", async () => {
+  it("respeta el tope de llamadas y evalúa por reglas al superarlo", async () => {
     const { client, createMock } = makeMockClient({
       risk_heart: { score: 0.1, confidence: 0.9 },
       risk_brain: { score: 0.1, confidence: 0.9 },
@@ -183,13 +182,13 @@ describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
     const r1 = await service.decide(makeState());
     const r2 = await service.decide(makeState({ mood: 2 }));
 
-    expect(r1.source).toBe("gemini-decision-1");
-    expect(r2.source).toBe("rules-fallback");
+    expect(r1.confianza).toBeCloseTo(0.914, 2);
     expect(r2.escalar).toBe(true);
+    expect(r2.confianza).toBe(1);
     expect(createMock).toHaveBeenCalledTimes(1);
   });
 
-  it("usa rules-fallback cuando demoOffline=true o cuando la API falla", async () => {
+  it("evalúa de forma determinista cuando demoOffline=true o cuando la API falla", async () => {
     const failingClient: DecisionsClientLike = {
       decisions: {
         create: vi.fn().mockRejectedValue(new Error("API timeout")),
@@ -201,16 +200,16 @@ describe("DecisionService - Gemini Decision 1, caché, tope y fallback", () => {
       demoOffline: true,
     });
     const rOffline = await offlineService.decide(makeState({ spo2Pct: 88 }));
-    expect(rOffline.source).toBe("rules-fallback");
     expect(rOffline.escalar).toBe(true);
+    expect(rOffline.confianza).toBe(1);
 
     const errorService = new DecisionService({
       client: failingClient,
       demoOffline: false,
     });
     const rError = await errorService.decide(makeState({ spo2Pct: 88 }));
-    expect(rError.source).toBe("rules-fallback");
     expect(rError.escalar).toBe(true);
+    expect(rError.confianza).toBe(1);
   });
 
   it("procesa entradas libres de texto de ánimo e imagen de instrumento", async () => {

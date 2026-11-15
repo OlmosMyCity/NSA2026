@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ChevronRight, Clock, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { ChevronRight, Clock, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { BODY_ZONES, HAZARD_LABELS, INDICATOR_GUIDES } from '../../domain/education';
 import { INDICATORS, INDICATORS_BY_ZONE } from '../../domain/indicators';
 import { STATUS_THEME } from '../../domain/status-theme';
@@ -9,7 +9,6 @@ import type { BodyZoneId, IndicatorEvaluation, SpaceHazard } from '../../domain/
 import type {
   TrendDirection,
   ZoneRiskLevel,
-  ZoneScoreEstimate,
   ZoneTwinState,
 } from '../../services/digitalTwinService';
 import { StatusBadge } from '../StatusBadge';
@@ -19,17 +18,15 @@ interface ZoneInspectorProps {
   zone: BodyZoneId;
   summary: ZoneSummary;
   twinZone: ZoneTwinState | null;
-  modelScore: ZoneScoreEstimate | null;
   isStale: boolean;
 }
 
-export function ZoneInspector({ zone, summary, twinZone, modelScore, isStale }: ZoneInspectorProps) {
+export function ZoneInspector({ zone, summary, twinZone, isStale }: ZoneInspectorProps) {
   const info = BODY_ZONES[zone];
   const evaluated = new Set(summary.evaluations.map((e) => e.indicator));
   const missing = INDICATORS_BY_ZONE[zone].filter((id) => !evaluated.has(id));
 
-  // While the scenario is stale, the official level comes from the instant local rules.
-  const ruleLevel: ZoneRiskLevel =
+  const riskLevel: ZoneRiskLevel =
     twinZone && !isStale ? twinZone.riskLevel : RISK_FROM_STATUS[summary.status];
 
   return (
@@ -53,7 +50,7 @@ export function ZoneInspector({ zone, summary, twinZone, modelScore, isStale }: 
         )}
       </header>
 
-      <RulePlusModel ruleLevel={ruleLevel} modelScore={modelScore} isStale={isStale} />
+      <ZoneRiskCard riskLevel={riskLevel} />
 
       <section aria-label="Vitals in this zone" className="space-y-3">
         {summary.evaluations.length === 0 ? (
@@ -91,61 +88,14 @@ function TrendChip({ trend }: { trend: TrendDirection }) {
   );
 }
 
-/** Official rule level next to the model's estimate; disagreement is flagged, rule prevails. */
-export function RulePlusModel({
-  ruleLevel,
-  modelScore,
-  isStale,
-}: {
-  ruleLevel: ZoneRiskLevel;
-  modelScore: ZoneScoreEstimate | null;
-  isStale: boolean;
-}) {
-  const rule = RISK_META[ruleLevel];
-  const model = modelScore ? RISK_META[modelScore.riskLevel] : null;
-  const disagrees = !!modelScore && !isStale && modelScore.riskLevel !== ruleLevel;
-  const conf = modelScore ? Math.round(modelScore.confidence * 100) : 0;
-
+function ZoneRiskCard({ riskLevel }: { riskLevel: ZoneRiskLevel }) {
+  const meta = RISK_META[riskLevel];
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="twin-well px-3 py-2.5">
-          <p className="twin-label">Rules · official</p>
-          <p className="mt-1 text-[15px] font-semibold" style={{ color: rule.color }}>
-            {rule.label}
-          </p>
-        </div>
-        <div
-          className={`twin-well px-3 py-2.5 transition-opacity duration-ui ${isStale ? 'opacity-50' : ''}`}
-          style={disagrees ? { boxShadow: 'inset 0 0 0 1px var(--status-caution-border)' } : undefined}
-        >
-          <p className="twin-label flex items-center gap-1">
-            Model estimate
-            {disagrees && <AlertTriangle className="h-3 w-3 text-status-caution" aria-label="Disagrees with rule" />}
-          </p>
-          {model ? (
-            <>
-              <p className="mt-1 text-[15px] font-semibold" style={{ color: model.color }}>
-                {model.label}
-              </p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="h-1 flex-1 overflow-hidden rounded-full bg-plate/10">
-                  <div className="h-full rounded-full bg-plate/70" style={{ width: `${conf}%` }} />
-                </div>
-                <span className="twin-value text-[11px] text-stem">{conf}%</span>
-              </div>
-            </>
-          ) : (
-            <p className="mt-1 text-[13px] text-stem">Run triage</p>
-          )}
-        </div>
-      </div>
-      {disagrees && (
-        <p className="text-[11px] leading-relaxed text-status-caution">
-          The model reads this zone differently. The rule result stays official.
-        </p>
-      )}
-      <p className="text-[11px] text-stem">Estimación del modelo, no diagnóstico.</p>
+    <div className="twin-well flex items-center justify-between px-3 py-2.5">
+      <span className="twin-label">Zone risk</span>
+      <span className="text-[14px] font-semibold" style={{ color: meta.color }}>
+        {meta.label}
+      </span>
     </div>
   );
 }
@@ -224,7 +174,6 @@ function HazardLoad({ twinZone, isStale }: { twinZone: ZoneTwinState; isStale: b
           );
         })}
       </ul>
-      {isStale && <p className="text-[11px] text-stem">From the last triage. Run triage to refresh.</p>}
     </section>
   );
 }

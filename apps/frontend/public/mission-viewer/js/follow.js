@@ -6,15 +6,28 @@ import { phaseIndexAt } from "./tour.js";
 export const TRAIL_SECONDS = {
   ascent: 240,
   parking: 1500,
+  leo: 2700,
+  heo: 6 * 3600,
   transit: 6 * 3600,
+  outbound: 12 * 3600,
+  cruise: 14 * 86400,
+  flyby: 6 * 3600,
+  gravity_assist: 5 * 86400,
+  lunar_orbit: 4 * 3600,
   nrho: 12 * 3600,
+  approach: 2 * 86400,
   descent: 1500,
+  edl: 1200,
   landing: 300,
+  return: 12 * 3600,
+  perihelion: 5 * 86400,
 };
 const DEFAULT_TRAIL = 1800;
 
 /** Esfera de influencia lunar aproximada (km): dentro, la cámara sigue a la Luna. */
 export const MOON_SOI_KM = 66000;
+/** Radio máximo alrededor de la Tierra para centrar en la Tierra; más allá se centra en la nave. */
+export const EARTH_CHASE_MAX_KM = 85000;
 
 /** Ventana [t0, t] de la estela: solo hacia atrás. */
 export function trailWindow(phases, t) {
@@ -29,17 +42,25 @@ export function trailFade(ti, t, [t0, t1]) {
   return 0.55 * ((ti - t0) / (t - t0)) ** 1.5;
 }
 
-/** Cuerpo que la nave orbita: la Luna dentro de su esfera de influencia, si no la Tierra. */
-export function nearestBody(shipEci, moonEci) {
+/** Cuerpo que la nave orbita: planeta destino cercano, Luna, Tierra cercana, o la propia nave en espacio profundo. */
+export function nearestBody(shipEci, moonEci, extraBodiesAtT = []) {
+  for (const b of extraBodiesAtT) {
+    const d = Math.hypot(shipEci[0] - b.pos[0], shipEci[1] - b.pos[1], shipEci[2] - b.pos[2]);
+    const chaseLimit = b.chase_km ?? b.radius_km * 30;
+    if (d < chaseLimit) return { focus: b.id, frame: "eci", radius_km: b.radius_km };
+  }
   const dMoon = Math.hypot(shipEci[0] - moonEci[0], shipEci[1] - moonEci[1], shipEci[2] - moonEci[2]);
-  return dMoon < MOON_SOI_KM ? { focus: "moon", frame: "moon" } : { focus: "earth", frame: "eci" };
+  if (dMoon < MOON_SOI_KM) return { focus: "moon", frame: "moon", radius_km: 1737.4 };
+  const dEarth = Math.hypot(shipEci[0], shipEci[1], shipEci[2]);
+  if (dEarth < EARTH_CHASE_MAX_KM) return { focus: "earth", frame: "eci", radius_km: 6371 };
+  return { focus: "ship", frame: "eci", radius_km: 0 };
 }
 
 /** Fracción de media pantalla que ocupa el radio del cuerpo en la toma. */
 export const BODY_SHARE = 0.45;
 /** Dónde queda la nave: fracción de media pantalla por encima del centro del cuerpo. */
 export const SHIP_OFFSET = 0.4;
-const FOV_MIN = 3;
+const FOV_MIN = 1.5;
 const FOV_MAX = 40;
 
 /**

@@ -102,12 +102,12 @@ const INITIAL_USERS: MockUser[] = [
 const INITIAL_MISSIONS: MockMission[] = [
   {
     id: 'mission-01',
-    name: 'Artemis IV — Lunar South Pole Expedition',
+    name: 'Artemis II — Crewed Lunar Free-Return',
     description:
-      'Long-duration crewed mission aboard SLS Block 1B + Orion, Gateway (NRHO) staging, and lunar south pole landing (86.8° S) for surface science and physiological monitoring.',
-    environment: 'LUNAR_BASE',
+      '9-day crewed flight test aboard SLS Block 1 and Orion (Integrity) with Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen reaching 6,545 km above the lunar far side.',
+    environment: 'SPACECRAFT',
     status: 'IN_PROGRESS',
-    startDate: new Date(Date.now() - 8 * 86400000).toISOString(),
+    startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
     operatorId: 'user-operator-01',
@@ -118,7 +118,7 @@ const INITIAL_MISSIONS: MockMission[] = [
     id: 'mission-02',
     name: 'ISS Expedition 72 — Low Earth Orbit',
     description:
-      'Crew Dragon / Falcon 9 orbital operations at 420 km LEO aboard the International Space Station for circadian alignment, fluid shift tracking, and resistive countermeasures.',
+      'Orbital science aboard the International Space Station at 408–420 km LEO, 51.6° inclination, and 7.66 km/s (~90 min orbital period) with Crew Dragon and Soyuz MS crew rotations.',
     environment: 'STATION',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 3 * 3600000).toISOString(),
@@ -129,12 +129,12 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-03',
-    name: 'Shackleton Base — Lunar Rover Traverse',
+    name: 'Lunar Reconnaissance Orbiter (LRO)',
     description:
-      'Starship HLS descent and pressurized rover EVA traverse along Shackleton Crater rim with real-time SpO2 and radiation shelter telemetry.',
-    environment: 'ROVER',
+      'Launched June 18, 2009 on Atlas V 401 into a 50 km circular lunar polar mapping orbit over Shackleton Crater and the lunar south pole.',
+    environment: 'LUNAR_BASE',
     status: 'IN_PROGRESS',
-    startDate: new Date(Date.now() - 1 * 86400000).toISOString(),
+    startDate: new Date(Date.now() - 5 * 3600000).toISOString(),
     patchUrl: null,
     createdById: 'user-admin-01',
     createdAt: new Date().toISOString(),
@@ -142,9 +142,9 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-04',
-    name: 'Ares I — Mars Transit & Deep Space Cruise',
+    name: 'Mars 2020 Perseverance — Jezero Crater',
     description:
-      'Interplanetary transit trajectory toward Mars for deep-space GCR/SPE radiation countermeasures, autonomous biodosimetry, and crew behavioral health monitoring.',
+      'Launched July 30, 2020 on ULA Atlas V 541 on a 202-day interplanetary cruise to Jezero Crater, Mars, monitoring deep-space GCR/SPE radiation exposure.',
     environment: 'MARS_BASE',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 4 * 86400000).toISOString(),
@@ -155,9 +155,9 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-05',
-    name: 'Europa Clipper — Jupiter Outer-System Cruise',
+    name: 'Europa Clipper — Jupiter Orbit Cruise',
     description:
-      'Outer-system deep-space trajectory toward Jupiter and Europa evaluating high-energy GCR shielding and autonomous NHEJ DNA repair kinetics.',
+      'Launched Oct 14, 2024 on SpaceX Falcon Heavy on a 5.5-year trajectory with Mars and Earth gravity assists toward Jupiter arrival in April 2030.',
     environment: 'SPACECRAFT',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 5 * 86400000).toISOString(),
@@ -168,9 +168,9 @@ const INITIAL_MISSIONS: MockMission[] = [
   },
   {
     id: 'mission-06',
-    name: 'Vesper I — Venus Gravity-Assist Flyby',
+    name: 'Parker Solar Probe — Venus Gravity Assist',
     description:
-      'Inner-system solar-flux flyby around Venus testing high-intensity SPE storm early warning, shelter protocols, and oral radioprotector schedules.',
+      'Launched Aug 12, 2018 on ULA Delta IV Heavy executing seven Venus gravity-assist flybys to tighten its inner-system solar perihelion.',
     environment: 'SPACECRAFT',
     status: 'IN_PROGRESS',
     startDate: new Date(Date.now() - 2 * 86400000).toISOString(),

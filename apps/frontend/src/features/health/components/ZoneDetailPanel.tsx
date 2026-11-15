@@ -1,20 +1,19 @@
-import { MousePointerClick, PhoneCall, Clock, TrendingDown, TrendingUp, Minus, AlertTriangle } from 'lucide-react';
+import { MousePointerClick, PhoneCall, Clock, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { BODY_ZONES, HAZARD_LABELS, INDICATOR_GUIDES } from '../domain/education';
 import { INDICATORS, INDICATORS_BY_ZONE } from '../domain/indicators';
 import { STATUS_THEME } from '../domain/status-theme';
 import type { ZoneSummary } from '../domain/summary';
 import type { BodyZoneId, SpaceHazard } from '../domain/types';
-import type { ZoneScoreEstimate, ZoneTwinState } from '../services/digitalTwinService';
+import type { ZoneTwinState } from '../services/digitalTwinService';
 import { StatusBadge } from './StatusBadge';
 
 interface ZoneDetailPanelProps {
   zone: BodyZoneId | null;
   summary: ZoneSummary | null;
   twinZone?: ZoneTwinState | null;
-  modelScore?: ZoneScoreEstimate | null;
 }
 
-export function ZoneDetailPanel({ zone, summary, twinZone, modelScore }: ZoneDetailPanelProps) {
+export function ZoneDetailPanel({ zone, summary, twinZone }: ZoneDetailPanelProps) {
   if (!zone || !summary) {
     return (
       <div className="flex h-full min-h-[260px] flex-col items-start justify-center gap-3 p-6 sm:p-8 text-stem">
@@ -67,12 +66,7 @@ export function ZoneDetailPanel({ zone, summary, twinZone, modelScore }: ZoneDet
               HRP Hazard Load: {Math.round(twinZone.hazardLoad.total * 100)}%
             </span>
             <span className="text-stem">
-              Rule risk: <strong className="uppercase text-blueberry">{twinZone.riskLevel}</strong>
-              {modelScore && (
-                <>
-                  {' · '}Model: <strong className="uppercase text-blueberry">{modelScore.riskLevel}</strong> ({Math.round(modelScore.confidence * 100)}%)
-                </>
-              )}
+              Risk level: <strong className="uppercase text-blueberry">{twinZone.riskLevel}</strong>
             </span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
@@ -93,12 +87,6 @@ export function ZoneDetailPanel({ zone, summary, twinZone, modelScore }: ZoneDet
               );
             })}
           </div>
-          {modelScore && modelScore.riskLevel !== twinZone.riskLevel && (
-            <p className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Discrepancy with rule ({twinZone.riskLevel} vs {modelScore.riskLevel}) — estimación del modelo, no diagnóstico.
-            </p>
-          )}
         </div>
       )}
 

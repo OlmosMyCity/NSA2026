@@ -5,6 +5,8 @@ import {
 } from "../../domain/repository/IHealthReadingRepository.js";
 import {
   HealthReadingFilters,
+  InvalidateHealthReadingDTO,
+  NewHealthReadingData,
   PaginatedResult,
 } from "../../domain/models/HealthReading.js";
 import { prisma } from "../database/prismaClient.js";
@@ -26,9 +28,8 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
     const limit = Math.max(1, Math.min(100, filters.limit || 10));
     const skip = (page - 1) * limit;
 
-    const where: Prisma.HealthReadingWhereInput = {
-      deletedAt: null,
-    };
+    // P1: por defecto solo lecturas válidas; includeInvalid=true para auditoría
+    const where: Prisma.HealthReadingWhereInput = filters.includeInvalid ? {} : { isValid: true };
 
     if (filters.astronautId) {
       where.astronautId = filters.astronautId;
@@ -81,33 +82,16 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
   }
 
   async findById(id: string): Promise<HealthReading | null> {
+    // Devuelve también lecturas invalidadas: el historial clínico es auditable
     return prisma.healthReading.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
+      where: { id },
       include: {
         astronaut: true,
       },
     });
   }
 
-  async create(data: {
-    astronautId: string;
-    heartRateBpm: number;
-    systolicMmHg: number;
-    diastolicMmHg: number;
-    glucoseMgDl: number;
-    temperatureC: number;
-    spo2Pct: number;
-    sleepHours: number;
-    mood: number;
-    status: HealthStatus;
-    alerts: object;
-    recommendation: string;
-    notes?: string | null;
-    takenAt?: Date;
-  }): Promise<HealthReading> {
+  async create(data: NewHealthReadingData): Promise<HealthReading> {
     return prisma.healthReading.create({
       data: {
         astronautId: data.astronautId,
@@ -128,57 +112,43 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
     });
   }
 
-  async update(
-    id: string,
-    data: {
-      heartRateBpm?: number;
-      systolicMmHg?: number;
-      diastolicMmHg?: number;
-      glucoseMgDl?: number;
-      temperatureC?: number;
-      spo2Pct?: number;
-      sleepHours?: number;
-      mood?: number;
-      status?: HealthStatus;
-      alerts?: object;
-      recommendation?: string | null;
-      notes?: string | null;
-      takenAt?: Date;
-    }
-  ): Promise<HealthReading | null> {
-    const existing = await this.findById(id);
-    if (!existing) return null;
-
+  async invalidate(id: string, data: InvalidateHealthReadingDTO): Promise<HealthReading> {
     return prisma.healthReading.update({
       where: { id },
       data: {
-        heartRateBpm: data.heartRateBpm,
-        systolicMmHg: data.systolicMmHg,
-        diastolicMmHg: data.diastolicMmHg,
-        glucoseMgDl: data.glucoseMgDl,
-        temperatureC: data.temperatureC,
-        spo2Pct: data.spo2Pct,
-        sleepHours: data.sleepHours,
-        mood: data.mood,
-        status: data.status,
-        ...(data.alerts !== undefined ? { alerts: data.alerts as Prisma.InputJsonValue } : {}),
-        recommendation: data.recommendation,
-        notes: data.notes,
-        takenAt: data.takenAt,
+        isValid: false,
+        invalidatedAt: new Date(),
+        invalidatedReason: data.reason,
+        invalidatedById: data.invalidatedById,
       },
     });
   }
 
-  async softDelete(id: string): Promise<boolean> {
-    const existing = await this.findById(id);
-    if (!existing) return false;
-
-    await prisma.healthReading.update({
-      where: { id },
-      data: { deletedAt: new Date() },
+  async createCorrection(
+    supersedesId: string,
+    reading: NewHealthReadingData,
+    invalidation: InvalidateHealthReadingDTO
+  ): Promise<HealthReading> {
+    // Una corrección es una lectura nueva + la invalidación de la original, en una sola transacción
+    return prisma.$transaction(async (tx) => {
+      await tx.healthReading.update({
+        where: { id: supersedesId },
+        data: {
+          isValid: false,
+          invalidatedAt: new Date(),
+          invalidatedReason: invalidation.reason,
+          invalidatedById: invalidation.invalidatedById,
+        },
+      });
+      return tx.healthReading.create({
+        data: {
+          ...reading,
+          alerts: reading.alerts as Prisma.InputJsonValue,
+          takenAt: reading.takenAt || new Date(),
+          supersedesId,
+        },
+      });
     });
-
-    return true;
   }
 
   async getAstronautHealthSummary(astronautId: string): Promise<AstronautHealthSummary | null> {
@@ -195,20 +165,20 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       prisma.healthReading.findMany({
         where: {
           astronautId,
-          deletedAt: null,
+          isValid: true,
           takenAt: { gte: sevenDaysAgo },
         },
         orderBy: { takenAt: "desc" },
       }),
       prisma.healthReading.count({
-        where: { astronautId, deletedAt: null },
+        where: { astronautId, isValid: true },
       }),
     ]);
 
     const latest =
       recentHistory7d[0] ||
       (await prisma.healthReading.findFirst({
-        where: { astronautId, deletedAt: null },
+        where: { astronautId, isValid: true },
         orderBy: { takenAt: "desc" },
       }));
 

@@ -86,21 +86,11 @@ export function deriveSleepHours(dto: VisionTelemetryIngestDTO, fallbackSleepHou
   return Number(clamp(fallbackSleepHours, 0, 24).toFixed(2));
 }
 
-function buildVisionNotes(dto: VisionTelemetryIngestDTO): string {
+function buildVisionNotes(dto: VisionTelemetryIngestDTO): string | null {
   if (dto.notes && dto.notes.trim()) {
     return dto.notes.trim().slice(0, 1000);
   }
-  const parts = ["[Vision AI Auto-Sync]"];
-  if (dto.cameraMode) parts.push(`Cam: ${dto.cameraMode}`);
-  if (dto.context) parts.push(`Ctx: ${dto.context}`);
-  if (dto.dominantMood) parts.push(`Mood: ${dto.dominantMood}`);
-  if (typeof dto.stressIndex === "number") parts.push(`Stress: ${dto.stressIndex.toFixed(0)}%`);
-  if (typeof dto.hrvRmssdMs === "number") parts.push(`HRV: ${dto.hrvRmssdMs.toFixed(1)}ms`);
-  if (typeof dto.respirationRpm === "number") parts.push(`Resp: ${dto.respirationRpm.toFixed(1)}rpm`);
-  if (typeof dto.sleepQualityScore === "number") parts.push(`SleepScore: ${dto.sleepQualityScore.toFixed(0)}%`);
-  if (typeof dto.perclos === "number") parts.push(`PERCLOS: ${dto.perclos.toFixed(1)}%`);
-  if (typeof dto.signalQuality === "number") parts.push(`SQI: ${dto.signalQuality.toFixed(0)}%`);
-  return parts.join(" | ").slice(0, 1000);
+  return null;
 }
 
 export type TransactionRunner = <T>(
@@ -130,7 +120,7 @@ export class IngestVisionTelemetryUseCase {
       }
 
       const latest = await tx.healthReading.findFirst({
-        where: { astronautId: dto.astronautId, deletedAt: null },
+        where: { astronautId: dto.astronautId, isValid: true },
         orderBy: { takenAt: "desc" },
       });
 
