@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { Navbar } from './Navbar';
 import { IncidentNotificationCenter } from '@/components/radiation/IncidentNotificationCenter';
 import { FreshnessReminder } from '@/components/health/FreshnessReminder';
+import { OnboardingModal } from './OnboardingModal';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         {children}
       </main>
       <IncidentNotificationCenter />
+      <OnboardingModal />
     </div>
   );
 }

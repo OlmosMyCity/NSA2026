@@ -9,6 +9,7 @@ import {
   CalendarCheck2,
   Rocket,
   ShieldAlert,
+  HelpCircle,
   LogIn,
   LogOut,
   Menu,
@@ -17,6 +18,7 @@ import {
   Orbit,
   Radar,
 } from 'lucide-react';
+import { OPEN_ONBOARDING_EVENT } from './OnboardingModal';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -46,6 +48,10 @@ export function Navbar() {
     router.push('/login');
   };
 
+  const handleOpenGuide = () => {
+    window.dispatchEvent(new Event(OPEN_ONBOARDING_EVENT));
+  };
+
   type NavItem = {
     href: string;
     label: string;
@@ -72,14 +78,16 @@ export function Navbar() {
 
   const isOperator = user?.role === 'OPERATOR';
 
-  // El operador no tiene salud propia que registrar: accede a supervisión y misiones.
-  const visibleLinks: NavItem[] = isOperator
-    ? [
-        { href: '/operator', label: 'Oversight', icon: Radar },
-        { href: '/missions', label: 'Missions', icon: Rocket },
-        { href: '/visualizer', label: '3D Orbit', icon: Orbit },
-      ]
-    : navLinks;
+  // Sin sesión iniciada no se muestran enlaces de navegación: solo Sign in y Register.
+  const visibleLinks: NavItem[] = !user
+    ? []
+    : isOperator
+      ? [
+          { href: '/operator', label: 'Oversight', icon: Radar },
+          { href: '/missions', label: 'Missions', icon: Rocket },
+          { href: '/visualizer', label: '3D Orbit', icon: Orbit },
+        ]
+      : navLinks;
 
   const isLinkActive = (href: string) => {
     if (pathname === href) return true;
@@ -121,35 +129,37 @@ export function Navbar() {
         </Link>
 
         {/* Desktop navigation */}
-        <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
-          {visibleLinks.map((link, index) => {
-            const Icon = link.icon;
-            const isActive = isLinkActive(link.href);
+        {visibleLinks.length > 0 && (
+          <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
+            {visibleLinks.map((link, index) => {
+              const Icon = link.icon;
+              const isActive = isLinkActive(link.href);
 
-            return (
-              <div key={link.href} className="flex items-center gap-1">
-                {index > 0 && link.dividerBefore && (
-                  <span className="mx-1 h-4 w-px bg-line shrink-0" aria-hidden="true" />
-                )}
-                <Link
-                  href={link.href}
-                  className={`tactile-press flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-plate text-ink-inverse font-semibold'
-                      : 'text-stem hover:bg-surface-tinted hover:text-blueberry'
-                  }`}
-                >
-                  <Icon
-                    className={`h-3.5 w-3.5 ${
-                      isActive ? 'text-ink-inverse' : 'text-berry'
+              return (
+                <div key={link.href} className="flex items-center gap-1">
+                  {index > 0 && link.dividerBefore && (
+                    <span className="mx-1 h-4 w-px bg-line shrink-0" aria-hidden="true" />
+                  )}
+                  <Link
+                    href={link.href}
+                    className={`tactile-press flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'bg-plate text-ink-inverse font-semibold'
+                        : 'text-stem hover:bg-surface-tinted hover:text-blueberry'
                     }`}
-                  />
-                  <span>{link.label}</span>
-                </Link>
-              </div>
-            );
-          })}
-        </nav>
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 ${
+                        isActive ? 'text-ink-inverse' : 'text-berry'
+                      }`}
+                    />
+                    <span>{link.label}</span>
+                  </Link>
+                </div>
+              );
+            })}
+          </nav>
+        )}
 
         {/* User session */}
         <div className="hidden lg:flex items-center gap-3">
@@ -163,6 +173,15 @@ export function Navbar() {
                   {roleLabel}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={handleOpenGuide}
+                title="Workspace guide"
+                aria-label="Open workspace guide"
+                className="tactile-press flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-stem hover:bg-surface-tinted hover:text-blueberry"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -210,47 +229,65 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="border-b border-line bg-surface/95 backdrop-blur-xl px-4 pt-3 pb-5 lg:hidden animate-materialize">
           <nav className="flex flex-col gap-1" aria-label="Mobile navigation">
-            {visibleLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = isLinkActive(link.href);
+            {visibleLinks.length > 0 && (
+              <div className="mb-3 flex flex-col gap-1 border-b border-line pb-3">
+                {visibleLinks.map((link) => {
+                  const Icon = link.icon;
+                  const isActive = isLinkActive(link.href);
 
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`tactile-press flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium ${
-                    isActive
-                      ? 'bg-blueberry text-plate'
-                      : 'text-blueberry hover:bg-surface-tinted'
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${isActive ? 'text-plate' : 'text-berry'}`} />
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`tactile-press flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium ${
+                        isActive
+                          ? 'bg-blueberry text-plate'
+                          : 'text-blueberry hover:bg-surface-tinted'
+                      }`}
+                    >
+                      <Icon className={`h-4 w-4 ${isActive ? 'text-plate' : 'text-berry'}`} />
+                      <span>{link.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
-            <div className="mt-3 border-t border-line pt-3">
+            <div>
               {user ? (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-blueberry">{user.name}</span>
                     <span className="text-xs font-medium text-berry">
                       {roleLabel}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="tactile-press flex items-center gap-1.5 rounded-md border border-status-critical/30 bg-status-critical/10 px-3 py-1.5 text-xs font-medium text-status-critical"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Sign out</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleOpenGuide();
+                      }}
+                      title="Workspace guide"
+                      aria-label="Open workspace guide"
+                      className="tactile-press flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-stem hover:bg-surface-tinted hover:text-blueberry"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="tactile-press flex items-center gap-1.5 rounded-md border border-status-critical/30 bg-status-critical/10 px-3 py-1.5 text-xs font-medium text-status-critical"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
