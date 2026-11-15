@@ -247,6 +247,51 @@ class RoutineService {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(this.getStorageKey(astronautId), JSON.stringify(newState));
+      window.dispatchEvent(new CustomEvent('orbvital:routine-updated', { detail: { astronautId } }));
+    }
+
+    return newState;
+  }
+
+  /**
+   * Synchronizes active solar-storm protocol tasks (prefixed `solar-`) into the astronaut's
+   * persisted `/routine` checklist so banner confirmations and `/routine` share one source of truth.
+   */
+  syncSolarProtocolTasks(
+    astronautId: string,
+    band: string,
+    solarTasks: Omit<RoutineTask, 'completed' | 'completedAt'>[],
+  ): AstronautRoutineState {
+    const current = this.getRoutineState(astronautId);
+    const nonSolar = current.tasks.filter((t) => !t.id.startsWith('solar-'));
+    const existingById = new Map(current.tasks.map((t) => [t.id, t]));
+    const nextSolar: RoutineTask[] = solarTasks.map((st) => {
+      const prev = existingById.get(st.id);
+      return {
+        ...st,
+        completed: prev?.completed ?? false,
+        completedAt: prev?.completedAt ?? null,
+      };
+    });
+
+    // Only write if the active solar band or task list actually changed
+    const currentSolarIds = current.tasks.filter((t) => t.id.startsWith('solar-')).map((t) => t.id);
+    const nextSolarIds = nextSolar.map((t) => t.id);
+    const unchanged =
+      currentSolarIds.length === nextSolarIds.length &&
+      currentSolarIds.every((id, i) => id === nextSolarIds[i]) &&
+      currentSolarIds.every((id) => id.startsWith(`solar-${band}-`));
+
+    if (unchanged) return current;
+
+    const newState: AstronautRoutineState = {
+      ...current,
+      tasks: [...nextSolar, ...nonSolar],
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.getStorageKey(astronautId), JSON.stringify(newState));
+      window.dispatchEvent(new CustomEvent('orbvital:routine-updated', { detail: { astronautId } }));
     }
 
     return newState;

@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, RefreshCw, Send, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, Send, ShieldAlert, X } from 'lucide-react';
 import { adminTriageService } from '../../services/adminTriageService';
 import type { CrewMemberTriage } from '../../domain/admin/types';
+import {
+  getUniversalSolarProtocol,
+  type SolarAlertBand,
+} from '../../domain/health/solarWind';
 
 interface DirectiveDialogProps {
   member: CrewMemberTriage;
@@ -11,18 +15,41 @@ interface DirectiveDialogProps {
   onSent: () => void;
 }
 
+const BANDS: SolarAlertBand[] = ['S0_S1', 'S2_S3', 'S4_S5'];
+
 export function DirectiveDialog({ member, onClose, onSent }: DirectiveDialogProps) {
+  const [selectedBand, setSelectedBand] = useState<SolarAlertBand | null>(null);
+  const [startWindow, setStartWindow] = useState('Immediate (T+00:00 UTC)');
+  const [endWindow, setEndWindow] = useState('T+06:00 UTC');
+  const [allClearCriteria, setAllClearCriteria] = useState('');
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentMessage, setSentMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const applyTemplate = (band: SolarAlertBand) => {
+    const tpl = getUniversalSolarProtocol(band).directiveTemplate;
+    setSelectedBand(band);
+    const start = 'Immediate (T+00:00 UTC)';
+    const end = `T+${String(tpl.defaultWindowHours).padStart(2, '0')}:00 UTC`;
+    setStartWindow(start);
+    setEndWindow(end);
+    setAllClearCriteria(tpl.allClearCriteria);
+    setText(`${tpl.title}\n${tpl.body}`);
+  };
+
   const send = async () => {
     if (!text.trim()) return;
     setError(null);
+    const windowFooter = allClearCriteria.trim()
+      ? `\n[Shelter Window: ${startWindow} -> ${endWindow} | All-Clear: ${allClearCriteria.trim()}]`
+      : '';
     try {
       setIsSending(true);
-      const res = await adminTriageService.sendClinicalDirectives(member.astronautId, text.trim());
+      const res = await adminTriageService.sendClinicalDirectives(
+        member.astronautId,
+        `${text.trim()}${windowFooter}`,
+      );
       setSentMessage(res.message);
       onSent();
     } catch (err: unknown) {
@@ -66,6 +93,75 @@ export function DirectiveDialog({ member, onClose, onSent }: DirectiveDialogProp
           </div>
         ) : (
           <>
+            {/* 1-Click Solar Alert Directive Templates */}
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blueberry">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
+                <span>1-Click Solar Protocol Templates</span>
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {BANDS.map((band) => {
+                  const tpl = getUniversalSolarProtocol(band).directiveTemplate;
+                  const active = selectedBand === band;
+                  return (
+                    <button
+                      key={band}
+                      type="button"
+                      onClick={() => applyTemplate(band)}
+                      className={`tactile-press rounded-pill border px-3 py-1 text-[11px] font-semibold transition ${
+                        active
+                          ? 'border-blueberry bg-blueberry text-white'
+                          : 'border-line bg-surface-subtle text-blueberry hover:border-blueberry'
+                      }`}
+                    >
+                      {tpl.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="directive-start" className="text-[11px] font-semibold text-stem block mb-1">
+                  Shelter / Watch Start
+                </label>
+                <input
+                  id="directive-start"
+                  type="text"
+                  value={startWindow}
+                  onChange={(e) => setStartWindow(e.target.value)}
+                  className="w-full rounded-md border border-line bg-surface-subtle px-2.5 py-1.5 text-xs text-blueberry"
+                />
+              </div>
+              <div>
+                <label htmlFor="directive-end" className="text-[11px] font-semibold text-stem block mb-1">
+                  Projected End Window
+                </label>
+                <input
+                  id="directive-end"
+                  type="text"
+                  value={endWindow}
+                  onChange={(e) => setEndWindow(e.target.value)}
+                  className="w-full rounded-md border border-line bg-surface-subtle px-2.5 py-1.5 text-xs text-blueberry"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="directive-allclear" className="text-[11px] font-semibold text-stem block mb-1">
+                All-Clear Exit Criteria
+              </label>
+              <input
+                id="directive-allclear"
+                type="text"
+                value={allClearCriteria}
+                onChange={(e) => setAllClearCriteria(e.target.value)}
+                placeholder="e.g. GOES >10 MeV proton flux < 100 pfu for 2h"
+                className="w-full rounded-md border border-line bg-surface-subtle px-2.5 py-1.5 text-xs text-blueberry placeholder:text-stem/60"
+              />
+            </div>
+
             <div className="space-y-2">
               <label htmlFor="directive-textarea" className="text-xs font-semibold text-blueberry block">
                 Medical instruction or countermeasure protocol

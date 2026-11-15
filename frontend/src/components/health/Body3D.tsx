@@ -14,9 +14,11 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html, OrbitControls, useGLTF } from '@react-three/drei';
-import { RotateCcw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { attachContextLossHandlers, isWebGLAvailable } from '@/components/common/webglSupport';
 import type { ZoneSummary } from '../../domain/health/summary';
 import type { BodyZoneId, HealthStatus } from '../../domain/health/types';
 
@@ -87,51 +89,111 @@ interface Body3DProps {
  */
 export default function Body3D(props: Body3DProps) {
   const [resetNonce, setResetNonce] = useState(0);
+  const [canvasKey, setCanvasKey] = useState(0);
+  const [webglSupported, setWebglSupported] = useState(true);
+  const [contextLost, setContextLost] = useState(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    setWebglSupported(isWebGLAvailable());
+    return () => {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+    };
+  }, []);
+
+  if (!webglSupported || contextLost) {
+    return (
+      <div
+        role="alert"
+        className="surface-card flex min-h-[360px] flex-col items-center justify-center gap-3 p-6 text-center"
+      >
+        <AlertTriangle className="h-6 w-6 text-status-caution" aria-hidden="true" />
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-blueberry">
+            {contextLost ? '3D WebGL context interrupted' : '3D WebGL view unavailable'}
+          </p>
+          <p className="max-w-sm text-xs text-stem">
+            {contextLost
+              ? 'Your browser released the GPU context. Click below to restore the 3D Digital Twin.'
+              : 'WebGL is disabled or unavailable in this browser. Zone telemetry remains available on the right.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setContextLost(false);
+            setWebglSupported(isWebGLAvailable());
+            setCanvasKey((k) => k + 1);
+          }}
+          className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Restore 3D View</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setResetNonce((n) => n + 1)}
-        className="twin-btn twin-btn-ghost absolute bottom-3 right-3 z-10 h-8 bg-canvas/60 px-2.5 text-xs backdrop-blur-md"
-      >
-        <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-        Reset view
-      </button>
-
-      <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-3 rounded-lg bg-canvas/60 px-2.5 py-1.5 text-[11px] text-stem backdrop-blur-md">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-status-nominal" /> Nominal
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-status-caution" /> Watch
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-status-critical" /> Critical
-        </span>
-      </div>
-
-      <Canvas
-        camera={{ position: [0, 1.0, 2.6], fov: 35, near: 0.01, far: 20 }}
-        dpr={[1, 2]}
-        gl={{ alpha: true, antialias: true }}
-        className={`${props.className ?? '!h-[520px] sm:!h-[600px]'} w-full touch-none`}
-        aria-label="3D astronaut anatomical body model"
-      >
-        <hemisphereLight args={['#e5ebf7', '#1a2130', 1.15]} />
-        <directionalLight position={[2, 3, 2]} intensity={1.45} />
-        <directionalLight position={[-2, 1, -2]} intensity={0.85} color="#8da2cf" />
-        <Suspense
-          fallback={
-            <Html center className="whitespace-nowrap text-sm font-medium text-stem">
-              Loading anatomical model…
-            </Html>
-          }
+    <ErrorBoundary
+      fallbackTitle="3D Digital Twin unavailable"
+      fallbackDescription="The 3D anatomical renderer encountered an error. You can retry or continue using the zone inspector."
+      onReset={() => setCanvasKey((k) => k + 1)}
+    >
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setResetNonce((n) => n + 1)}
+          className="twin-btn twin-btn-ghost absolute bottom-3 right-3 z-10 h-8 bg-canvas/60 px-2.5 text-xs backdrop-blur-md"
         >
-          <Anatomy {...props} resetNonce={resetNonce} />
-        </Suspense>
-      </Canvas>
-    </div>
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+          Reset view
+        </button>
+
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-3 rounded-lg bg-canvas/60 px-2.5 py-1.5 text-[11px] text-stem backdrop-blur-md">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-status-nominal" /> Nominal
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-status-caution" /> Watch
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-status-critical" /> Critical
+          </span>
+        </div>
+
+        <Canvas
+          key={canvasKey}
+          camera={{ position: [0, 1.0, 2.6], fov: 35, near: 0.01, far: 20 }}
+          dpr={[1, 2]}
+          gl={{ alpha: true, antialias: true, powerPreference: 'default' }}
+          onCreated={({ gl }) => {
+            cleanupRef.current?.();
+            cleanupRef.current = attachContextLossHandlers(
+              gl.domElement,
+              () => setContextLost(true),
+              () => setContextLost(false),
+            );
+          }}
+          className={`${props.className ?? '!h-[520px] sm:!h-[600px]'} w-full touch-none`}
+          aria-label="3D astronaut anatomical body model"
+        >
+          <hemisphereLight args={['#e5ebf7', '#1a2130', 1.15]} />
+          <directionalLight position={[2, 3, 2]} intensity={1.45} />
+          <directionalLight position={[-2, 1, -2]} intensity={0.85} color="#8da2cf" />
+          <Suspense
+            fallback={
+              <Html center className="whitespace-nowrap text-sm font-medium text-stem">
+                Loading anatomical model…
+              </Html>
+            }
+          >
+            <Anatomy {...props} resetNonce={resetNonce} />
+          </Suspense>
+        </Canvas>
+      </div>
+    </ErrorBoundary>
   );
 }
 
@@ -140,15 +202,17 @@ function Anatomy({ zones, selected, onSelect, onHover, heartRate, resetNonce }: 
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
 
-  const parts = useMemo(() => {
+  const { clonedScene, parts, materials } = useMemo(() => {
+    const clone = scene.clone(true);
     const map: Record<string, THREE.Mesh> = {};
-    scene.traverse((o) => {
+    const mats: THREE.MeshStandardMaterial[] = [];
+    clone.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return;
       const name = Object.keys(PART_ZONE).find((k) => o.name === k || o.parent?.name === k);
       if (!name) return;
       const isSkin = name === 'skin';
       if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
-      o.material = new THREE.MeshStandardMaterial({
+      const mat = new THREE.MeshStandardMaterial({
         color: PART_COLOR[name],
         roughness: isSkin ? 0.55 : 0.45,
         metalness: 0,
@@ -157,22 +221,31 @@ function Anatomy({ zones, selected, onSelect, onHover, heartRate, resetNonce }: 
         depthWrite: !isSkin,
         side: isSkin ? THREE.FrontSide : THREE.DoubleSide,
       });
+      o.material = mat;
+      mats.push(mat);
       o.userData.part = name;
       o.userData.baseScale = o.scale.clone();
       map[name] = o;
     });
-    return map;
+    return { clonedScene: clone, parts: map, materials: mats };
   }, [scene]);
 
+  useEffect(
+    () => () => {
+      materials.forEach((m) => m.dispose());
+    },
+    [materials],
+  );
+
   const goal = useMemo(() => {
-    scene.updateMatrixWorld(true);
+    clonedScene.updateMatrixWorld(true);
     const target = selected ? parts[ZONE_FOCUS_PART[selected]] : parts.skin;
-    const box = new THREE.Box3().setFromObject(target ?? scene);
+    const box = new THREE.Box3().setFromObject(target ?? clonedScene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3()).length();
     const dist = Math.max(size * (selected ? 2.6 : 1.8), 0.35);
     return { center, position: center.clone().add(new THREE.Vector3(0, size * 0.05, dist)) };
-  }, [selected, parts, scene]);
+  }, [selected, parts, clonedScene]);
 
   const animating = useRef(true);
   useEffect(() => {
@@ -256,7 +329,7 @@ function Anatomy({ zones, selected, onSelect, onHover, heartRate, resetNonce }: 
   return (
     <>
       <primitive
-        object={scene}
+        object={clonedScene}
         onClick={handleClick}
         onPointerMove={handleMove}
         onPointerOut={() => {
