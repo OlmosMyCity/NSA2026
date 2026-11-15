@@ -188,39 +188,41 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
       {viewerSrc ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-2.5">
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
-                <span className="text-stem">Vehicle:</span>
-                <select
-                  value={vehicleOverride}
-                  onChange={(e) => setVehicleOverride(e.target.value)}
-                  className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
-                >
-                  {VEHICLE_OPTIONS.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          {isAdmin && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-2.5">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
+                  <span className="text-stem">Vehicle:</span>
+                  <select
+                    value={vehicleOverride}
+                    onChange={(e) => setVehicleOverride(e.target.value)}
+                    className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+                  >
+                    {VEHICLE_OPTIONS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
-                <span className="text-stem">Trajectory:</span>
-                <select
-                  value={trajectoryOverride}
-                  onChange={(e) => setTrajectoryOverride(e.target.value)}
-                  className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
-                >
-                  {TRAJECTORY_PRESETS.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-blueberry">
+                  <span className="text-stem">Trajectory:</span>
+                  <select
+                    value={trajectoryOverride}
+                    onChange={(e) => setTrajectoryOverride(e.target.value)}
+                    className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+                  >
+                    {TRAJECTORY_PRESETS.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="relative overflow-hidden rounded-lg border border-line bg-[#060911] shadow-sm">

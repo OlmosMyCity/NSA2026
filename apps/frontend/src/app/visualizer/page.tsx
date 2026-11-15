@@ -11,7 +11,7 @@ import type { Mission } from '@/features/missions/domain/types';
 import { MissionHealthView } from '@/features/visualizer/components/MissionHealthView';
 
 export default function VisualizerPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [loadingMissions, setLoadingMissions] = useState(true);
@@ -24,26 +24,31 @@ export default function VisualizerPage() {
         return;
       }
       try {
-        const res = await missionService.list({ limit: 50 });
-        if (!alive) return;
-        const list = res.data;
-        setMissions(list);
+        if (isAdmin) {
+          const res = await missionService.list({ limit: 50 });
+          if (!alive) return;
+          const list = res.data;
+          setMissions(list);
 
-        let defaultId =
-          list.find((m) => m.status === 'IN_PROGRESS')?.id ?? list[0]?.id ?? '';
-
-        if (user?.astronautId) {
-          try {
-            const astro = await astronautService.getById(user.astronautId);
-            if (alive && astro.missionId && list.some((m) => m.id === astro.missionId)) {
-              defaultId = astro.missionId;
-            }
-          } catch {
-            // Keep active/first mission fallback
+          const defaultId =
+            list.find((m) => m.status === 'IN_PROGRESS')?.id ?? list[0]?.id ?? '';
+          if (alive) setSelectedMissionId((cur) => cur || defaultId);
+        } else if (user?.astronautId) {
+          const astro = await astronautService.getById(user.astronautId);
+          if (!alive) return;
+          if (astro.missionId) {
+            const assigned = await missionService.getById(astro.missionId);
+            if (!alive) return;
+            setMissions([assigned]);
+            setSelectedMissionId(assigned.id);
+          } else {
+            setMissions([]);
+            setSelectedMissionId('');
           }
+        } else {
+          setMissions([]);
+          setSelectedMissionId('');
         }
-
-        if (alive) setSelectedMissionId((cur) => cur || defaultId);
       } catch {
         // Fallback if missions cannot be fetched
       } finally {
@@ -54,7 +59,7 @@ export default function VisualizerPage() {
     return () => {
       alive = false;
     };
-  }, [isAuthenticated, user?.astronautId]);
+  }, [isAuthenticated, isAdmin, user?.astronautId]);
 
   return (
     <AppLayout>
@@ -72,28 +77,38 @@ export default function VisualizerPage() {
         </div>
 
         <div className="space-y-5">
-            {missions.length > 0 && (
+            {isAdmin && missions.length > 0 && (
+              <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <label className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-stem">
+                  <span>Mission Control View:</span>
+                  <select
+                    aria-label="Select mission"
+                    value={selectedMissionId}
+                    onChange={(e) => setSelectedMissionId(e.target.value)}
+                    className="rounded-pill border border-line bg-surface-tinted px-3.5 py-1.5 text-xs font-semibold text-blueberry"
+                  >
+                    {missions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.status.replace('_', ' ')})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Link
+                  href={`/missions/${selectedMissionId}`}
+                  className="text-xs font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
+                >
+                  Open dedicated mission page
+                </Link>
+              </div>
+            )}
+
+            {!isAdmin && selectedMissionId && (
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-stem">Mission:</span>
-                  {missions.map((m) => {
-                    const active = m.id === selectedMissionId;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setSelectedMissionId(m.id)}
-                        className={`tactile-press rounded-pill px-3.5 py-1.5 text-xs font-semibold transition ${
-                          active
-                            ? 'bg-blueberry text-white shadow-sm'
-                            : 'border border-line bg-surface text-stem hover:text-blueberry'
-                        }`}
-                      >
-                        {m.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3 py-1 text-xs font-semibold text-stem">
+                  <Rocket className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+                  Assigned Mission
+                </span>
                 <Link
                   href={`/missions/${selectedMissionId}`}
                   className="text-xs font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
@@ -112,15 +127,19 @@ export default function VisualizerPage() {
             ) : (
               <div className="surface-card p-8 text-center space-y-3">
                 <p className="text-sm text-blueberry font-medium">
-                  Sign in or create a mission to start.
+                  {isAdmin
+                    ? 'Sign in or create a mission to start.'
+                    : 'No mission assigned yet. Contact your Flight Surgeon / Admin to be assigned to a mission.'}
                 </p>
-                <Link
-                  href="/missions/new"
-                  className="tactile-press inline-flex items-center gap-1.5 rounded-pill bg-blueberry px-4 py-2 text-xs font-semibold text-white"
-                >
-                  <Rocket className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Create a Mission</span>
-                </Link>
+                {isAdmin && (
+                  <Link
+                    href="/missions/new"
+                    className="tactile-press inline-flex items-center gap-1.5 rounded-pill bg-blueberry px-4 py-2 text-xs font-semibold text-white"
+                  >
+                    <Rocket className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>Create a Mission</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>
