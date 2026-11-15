@@ -5,26 +5,15 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { Role } from "@prisma/client";
 import { z } from "zod";
-import { prisma } from "../config/prismaClient.js";
-import { radiationEngine } from "../service/radiation/radiationEngine.js";
-import {
-  ForbiddenError,
-  NotFoundError,
-  ValidationError,
-} from "../exception/AppError.js";
+import { LoadDigitalTwinContextUseCase } from "../service/health/LoadDigitalTwinContextUseCase.js";
+import { ValidationError } from "../exception/AppError.js";
 import {
   evaluateDigitalTwin,
   simulateWhatIf,
-  type TimedHealthReading,
 } from "../service/health/digitalTwin.js";
 import { decide } from "../service/health/decisionService.js";
-import type {
-  MissionEnvironment,
-  NOAAStormScale,
-  ShieldingType,
-} from "../service/health/hazards.js";
+import type { ShieldingType } from "../service/health/hazards.js";
 
 const EnvironmentSchema = z.enum([
   "SPACECRAFT",
@@ -106,80 +95,12 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
   return parsed.data;
 }
 
-/** Enforces crew-member ownership so non-admin users can only query or simulate their own digital twin. */
-async function assertAstronautAccess(req: Request, astronautId: string): Promise<void> {
-  if (!req.user || req.user.role === Role.ADMIN) return;
-  const own = await prisma.astronaut.findFirst({
-    where: { userId: req.user.id, deletedAt: null },
-    select: { id: true },
-  });
-  if (!own || own.id !== astronautId) {
-    throw new ForbiddenError(
-      "No tienes permiso para consultar el gemelo digital de otro tripulante."
-    );
-  }
-}
-
-/**
- * Loads an astronaut's mission environment, latest 20 vital readings, and live NOAA storm scale
- * (falling back to `S0_NOMINAL` if live radiation telemetry is unreachable).
- */
-async function loadAstronautTwinContext(astronautId: string) {
-  const astronaut = await prisma.astronaut.findFirst({
-    where: { id: astronautId, deletedAt: null },
-    include: {
-      mission: { select: { id: true, name: true, environment: true } },
-      readings: {
-        where: { isValid: true },
-        orderBy: { takenAt: "desc" },
-        take: 20,
-      },
-    },
-  });
-
-  if (!astronaut) {
-    throw new NotFoundError("Astronauta", astronautId);
-  }
-
-  let stormScale: NOAAStormScale = "S0_NOMINAL";
-  let radiationState: Awaited<ReturnType<typeof radiationEngine.getCurrentState>> | null = null;
-  try {
-    radiationState = await radiationEngine.getCurrentState();
-    stormScale = radiationState.currentTelemetry.stormScale as NOAAStormScale;
-  } catch {
-    stormScale = "S0_NOMINAL";
-  }
-
-  const readings: TimedHealthReading[] = astronaut.readings.map((r) => ({
-    heartRateBpm: r.heartRateBpm,
-    systolicMmHg: r.systolicMmHg,
-    diastolicMmHg: r.diastolicMmHg,
-    glucoseMgDl: r.glucoseMgDl,
-    temperatureC: r.temperatureC,
-    spo2Pct: r.spo2Pct,
-    sleepHours: r.sleepHours,
-    mood: r.mood,
-    takenAt: r.takenAt,
-  }));
-
-  return {
-    astronaut: {
-      id: astronaut.id,
-      name: astronaut.name,
-      role: astronaut.role,
-      mission: astronaut.mission,
-    },
-    environment: (astronaut.mission?.environment ?? "LUNAR_BASE") as MissionEnvironment,
-    readings,
-    stormScale,
-    radiationState,
-  };
-}
-
 /**
  * Controller exposing live digital-twin state, what-if projections, and stateless evaluation endpoints.
  */
 export class DigitalTwinController {
+  constructor(private readonly twinContext: LoadDigitalTwinContextUseCase) {}
+
   /** `GET /api/astronauts/:id/digital-twin` — Evaluates current physiological zones and AI clinical decision. */
   getDigitalTwin = async (
     req: Request,
@@ -188,14 +109,14 @@ export class DigitalTwinController {
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      await assertAstronautAccess(req, id);
+      await this.twinContext.assertAccess(req.user, id);
 
       const shieldingParam = req.query.shielding;
       const shielding: ShieldingType = ShieldingSchema.safeParse(shieldingParam).success
         ? (shieldingParam as ShieldingType)
         : "CREW_CABIN_NOMINAL";
 
-      const ctx = await loadAstronautTwinContext(id);
+      const ctx = await this.twinContext.load(id);
       const twin = evaluateDigitalTwin({
         readings: ctx.readings,
         environment: ctx.environment,
@@ -222,10 +143,10 @@ export class DigitalTwinController {
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      await assertAstronautAccess(req, id);
+      await this.twinContext.assertAccess(req.user, id);
 
       const body = parseBody(SimulateBodySchema, req.body);
-      const ctx = await loadAstronautTwinContext(id);
+      const ctx = await this.twinContext.load(id);
 
       const sim = simulateWhatIf(
         {

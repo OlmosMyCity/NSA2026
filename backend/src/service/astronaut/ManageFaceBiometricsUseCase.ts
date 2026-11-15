@@ -1,38 +1,19 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../../config/prismaClient.js";
+/**
+ * @module ManageFaceBiometricsUseCase
+ * Enrollment, listing and removal of crew facial biometric samples.
+ */
+
 import { NotFoundError, ValidationError } from "../../exception/AppError.js";
+import type {
+  EnrollFaceSampleDTO,
+  FaceSampleRecord,
+  MissionBiometricProfile,
+} from "../../entity/FaceSample.js";
+import { IFaceSampleRepository, StoredFaceSample } from "../../repository/IFaceSampleRepository.js";
+
+export type { EnrollFaceSampleDTO, FaceSampleRecord, MissionBiometricProfile };
 
 export const MAX_FACE_SAMPLES_PER_ASTRONAUT = 5;
-
-export interface EnrollFaceSampleDTO {
-  astronautId: string;
-  imageUrl: string;
-  label?: string | null;
-  embedding: number[];
-  qualityScore?: number;
-  uploadedById?: string | null;
-}
-
-export interface FaceSampleRecord {
-  id: string;
-  astronautId: string;
-  imageUrl: string;
-  label: string | null;
-  embedding: number[];
-  qualityScore: number;
-  uploadedById: string | null;
-  createdAt: Date;
-}
-
-export interface MissionBiometricProfile {
-  astronautId: string;
-  astronautName: string;
-  role: string;
-  missionId: string;
-  photoUrl: string | null;
-  sampleCount: number;
-  embeddings: number[][];
-}
 
 function normalizeEmbeddingArray(raw: unknown): number[] {
   if (!Array.isArray(raw)) return [];
@@ -42,46 +23,32 @@ function normalizeEmbeddingArray(raw: unknown): number[] {
   return nums.map((v) => Number((v / norm).toFixed(6)));
 }
 
+function toRecord(row: StoredFaceSample, embedding: number[]): FaceSampleRecord {
+  return {
+    id: row.id,
+    astronautId: row.astronautId,
+    imageUrl: row.imageUrl,
+    label: row.label,
+    embedding,
+    qualityScore: row.qualityScore,
+    uploadedById: row.uploadedById,
+    createdAt: row.createdAt,
+  };
+}
+
 export class ManageFaceBiometricsUseCase {
+  constructor(private readonly repo: IFaceSampleRepository) {}
+
   async listByAstronaut(astronautId: string): Promise<FaceSampleRecord[]> {
-    const astronaut = await prisma.astronaut.findFirst({
-      where: { id: astronautId, deletedAt: null },
-      select: { id: true },
-    });
-    if (!astronaut) {
+    if (!(await this.repo.astronautExists(astronautId))) {
       throw new NotFoundError("Astronauta no encontrado.");
     }
-
-    const rows = await prisma.astronautFaceSample.findMany({
-      where: { astronautId },
-      orderBy: { createdAt: "asc" },
-    });
-
-    return rows.map((r) => ({
-      id: r.id,
-      astronautId: r.astronautId,
-      imageUrl: r.imageUrl,
-      label: r.label,
-      embedding: normalizeEmbeddingArray(r.embedding),
-      qualityScore: r.qualityScore,
-      uploadedById: r.uploadedById,
-      createdAt: r.createdAt,
-    }));
+    const rows = await this.repo.listByAstronaut(astronautId);
+    return rows.map((r) => toRecord(r, normalizeEmbeddingArray(r.embedding)));
   }
 
   async getGallery(missionId?: string): Promise<MissionBiometricProfile[]> {
-    const astronauts = await prisma.astronaut.findMany({
-      where: {
-        deletedAt: null,
-        ...(missionId ? { missionId } : {}),
-      },
-      orderBy: { createdAt: "asc" },
-      include: {
-        faceSamples: {
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
+    const astronauts = await this.repo.listAstronautsWithSamples(missionId);
 
     return astronauts.map((a) => {
       const embeddings = a.faceSamples
@@ -106,64 +73,33 @@ export class ManageFaceBiometricsUseCase {
       throw new ValidationError("El vector biométrico facial no es válido.");
     }
 
-    return prisma.$transaction(async (tx) => {
-      const astronaut = await tx.astronaut.findFirst({
-        where: { id: dto.astronautId, deletedAt: null },
-        select: { id: true, photoUrl: true },
-      });
-      if (!astronaut) {
-        throw new NotFoundError("Astronauta no encontrado.");
-      }
-
-      const currentCount = await tx.astronautFaceSample.count({
-        where: { astronautId: dto.astronautId },
-      });
-      if (currentCount >= MAX_FACE_SAMPLES_PER_ASTRONAUT) {
-        throw new ValidationError(
-          `Máximo ${MAX_FACE_SAMPLES_PER_ASTRONAUT} muestras biométricas faciales por tripulante. Elimina una muestra antes de añadir otra.`
-        );
-      }
-
-      const created = await tx.astronautFaceSample.create({
-        data: {
-          astronautId: dto.astronautId,
-          imageUrl: dto.imageUrl,
-          label: dto.label?.trim() || `Muestra #${currentCount + 1}`,
-          embedding: normed as unknown as Prisma.InputJsonValue,
-          qualityScore: dto.qualityScore ?? 90,
-          uploadedById: dto.uploadedById ?? null,
-        },
-      });
-
-      if (!astronaut.photoUrl) {
-        await tx.astronaut.update({
-          where: { id: dto.astronautId },
-          data: { photoUrl: dto.imageUrl },
-        });
-      }
-
-      return {
-        id: created.id,
-        astronautId: created.astronautId,
-        imageUrl: created.imageUrl,
-        label: created.label,
+    const result = await this.repo.createWithinLimit(
+      {
+        astronautId: dto.astronautId,
+        imageUrl: dto.imageUrl,
+        label: dto.label?.trim() || null,
+        defaultLabel: (position) => `Muestra #${position}`,
         embedding: normed,
-        qualityScore: created.qualityScore,
-        uploadedById: created.uploadedById,
-        createdAt: created.createdAt,
-      };
-    });
+        qualityScore: dto.qualityScore ?? 90,
+        uploadedById: dto.uploadedById ?? null,
+      },
+      MAX_FACE_SAMPLES_PER_ASTRONAUT
+    );
+
+    if (result.status === "ASTRONAUT_NOT_FOUND") {
+      throw new NotFoundError("Astronauta no encontrado.");
+    }
+    if (result.status === "LIMIT_REACHED") {
+      throw new ValidationError(
+        `Máximo ${MAX_FACE_SAMPLES_PER_ASTRONAUT} muestras biométricas faciales por tripulante. Elimina una muestra antes de añadir otra.`
+      );
+    }
+    return toRecord(result.sample, normed);
   }
 
   async deleteSample(astronautId: string, sampleId: string): Promise<void> {
-    const existing = await prisma.astronautFaceSample.findFirst({
-      where: { id: sampleId, astronautId },
-    });
-    if (!existing) {
+    if (!(await this.repo.deleteForAstronaut(astronautId, sampleId))) {
       throw new NotFoundError("Muestra biométrica no encontrada.");
     }
-    await prisma.astronautFaceSample.delete({
-      where: { id: sampleId },
-    });
   }
 }

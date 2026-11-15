@@ -4,7 +4,6 @@
  */
 
 import { HealthStatus } from "@prisma/client";
-import { HealthAlert } from "../service/health/evaluateReading.js";
 import { PaginatedResult } from "./Mission.js";
 
 export { PaginatedResult };
@@ -101,4 +100,16 @@ export interface HealthReadingEntity {
   invalidatedById: string | null;
   recordedById?: string | null;
   supersedesId: string | null;
+}
+
+/** Severity level assigned to an individual physiological threshold breach. */
+export type HealthAlertLevel = "WARNING" | "CRITICAL";
+
+/** Individual clinical alert produced when a vital indicator breaches HRP bounds. */
+export interface HealthAlert {
+  indicator: string;
+  level: HealthAlertLevel;
+  protocolId: string;
+  message: string;
+  value: number;
 }

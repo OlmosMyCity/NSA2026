@@ -9,6 +9,9 @@
  */
 
 import { getMedicalProtocol } from "./medicalProtocols.js";
+import type { HealthAlert, HealthAlertLevel } from "../../entity/HealthReading.js";
+
+export type { HealthAlert, HealthAlertLevel };
 
 /** Raw vital-sign and behavioral metrics for a single biomedical reading. */
 export interface HealthReadingInput {
@@ -20,18 +23,6 @@ export interface HealthReadingInput {
   spo2Pct: number;
   sleepHours: number;
   mood: number; // 1 to 5 scale
-}
-
-/** Severity level assigned to an individual physiological threshold breach. */
-export type HealthAlertLevel = "WARNING" | "CRITICAL";
-
-/** Individual clinical alert produced when a vital indicator breaches HRP bounds. */
-export interface HealthAlert {
-  indicator: string;
-  level: HealthAlertLevel;
-  protocolId: string;
-  message: string;
-  value: number;
 }
 
 /** Aggregate health classification derived from all evaluated vital indicators. */
