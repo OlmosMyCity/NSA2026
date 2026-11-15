@@ -17,9 +17,21 @@ BEGIN;
 -- Quitar los comentarios SOLO si la base tiene únicamente datos de demo.
 -- TRUNCATE directives, incidents, health_readings, astronauts, missions, users CASCADE;
 
+-- health_readings es solo de agregado (trigger); el seed declara la excepción en su transacción
+SET LOCAL orbvital.allow_health_purge = 'on';
+
 DELETE FROM directives      WHERE id LIKE 'seed-%';
 DELETE FROM incidents       WHERE id LIKE 'seed-%';
-DELETE FROM health_readings WHERE id LIKE 'seed-%';
+-- Lecturas del seed y las correcciones encadenadas a ellas (supersedesId)
+CREATE TEMP TABLE seed_reading_chain ON COMMIT DROP AS
+WITH RECURSIVE chain AS (
+  SELECT id FROM health_readings WHERE id LIKE 'seed-%'
+  UNION
+  SELECT h.id FROM health_readings h JOIN chain c ON h."supersedesId" = c.id
+) SELECT id FROM chain;
+UPDATE health_readings SET "supersedesId" = NULL
+WHERE id IN (SELECT id FROM seed_reading_chain) AND "supersedesId" IS NOT NULL;
+DELETE FROM health_readings WHERE id IN (SELECT id FROM seed_reading_chain);
 
 -- Usuarios
 INSERT INTO users ("id", "email", "name", "passwordHash", "role", "state", "createdAt", "updatedAt", "deletedAt") VALUES

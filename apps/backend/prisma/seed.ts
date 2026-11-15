@@ -54,6 +54,28 @@ function mulberry32(seed: number) {
   };
 }
 const rand = mulberry32(2026);
+
+/**
+ * health_readings es solo de agregado (P1): un trigger bloquea DELETE.
+ * El seed es la única excepción y lo declara explícitamente dentro de su transacción.
+ * También elimina las correcciones encadenadas a sus lecturas (supersedesId),
+ * que son datos de demo aunque las haya creado alguien desde la API.
+ */
+async function purgeHealthReadings(scope: "seed" | "all") {
+  const chain =
+    scope === "all"
+      ? `SELECT id FROM health_readings`
+      : `WITH RECURSIVE chain AS (
+           SELECT id FROM health_readings WHERE id LIKE 'seed-%'
+           UNION
+           SELECT h.id FROM health_readings h JOIN chain c ON h."supersedesId" = c.id
+         ) SELECT id FROM chain`;
+  await prisma.$transaction([
+    prisma.$executeRawUnsafe(`SET LOCAL orbvital.allow_health_purge = 'on'`),
+    prisma.$executeRawUnsafe(`UPDATE health_readings SET "supersedesId" = NULL WHERE id IN (${chain}) AND "supersedesId" IS NOT NULL`),
+    prisma.$executeRawUnsafe(`DELETE FROM health_readings WHERE id IN (${chain})`),
+  ]);
+}
 const gauss = (sigma = 1) => {
   const u = 1 - rand();
   const v = rand();
@@ -308,7 +330,7 @@ async function main() {
   if (RESET) {
     await prisma.directive.deleteMany();
     await prisma.incident.deleteMany();
-    await prisma.healthReading.deleteMany();
+    await purgeHealthReadings("all");
     await prisma.astronaut.deleteMany();
     await prisma.mission.deleteMany();
     await prisma.user.deleteMany();
@@ -316,7 +338,7 @@ async function main() {
     // Reemplazar solo lo que crea este seed
     await prisma.directive.deleteMany({ where: { id: { startsWith: "seed-" } } });
     await prisma.incident.deleteMany({ where: { id: { startsWith: "seed-" } } });
-    await prisma.healthReading.deleteMany({ where: { id: { startsWith: "seed-" } } });
+    await purgeHealthReadings("seed");
   }
 
   // 1. Usuarios (upsert por email para respetar cuentas existentes)

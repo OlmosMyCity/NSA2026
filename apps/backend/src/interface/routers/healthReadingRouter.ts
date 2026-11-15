@@ -6,8 +6,8 @@ import { PrismaIncidentRepository } from "../../infrastructure/repository/Prisma
 import { ListHealthReadingsUseCase } from "../../application/use-cases/health/ListHealthReadingsUseCase.js";
 import { GetHealthReadingByIdUseCase } from "../../application/use-cases/health/GetHealthReadingByIdUseCase.js";
 import { CreateHealthReadingUseCase } from "../../application/use-cases/health/CreateHealthReadingUseCase.js";
-import { UpdateHealthReadingUseCase } from "../../application/use-cases/health/UpdateHealthReadingUseCase.js";
-import { DeleteHealthReadingUseCase } from "../../application/use-cases/health/DeleteHealthReadingUseCase.js";
+import { InvalidateHealthReadingUseCase } from "../../application/use-cases/health/InvalidateHealthReadingUseCase.js";
+import { CorrectHealthReadingUseCase } from "../../application/use-cases/health/CorrectHealthReadingUseCase.js";
 import { GetAstronautHealthSummaryUseCase } from "../../application/use-cases/health/GetAstronautHealthSummaryUseCase.js";
 import { IngestVisionTelemetryUseCase } from "../../application/use-cases/health/IngestVisionTelemetryUseCase.js";
 import { OpenIncidentUseCase } from "../../application/use-cases/incident/OpenIncidentUseCase.js";
@@ -20,8 +20,8 @@ const openIncidentUseCase = new OpenIncidentUseCase(incidentRepo);
 const listHealthReadingsUseCase = new ListHealthReadingsUseCase(readingRepo);
 const getHealthReadingByIdUseCase = new GetHealthReadingByIdUseCase(readingRepo);
 const createHealthReadingUseCase = new CreateHealthReadingUseCase(readingRepo, openIncidentUseCase);
-const updateHealthReadingUseCase = new UpdateHealthReadingUseCase(readingRepo, openIncidentUseCase);
-const deleteHealthReadingUseCase = new DeleteHealthReadingUseCase(readingRepo);
+const invalidateHealthReadingUseCase = new InvalidateHealthReadingUseCase(readingRepo);
+const correctHealthReadingUseCase = new CorrectHealthReadingUseCase(readingRepo, openIncidentUseCase);
 const getAstronautHealthSummaryUseCase = new GetAstronautHealthSummaryUseCase(readingRepo);
 const ingestVisionTelemetryUseCase = new IngestVisionTelemetryUseCase();
 
@@ -29,9 +29,9 @@ const controller = new HealthReadingController(
   listHealthReadingsUseCase,
   getHealthReadingByIdUseCase,
   createHealthReadingUseCase,
-  deleteHealthReadingUseCase,
+  invalidateHealthReadingUseCase,
   getAstronautHealthSummaryUseCase,
-  updateHealthReadingUseCase,
+  correctHealthReadingUseCase,
   astronautRepo,
   ingestVisionTelemetryUseCase
 );
@@ -42,8 +42,12 @@ readingRouter.get("/", authenticate, controller.list);
 readingRouter.get("/:id", authenticate, controller.getById);
 readingRouter.post("/", authenticate, controller.create);
 readingRouter.post("/vision-ingest", authenticate, controller.ingestVision);
-readingRouter.put("/:id", authenticate, controller.update);
-readingRouter.delete("/:id", authenticate, controller.delete);
+readingRouter.post("/:id/invalidate", authenticate, controller.invalidate);
+readingRouter.post("/:id/corrections", authenticate, controller.correct);
+// P1: los datos de salud solo se agregan
+readingRouter.put("/:id", authenticate, controller.methodNotAllowed);
+readingRouter.patch("/:id", authenticate, controller.methodNotAllowed);
+readingRouter.delete("/:id", authenticate, controller.methodNotAllowed);
 
 // Router dedicado para el endpoint analítico del astronauta
 export const astronautSummaryRouter = Router();

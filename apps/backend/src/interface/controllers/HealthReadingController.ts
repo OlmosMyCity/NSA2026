@@ -2,17 +2,18 @@ import { Request, Response, NextFunction } from "express";
 import { ListHealthReadingsUseCase } from "../../application/use-cases/health/ListHealthReadingsUseCase.js";
 import { GetHealthReadingByIdUseCase } from "../../application/use-cases/health/GetHealthReadingByIdUseCase.js";
 import { CreateHealthReadingUseCase } from "../../application/use-cases/health/CreateHealthReadingUseCase.js";
-import { UpdateHealthReadingUseCase } from "../../application/use-cases/health/UpdateHealthReadingUseCase.js";
-import { DeleteHealthReadingUseCase } from "../../application/use-cases/health/DeleteHealthReadingUseCase.js";
+import { InvalidateHealthReadingUseCase } from "../../application/use-cases/health/InvalidateHealthReadingUseCase.js";
+import { CorrectHealthReadingUseCase } from "../../application/use-cases/health/CorrectHealthReadingUseCase.js";
 import { GetAstronautHealthSummaryUseCase } from "../../application/use-cases/health/GetAstronautHealthSummaryUseCase.js";
 import { IngestVisionTelemetryUseCase } from "../../application/use-cases/health/IngestVisionTelemetryUseCase.js";
 import { IAstronautRepository } from "../../domain/repository/IAstronautRepository.js";
 import { ForbiddenError } from "../../domain/errors/AppError.js";
 import { HealthStatus, Role } from "@prisma/client";
 import {
+  correctHealthReadingSchema,
   createHealthReadingSchema,
+  invalidateHealthReadingSchema,
   parseWithValidation,
-  updateHealthReadingSchema,
   visionIngestSchema,
 } from "../validation/schemas.js";
 
@@ -21,9 +22,9 @@ export class HealthReadingController {
     private readonly listHealthReadingsUseCase: ListHealthReadingsUseCase,
     private readonly getHealthReadingByIdUseCase: GetHealthReadingByIdUseCase,
     private readonly createHealthReadingUseCase: CreateHealthReadingUseCase,
-    private readonly deleteHealthReadingUseCase: DeleteHealthReadingUseCase,
+    private readonly invalidateHealthReadingUseCase: InvalidateHealthReadingUseCase,
     private readonly getAstronautHealthSummaryUseCase: GetAstronautHealthSummaryUseCase,
-    private readonly updateHealthReadingUseCase?: UpdateHealthReadingUseCase,
+    private readonly correctHealthReadingUseCase?: CorrectHealthReadingUseCase,
     private readonly astronautRepo?: IAstronautRepository,
     private readonly ingestVisionTelemetryUseCase?: IngestVisionTelemetryUseCase
   ) {}
@@ -32,6 +33,16 @@ export class HealthReadingController {
     if (!req.user || !this.astronautRepo?.findByUserId) return null;
     const astro = await this.astronautRepo.findByUserId(req.user.id);
     return astro?.id ?? null;
+  }
+
+  /** Un tripulante solo actúa sobre sus propias lecturas; el Flight Surgeon (ADMIN) sobre todas. */
+  private async assertCanActOnReading(req: Request, readingId: string, action: string): Promise<void> {
+    if (!req.user || req.user.role === Role.ADMIN) return;
+    const reading = await this.getHealthReadingByIdUseCase.execute(readingId);
+    const ownAstronautId = await this.resolveOwnAstronautId(req);
+    if (!ownAstronautId || reading.astronautId !== ownAstronautId) {
+      throw new ForbiddenError(`No tienes permiso para ${action} mediciones de otro tripulante.`);
+    }
   }
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -90,6 +101,7 @@ export class HealthReadingController {
         status: req.query.status as HealthStatus | undefined,
         from: fromDate,
         to: toDate,
+        includeInvalid: req.query.includeInvalid === "true",
       });
 
       res.status(200).json(result);
@@ -138,51 +150,44 @@ export class HealthReadingController {
     }
   };
 
-  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      if (!this.updateHealthReadingUseCase) {
-        res.status(501).json({ error: "Operación no disponible." });
-        return;
-      }
-      const { id } = req.params;
-
-      if (req.user && req.user.role !== Role.ADMIN) {
-        const reading = await this.getHealthReadingByIdUseCase.execute(id);
-        const ownAstronautId = await this.resolveOwnAstronautId(req);
-        if (!ownAstronautId || reading.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para modificar mediciones de otro tripulante.");
-        }
-      }
-
-      const payload = parseWithValidation(updateHealthReadingSchema, req.body ?? {});
-      const { recommendation, ...safeMetrics } = payload;
-
-      const updated = await this.updateHealthReadingUseCase.execute(id, {
-        ...safeMetrics,
-        // Solo un cirujano de vuelo (ADMIN) puede sobrescribir la recomendación clínica calculada
-        ...(req.user?.role === Role.ADMIN && recommendation !== undefined ? { recommendation } : {}),
+  /** P1: PUT y DELETE ya no existen; se responde 405 explicando la alternativa. */
+  methodNotAllowed = (_req: Request, res: Response): void => {
+    res
+      .status(405)
+      .set("Allow", "GET")
+      .json({
+        error:
+          "Los datos de salud no se editan ni se borran. Use POST /api/readings/:id/invalidate o POST /api/readings/:id/corrections.",
       });
+  };
 
-      res.status(200).json(updated);
+  invalidate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      await this.assertCanActOnReading(req, id, "invalidar");
+      const { reason } = parseWithValidation(invalidateHealthReadingSchema, req.body ?? {});
+      const reading = await this.invalidateHealthReadingUseCase.execute(id, reason, req.user?.id ?? null);
+      res.status(200).json(reading);
     } catch (error) {
       next(error);
     }
   };
 
-  delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  correct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-
-      if (req.user && req.user.role !== Role.ADMIN) {
-        const reading = await this.getHealthReadingByIdUseCase.execute(id);
-        const ownAstronautId = await this.resolveOwnAstronautId(req);
-        if (!ownAstronautId || reading.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para eliminar mediciones de otro tripulante.");
-        }
+      if (!this.correctHealthReadingUseCase) {
+        res.status(501).json({ error: "Operación no disponible." });
+        return;
       }
-
-      await this.deleteHealthReadingUseCase.execute(id);
-      res.status(204).send();
+      const { id } = req.params;
+      await this.assertCanActOnReading(req, id, "corregir");
+      const payload = parseWithValidation(correctHealthReadingSchema, req.body ?? {});
+      const corrected = await this.correctHealthReadingUseCase.execute(
+        id,
+        { ...payload, takenAt: payload.takenAt ?? undefined },
+        req.user?.id ?? null
+      );
+      res.status(201).json(corrected);
     } catch (error) {
       next(error);
     }
