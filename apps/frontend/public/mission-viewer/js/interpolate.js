@@ -5,9 +5,12 @@
 /** Convierte el bloque `samples` del JSON a arreglos tipados (Float64 para no perder precisión). */
 export function toTypedSamples(samples) {
   const out = {};
-  for (const k of ["t", "x", "y", "z", "vx", "vy", "vz", "m"]) out[k] = Float64Array.from(samples[k]);
-  out.phase = Int32Array.from(samples.phase_index);
-  out.n = out.t.length;
+  const len = samples.t.length;
+  for (const k of ["t", "x", "y", "z", "vx", "vy", "vz", "m"]) {
+    out[k] = samples[k] ? Float64Array.from(samples[k]) : new Float64Array(len);
+  }
+  out.phase = samples.phase_index ? Int32Array.from(samples.phase_index) : new Int32Array(len);
+  out.n = len;
   return out;
 }
 

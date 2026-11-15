@@ -90,7 +90,12 @@ async function main() {
   const tLast = phases[phases.length - 1].t_end;
   const positionAt = (t) => hermiteState(samples, t).r;
   const extraBodies = (bodies.extra || []).map((b) => {
-    const bSamples = toTypedSamples({ t: mission.samples.t, ...b.track });
+    const bSamples = toTypedSamples({
+      t: mission.samples.t,
+      m: mission.samples.m,
+      phase_index: mission.samples.phase_index,
+      ...b.track,
+    });
     return {
       ...b,
       positionAt: (t) => hermiteState(bSamples, t).r,
