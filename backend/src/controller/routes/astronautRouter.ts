@@ -14,11 +14,14 @@ import { CreateAstronautUseCase } from "../../service/astronaut/CreateAstronautU
 import { UpdateAstronautUseCase } from "../../service/astronaut/UpdateAstronautUseCase.js";
 import { DeleteAstronautUseCase } from "../../service/astronaut/DeleteAstronautUseCase.js";
 import { ManageFaceBiometricsUseCase } from "../../service/astronaut/ManageFaceBiometricsUseCase.js";
+import { PrismaFaceSampleRepository } from "../../repository/PrismaFaceSampleRepository.js";
 import { authenticate } from "../../security/authenticate.js";
 import { authorizeRoles } from "../../security/authorizeRoles.js";
 import { imageUpload } from "../../config/imageUpload.js";
 import { astronautSummaryRouter } from "./healthReadingRouter.js";
 import { DigitalTwinController } from "../DigitalTwinController.js";
+import { LoadDigitalTwinContextUseCase } from "../../service/health/LoadDigitalTwinContextUseCase.js";
+import { PrismaDigitalTwinRepository } from "../../repository/PrismaDigitalTwinRepository.js";
 import { operatorController } from "./operatorRouter.js";
 
 const astronautRepo = new PrismaAstronautRepository();
@@ -27,8 +30,10 @@ const getAstronautByIdUseCase = new GetAstronautByIdUseCase(astronautRepo);
 const createAstronautUseCase = new CreateAstronautUseCase(astronautRepo);
 const updateAstronautUseCase = new UpdateAstronautUseCase(astronautRepo);
 const deleteAstronautUseCase = new DeleteAstronautUseCase(astronautRepo);
-const faceBiometricsUseCase = new ManageFaceBiometricsUseCase();
-const digitalTwinController = new DigitalTwinController();
+const faceBiometricsUseCase = new ManageFaceBiometricsUseCase(new PrismaFaceSampleRepository());
+const digitalTwinController = new DigitalTwinController(
+  new LoadDigitalTwinContextUseCase(new PrismaDigitalTwinRepository())
+);
 
 const controller = new AstronautController(
   listAstronautsUseCase,

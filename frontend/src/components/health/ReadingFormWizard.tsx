@@ -12,7 +12,7 @@ import { AssessmentPanel } from './reading-form/AssessmentPanel';
 import { MoodCheckIn } from './reading-form/MoodCheckIn';
 import { VitalField } from './reading-form/VitalField';
 import { ASSESSMENT_STEP_LABEL, DEFAULT_VITALS, VITAL_STEPS } from './reading-form/steps';
-import { useCrewSelection } from './reading-form/useCrewSelection';
+import { useCrewSelection } from '@/hooks/useCrewSelection';
 
 const STEP_LABELS = [...VITAL_STEPS.map((s) => s.label), ASSESSMENT_STEP_LABEL];
 const LAST_STEP = STEP_LABELS.length - 1;
