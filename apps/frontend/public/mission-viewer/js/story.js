@@ -19,7 +19,25 @@ export const RESULTS = {
 };
 
 /** Multiplicador del modo Auto: cada fase dura unos 20–35 s de reproducción. */
-export const AUTO_RATE = { ascent: 20, parking: 300, transit: 15000, nrho: 40000, descent: 300, landing: 20 };
+export const AUTO_RATE = {
+  ascent: 20,
+  parking: 300,
+  leo: 120,
+  heo: 1800,
+  transit: 15000,
+  outbound: 15000,
+  cruise: 400000,
+  flyby: 3600,
+  gravity_assist: 86400,
+  lunar_orbit: 300,
+  nrho: 40000,
+  approach: 86400,
+  descent: 300,
+  edl: 20,
+  landing: 20,
+  return: 15000,
+  perihelion: 86400,
+};
 
 export const PHASE_INFO = {
   ascent: {
@@ -34,17 +52,65 @@ export const PHASE_INFO = {
     method: "Velocity Verlet (simpléctico)",
     result: "Inclinación 29,8° · TLI a las 2,33 h",
   },
+  leo: {
+    short: "Órbita LEO",
+    physics: "Órbita terrestre baja casi circular bajo gravedad kepleriana.",
+    method: "Propagación Kepler universal",
+    result: "Altitud ~418 km · 51,6° · 7,66 km/s",
+  },
+  heo: {
+    short: "Órbita HEO",
+    physics: "Órbita terrestre altamente elíptica de comprobación de sistemas.",
+    method: "Propagación Kepler universal",
+    result: "Apogeo ~70 000 km antes de TLI",
+  },
   transit: {
     short: "Tránsito",
     physics: "Problema restringido de tres cuerpos, con sobrevuelo lunar propulsado.",
     method: "Disparo múltiple + SLSQP",
-    result: "Sobrevuelo a 1 340 km · 55,7 % del Δv de Orion",
+    result: "Sobrevuelo a 1 340 km · 55,7 % del Δv de Orion",
+  },
+  outbound: {
+    short: "Tránsito lunar",
+    physics: "Trayectoria translunar hacia la esfera de influencia de la Luna.",
+    method: "Kepler universal + efemérides lunares",
+    result: "Transferencia cislunar directa",
+  },
+  cruise: {
+    short: "Crucero interplanetario",
+    physics: "Órbita heliocéntrica de transferencia bajo gravedad solar.",
+    method: "Problema de Lambert + Kepler universal",
+    result: "Efemérides JPL (Standish)",
+  },
+  flyby: {
+    short: "Sobrevuelo",
+    physics: "Deflexión gravitatoria y trayectoria de retorno libre alrededor de la Luna.",
+    method: "Kepler universal",
+    result: "Paso por cara oculta lunar",
+  },
+  gravity_assist: {
+    short: "Asistencia gravitatoria",
+    physics: "Encuentro planetario para modificar energía y momento angular heliocéntrico.",
+    method: "Lambert multi-tramo + efemérides JPL",
+    result: "Impulso gravitatorio sin consumo de propelente",
+  },
+  lunar_orbit: {
+    short: "Órbita lunar",
+    physics: "Órbita polar selenocéntrica de mapeo alrededor de la Luna.",
+    method: "Kepler universal selenocéntrico",
+    result: "Órbita polar baja (~50 km)",
   },
   nrho: {
     short: "NRHO",
     physics: "Órbita periódica de halo cerca de L2 en el CR3BP, usando la matriz de transición de estados.",
     method: "Corrección diferencial + continuación",
-    result: "NRHO 9:2 · periodo 6,56 d · perilunio 3 248 km",
+    result: "NRHO 9:2 · periodo 6,56 d · perilunio 3 248 km",
+  },
+  approach: {
+    short: "Aproximación",
+    physics: "Fase terminal de aproximación hacia el planeta objetivo.",
+    method: "Lambert + efemérides JPL",
+    result: "Corredor de entrada / captura",
   },
   descent: {
     short: "Órbita HLS",
@@ -52,11 +118,29 @@ export const PHASE_INFO = {
     method: "DOP853 con eventos",
     result: "DOI 702 m/s · 1,59 h de planeo",
   },
+  edl: {
+    short: "EDL",
+    physics: "Entrada atmosférica, descenso y aterrizaje en la superficie marciana.",
+    method: "Perfil de entrada 125 km → 0 km",
+    result: "Aterrizaje en cráter Jezero",
+  },
   landing: {
     short: "Descenso",
     physics: "Descenso propulsado con masa variable en el marco fijo a la Luna.",
     method: "DOP853 + E-guidance",
     result: "Contacto a 1,0 m/s y a 1,4 cm del sitio",
+  },
+  return: {
+    short: "Retorno",
+    physics: "Trayectoria de regreso libre hacia la interfaz atmosférica terrestre.",
+    method: "Kepler universal",
+    result: "Reentrada terrestre",
+  },
+  perihelion: {
+    short: "Perihelio",
+    physics: "Máxima aproximación solar tras asistencia gravitatoria en Venus.",
+    method: "Lambert + Kepler heliocéntrico",
+    result: "24,8 millones de km del Sol",
   },
 };
 
