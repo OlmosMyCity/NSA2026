@@ -618,7 +618,7 @@ async function main() {
     const padEci = [samples.x[0], samples.y[0], samples.z[0]];
     const padNow = mul3(rotZ(omegaEarth * t), [padEci[0], 0, 0, padEci[1], 0, 0, padEci[2], 0, 0]);
     rel(frames.toFrame(frame, [padNow[0], padNow[3], padNow[6]], t), label.pad.pos);
-    label.pad.active = t < phases[0].t_end;
+    label.pad.active = t < Math.min(phases[0].t_end, 1800);
     rel(frames.toFrame(frame, frames.fromRotating([L2_RATIO * bodies.moon.orbit_radius_km, 0, 0], t), t), label.l2.pos);
     for (const m of maneuvers) rel(frames.toFrame(frame, m.r, m.e.t), m.item.pos);
 
