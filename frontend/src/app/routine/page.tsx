@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { AppLayout } from '@/components/common/AppLayout';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +11,7 @@ import { AstronautRoutineState } from '@/domain/routine/types';
 import { StreakBanner } from '@/components/routine/StreakBanner';
 import { BadgeGrid } from '@/components/routine/BadgeGrid';
 import { RoutineChecklist } from '@/components/routine/RoutineChecklist';
-import { Users, RefreshCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Users, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 
 export default function RoutinePage() {
@@ -65,30 +64,13 @@ export default function RoutinePage() {
     <RouteGuard>
       <AppLayout>
         <div className="space-y-8 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3 text-xs font-semibold">
-            <Link
-              href="/dashboard"
-              className="tactile-press inline-flex items-center gap-1.5 text-stem hover:text-blueberry"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Step 2: Digital Twin</span>
-            </Link>
-            <Link
-              href="/visualizer"
-              className="tactile-press inline-flex items-center gap-1.5 text-plate hover:text-yogurt"
-            >
-              <span>Step 4: Mission &amp; 3D Orbit</span>
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          </div>
-
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line pb-5">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-blueberry">
                 Daily HRP Countermeasure Routine
               </h1>
               <p className="mt-1.5 text-sm text-stem max-w-2xl">
-                Step 3 of 4 · Execute prioritized countermeasures, exercise, and circadian protocols.
+                Execute prioritized countermeasures, exercise, and circadian protocols.
               </p>
             </div>
 

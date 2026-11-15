@@ -35,7 +35,7 @@ export function TriageDecisionCard({ decision, isLoading }: TriageDecisionCardPr
 
   return (
     <section
-      aria-label="Digital Twin Clinical Triage"
+      aria-label="My Health Clinical Triage"
       className="surface-card p-5 space-y-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">

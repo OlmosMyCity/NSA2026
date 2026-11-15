@@ -3,29 +3,25 @@
 import Link from 'next/link';
 import { ArrowRight, Gauge } from 'lucide-react';
 
-const WORKFLOW_STEPS = [
+const WORKSPACE_SECTIONS = [
   {
-    step: '01',
-    href: '/readings/new',
-    title: 'Check-in',
-    summary: 'Record vitals onboard or capture a contactless optical scan.',
-  },
-  {
-    step: '02',
     href: '/dashboard',
-    title: '3D Digital Twin',
-    summary: 'Simulate countermeasures & inspect anatomical organ risk.',
+    title: 'My Health',
+    summary: 'Inspect 3D body status, simulate countermeasures & review vital trends.',
   },
   {
-    step: '03',
+    href: '/readings/new',
+    title: 'Log Reading',
+    summary: 'Record vitals manually or capture a contactless optical scan.',
+  },
+  {
     href: '/routine',
     title: 'Daily Routine',
     summary: 'Execute prioritized HRP protocols, nutrition & circadian tasks.',
   },
   {
-    step: '04',
     href: '/visualizer',
-    title: 'Mission & Orbit',
+    title: 'Missions & Orbit',
     summary: 'Track 3D NRHO trajectory, active crew & facial biometrics.',
   },
 ];
@@ -49,7 +45,7 @@ export function HeroSection() {
               href="/readings/new"
               className="tactile-press inline-flex items-center gap-2 rounded-sm bg-plate px-5 py-2.5 text-sm font-semibold text-ink-inverse hover:bg-yogurt"
             >
-              <span>Start Step 1 · Check-in</span>
+              <span>Log Reading</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
 
@@ -58,7 +54,7 @@ export function HeroSection() {
               className="tactile-press inline-flex items-center gap-2 rounded-sm border border-line-strong bg-canvas/75 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-plate hover:bg-blueberry"
             >
               <Gauge className="h-4 w-4" />
-              <span>Open 3D Digital Twin</span>
+              <span>My Health</span>
             </Link>
           </div>
         </div>
@@ -84,32 +80,27 @@ export function HeroSection() {
         </dl>
       </div>
 
-      {/* Linear 4-step operational entry strip — hairline divided */}
+      {/* Quick-access operational entry strip — hairline divided */}
       <nav
-        aria-label="Operational workflow"
+        aria-label="Operational workspaces"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-line border-b border-line"
       >
-        {WORKFLOW_STEPS.map((item) => (
+        {WORKSPACE_SECTIONS.map((item) => (
           <Link
-            key={item.step}
+            key={item.href}
             href={item.href}
             className="group flex flex-col justify-between gap-2 px-4 py-5 first:pl-0 last:pr-0 hover:bg-surface-tinted/40 transition-colors"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-xs font-bold tracking-wider text-berry tabular-nums">
-                {item.step}
-              </span>
+              <p className="font-display text-sm font-bold text-plate group-hover:text-yogurt">
+                {item.title}
+              </p>
               <ArrowRight
                 className="h-3.5 w-3.5 text-stem transition-transform group-hover:translate-x-0.5 group-hover:text-plate"
                 aria-hidden="true"
               />
             </div>
-            <div>
-              <p className="font-display text-sm font-bold text-plate group-hover:text-yogurt">
-                {item.title}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-stem">{item.summary}</p>
-            </div>
+            <p className="text-xs leading-relaxed text-stem">{item.summary}</p>
           </Link>
         ))}
       </nav>

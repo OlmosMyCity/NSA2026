@@ -21,8 +21,9 @@ interface AstronautCardProps {
 
 export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps) {
   const { user, isAdmin } = useAuth();
-  const canEditBiometrics = isAdmin || user?.role === 'USER';
-  const canLogReading = isAdmin || user?.role === 'USER';
+  const isOwnProfile = !!user?.astronautId && astronaut.id === user.astronautId;
+  const canEditBiometrics = isAdmin || isOwnProfile;
+  const canLogReading = isAdmin || isOwnProfile;
   const faceSamplesCount = astronaut._count?.faceSamples ?? 0;
 
   return (
@@ -94,7 +95,7 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
       <div className="mt-6 flex items-center justify-between text-xs">
         {canLogReading ? (
           <Link
-            href={`/readings/new?astronautId=${astronaut.id}`}
+            href={isAdmin ? `/readings/new?astronautId=${astronaut.id}` : '/readings/new'}
             className="tactile-press inline-flex items-center gap-1.5 font-semibold text-blueberry hover:text-berry"
           >
             <HeartPulse className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
@@ -107,7 +108,7 @@ export function AstronautCard({ astronaut, onDeleteRequest }: AstronautCardProps
         {canEditBiometrics && (
           <div className="flex items-center gap-3">
             <Link
-              href={`/astronauts/${astronaut.id}/edit`}
+              href={isAdmin ? `/astronauts/${astronaut.id}/edit` : '/profile'}
               className="tactile-press inline-flex items-center gap-1 text-stem hover:text-blueberry"
               title="Edit astronaut & facial biometrics"
               aria-label={`Edit profile and facial biometrics for ${astronaut.name}`}

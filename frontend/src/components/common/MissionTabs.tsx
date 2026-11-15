@@ -2,8 +2,8 @@
 
 /**
  * @module components/common/MissionTabs
- * Sub-navigation bar unifying Step 4 operational surfaces (`/missions`, `/visualizer`,
- * `/astronauts`, and `/profile`) with a quick return to the Step 2 Digital Twin.
+ * Sub-navigation bar unifying mission operational surfaces (`/missions`, `/visualizer`,
+ * `/astronauts`, and `/profile`) with a quick return to My Health.
  */
 
 import Link from 'next/link';
@@ -56,7 +56,7 @@ export function MissionTabs() {
           className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-stem transition-colors hover:text-blueberry"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Back to Digital Twin</span>
+          <span>Back to My Health</span>
         </Link>
       )}
     </div>

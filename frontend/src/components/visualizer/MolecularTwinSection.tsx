@@ -90,12 +90,12 @@ export function MolecularTwinSection({
   const activeShielding = data?.shieldingResults[shielding];
 
   return (
-    <section className="mt-10 border-t border-line pt-8 space-y-6" aria-label="Molecular Twin">
+    <section className="mt-10 border-t border-line pt-8 space-y-6" aria-label="Molecular Radiobiology">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-berry">
             <Dna className="h-4 w-4" aria-hidden="true" />
-            <span>Biophysics Twin · Molecular Docking &amp; DNA Repair Kinetics</span>
+            <span>Biophysics · Molecular Docking &amp; DNA Repair Kinetics</span>
           </div>
           <h2 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-blueberry">
             DNA Repair Kinetics &amp; Radioprotector Docking

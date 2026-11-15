@@ -24,6 +24,7 @@ const DEMO_ASTRONAUT_ID = 'astro-01';
  */
 export function useActiveAstronaut() {
   const { user, isLoading: authLoading } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const requestedId = useSearchParams().get('astronautId');
   const [crew, setCrew] = useState<Astronaut[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
@@ -42,27 +43,28 @@ export function useActiveAstronaut() {
         const res = await astronautService.list({ limit: 50 });
         if (!active) return;
 
-        const isAdmin = user?.role === 'ADMIN';
         const ownAstro = res.data.find(
           (a) => a.userId === user?.id || a.id === user?.astronautId
         );
-        setOwnAstronautId(ownAstro?.id ?? user?.astronautId);
-        // Regla de negocio: cualquier miembro de la misión puede asistir/seleccionar a compañeros de su misma misión
-        const visibleCrew =
-          isAdmin || !ownAstro
-            ? res.data
-            : res.data.filter((a) => a.missionId === ownAstro.missionId);
+        const resolvedOwnId = ownAstro?.id ?? user?.astronautId;
+        setOwnAstronautId(resolvedOwnId);
+
+        // Solo el Flight Surgeon (ADMIN) puede cambiar entre tripulantes; el resto solo consulta su propio perfil.
+        const visibleCrew = isAdmin ? res.data : ownAstro ? [ownAstro] : [];
 
         setCrew(visibleCrew);
         setSelectedId((prev) => {
-          if (prev && visibleCrew.some((a) => a.id === prev)) return prev;
-          if (requestedId && visibleCrew.some((a) => a.id === requestedId)) return requestedId;
-          return ownAstro?.id ?? user?.astronautId ?? visibleCrew[0]?.id ?? DEMO_ASTRONAUT_ID;
+          if (isAdmin) {
+            if (prev && visibleCrew.some((a) => a.id === prev)) return prev;
+            if (requestedId && visibleCrew.some((a) => a.id === requestedId)) return requestedId;
+            return resolvedOwnId ?? visibleCrew[0]?.id ?? DEMO_ASTRONAUT_ID;
+          }
+          return resolvedOwnId;
         });
       } catch {
         if (!active) return;
         setOwnAstronautId(user?.astronautId);
-        setSelectedId(user?.astronautId ?? DEMO_ASTRONAUT_ID);
+        setSelectedId(user?.astronautId ?? (isAdmin ? DEMO_ASTRONAUT_ID : undefined));
       } finally {
         if (active) setIsResolving(false);
       }
@@ -72,7 +74,7 @@ export function useActiveAstronaut() {
     return () => {
       active = false;
     };
-  }, [authLoading, user?.id, user?.astronautId, user?.role, requestedId]);
+  }, [authLoading, isAdmin, user?.id, user?.astronautId, requestedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -108,14 +110,21 @@ export function useActiveAstronaut() {
     };
   }, [selectedId, crew]);
 
+  const guardedSetAstronautId = (id: string) => {
+    if (isAdmin || id === ownAstronautId) {
+      setSelectedId(id);
+    }
+  };
+
   return {
     astronautId: selectedId,
-    setAstronautId: setSelectedId,
+    setAstronautId: guardedSetAstronautId,
     ownAstronautId,
     crew,
     activeAstronaut,
     missionEnvironment,
     missionName,
+    isAdmin,
     isResolving,
   };
 }

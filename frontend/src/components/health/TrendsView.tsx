@@ -27,7 +27,7 @@ const dateFmt = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 
 
 /** Historical trends dashboard with primary detail chart and 9-indicator sparkline grid. */
 export function TrendsView() {
-  const { astronautId, setAstronautId, crew, isResolving } = useActiveAstronaut();
+  const { astronautId, setAstronautId, crew, isResolving, isAdmin } = useActiveAstronaut();
   const { readings, isLoading, error, refetch, latest } = useHealthReadings(astronautId);
   const [days, setDays] = useState<RangeDays>(14);
   const [indicator, setIndicator] = useState<IndicatorId>('heartRate');
@@ -60,7 +60,7 @@ export function TrendsView() {
   }
 
   const crewSelector =
-    crew.length > 1 ? (
+    isAdmin && crew.length > 1 ? (
       <label className="inline-flex items-center gap-2 text-xs font-medium text-stem">
         <span>Crew Member:</span>
         <select

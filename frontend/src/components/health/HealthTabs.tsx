@@ -2,22 +2,21 @@
 
 /**
  * @module components/health/HealthTabs
- * Sub-navigation bar across My Health views (`/dashboard`, `/trends`, `/vision`)
- * with a dynamic shortcut to the crew member's active mission.
+ * Sub-navigation bar across My Health views (`/dashboard`, `/trends`)
+ * with quick shortcuts to Log Reading and the crew member's active mission.
  */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ArrowRight, Rocket } from 'lucide-react';
+import { HeartPulse, Rocket } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { astronautService } from '@/services/astronautService';
 import { missionService } from '@/services/missionService';
 
 const TABS = [
-  { href: '/dashboard', label: '3D Digital Twin' },
+  { href: '/dashboard', label: 'My Health' },
   { href: '/trends', label: 'Historical Trends' },
-  { href: '/vision', label: 'Optical Scan (Camera)' },
 ];
 
 /** Route tabs for My Health and contextual active-mission link. */
@@ -88,11 +87,11 @@ export function HealthTabs() {
           </Link>
         )}
         <Link
-          href="/routine"
+          href="/readings/new"
           className="tactile-press inline-flex items-center gap-1.5 rounded-pill bg-plate px-3.5 py-1.5 text-xs font-semibold text-ink-inverse hover:bg-yogurt"
         >
-          <span>Step 3: Daily Routine</span>
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          <HeartPulse className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Log Reading</span>
         </Link>
       </div>
     </div>

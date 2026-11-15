@@ -9,7 +9,6 @@ import {
   CalendarCheck2,
   Rocket,
   ShieldAlert,
-  ChevronRight,
   LogIn,
   LogOut,
   Menu,
@@ -54,12 +53,12 @@ export function Navbar() {
     dividerBefore?: boolean;
   };
 
-  // Flujo lineal de 4 pasos para la tripulación (+ enlace clínico para Flight Surgeon).
+  // Navegación directa para la tripulación (+ enlace clínico para Flight Surgeon).
   const navLinks: NavItem[] = [
-    { href: '/readings/new', label: '1. Check-in', icon: HeartPulse },
-    { href: '/dashboard', label: '2. Digital Twin', icon: Gauge },
-    { href: '/routine', label: '3. Routine', icon: CalendarCheck2 },
-    { href: '/missions', label: '4. Mission', icon: Rocket },
+    { href: '/dashboard', label: 'My Health', icon: Gauge },
+    { href: '/readings/new', label: 'Log Reading', icon: HeartPulse },
+    { href: '/routine', label: 'Routine', icon: CalendarCheck2 },
+    { href: '/missions', label: 'Missions', icon: Rocket },
   ];
 
   if (user?.role === 'ADMIN') {
@@ -73,18 +72,21 @@ export function Navbar() {
 
   const isOperator = user?.role === 'OPERATOR';
 
-  // El operador no tiene salud propia que registrar: sigue el flujo lineal de supervisión.
+  // El operador no tiene salud propia que registrar: accede a supervisión y misiones.
   const visibleLinks: NavItem[] = isOperator
     ? [
-        { href: '/operator', label: '1. Oversight', icon: Radar },
-        { href: '/missions', label: '2. Missions', icon: Rocket },
-        { href: '/visualizer', label: '3. 3D Orbit', icon: Orbit },
+        { href: '/operator', label: 'Oversight', icon: Radar },
+        { href: '/missions', label: 'Missions', icon: Rocket },
+        { href: '/visualizer', label: '3D Orbit', icon: Orbit },
       ]
     : navLinks;
 
   const isLinkActive = (href: string) => {
     if (pathname === href) return true;
-    if (href === '/dashboard' && (pathname === '/trends' || pathname === '/vision')) {
+    if (href === '/dashboard' && pathname === '/trends') {
+      return true;
+    }
+    if (href === '/readings/new' && pathname === '/vision') {
       return true;
     }
     if (href === '/missions') {
@@ -126,12 +128,9 @@ export function Navbar() {
 
             return (
               <div key={link.href} className="flex items-center gap-1">
-                {index > 0 &&
-                  (link.dividerBefore ? (
-                    <span className="mx-1 h-4 w-px bg-line shrink-0" aria-hidden="true" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3 text-stem/50 shrink-0" aria-hidden="true" />
-                  ))}
+                {index > 0 && link.dividerBefore && (
+                  <span className="mx-1 h-4 w-px bg-line shrink-0" aria-hidden="true" />
+                )}
                 <Link
                   href={link.href}
                   className={`tactile-press flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${

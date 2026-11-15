@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { astronautService } from '../../services/astronautService';
 import { missionService } from '@/services/missionService';
 import { storageService } from '@/services/storageService';
+import { useAuth } from '@/context/AuthContext';
 import { Astronaut } from '../../domain/astronauts/types';
 import { Mission } from '@/domain/missions/types';
 import { AstronautFallbackAvatar } from './AstronautFallbackAvatar';
@@ -25,6 +26,7 @@ interface AstronautFormProps {
 
 export function AstronautForm({ initialData }: AstronautFormProps) {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const isEditing = !!initialData;
 
   const [name, setName] = useState(initialData?.name || '');
@@ -215,9 +217,10 @@ export function AstronautForm({ initialData }: AstronautFormProps) {
             <select
               id="astro-mission"
               required
+              disabled={!isAdmin}
               value={missionId}
               onChange={(e) => setMissionId(e.target.value)}
-              className="ui-select text-sm"
+              className="ui-select text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {availableMissions.map((m) => (
                 <option key={m.id} value={m.id}>

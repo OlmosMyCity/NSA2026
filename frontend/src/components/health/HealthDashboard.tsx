@@ -308,7 +308,7 @@ export function HealthDashboard() {
   }
 
   const crewSelector =
-    crew.length > 1 ? (
+    user?.role === 'ADMIN' && crew.length > 1 ? (
       <label className="flex items-center gap-2">
         <span className="twin-label">Crew member</span>
         <select
@@ -360,7 +360,7 @@ export function HealthDashboard() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-blueberry sm:text-[1.75rem]">
-            Digital twin
+            My Health
           </h1>
           <p className="mt-1 text-[13px] text-stem tabular-nums">
             {latest
@@ -466,7 +466,7 @@ export function HealthDashboard() {
         </div>
 
         <aside
-          aria-label="Twin inspector"
+          aria-label="Health inspector"
           className="twin-panel space-y-5 p-4 sm:p-5 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
         >
           <ZoneSelector zones={zones} selected={selected} onSelect={setSelected} />

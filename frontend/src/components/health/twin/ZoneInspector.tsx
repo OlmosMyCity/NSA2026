@@ -55,7 +55,7 @@ export function ZoneInspector({ zone, summary, twinZone, isStale }: ZoneInspecto
       <section aria-label="Vitals in this zone" className="space-y-3">
         {summary.evaluations.length === 0 ? (
           <p className="twin-well px-3 py-3 text-[13px] text-stem">
-            No readings yet for this zone. Log a reading to bring it to life on the twin.
+            No readings yet for this zone. Log a reading to update your health status.
           </p>
         ) : (
           summary.evaluations.map((e) => <VitalRow key={e.indicator} evaluation={e} />)
