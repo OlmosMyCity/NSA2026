@@ -37,15 +37,15 @@ const HAZARDS: Hazard[] = [
     subtitle: 'Galactic Cosmic Rays',
     icon: Radiation,
     summary:
-      'Galactic cosmic rays (GCR) and high-energy solar particle events outside Earth’s protective magnetosphere.',
+      'GCR and solar particle events outside Earth’s magnetosphere.',
     indicator: 'Body Temperature & Heart Rate',
     unit: '°C / bpm',
     normalRange: '36.1 – 37.5 °C',
-    criticalThreshold: '> 38.0 °C (Fever / systemic inflammation) or HR > 100 bpm',
+    criticalThreshold: '> 38.0 °C (Fever) or HR > 100 bpm',
     physiologicalRisk:
-      'Endothelial cellular damage, oxidative stress, immunosuppression, and acute cardiovascular strain.',
+      'Cellular damage, oxidative stress, immunosuppression, and cardiac strain.',
     countermeasure:
-      'Hydrogen-rich polyethylene shielding inside the lunar habitat paired with active real-time dosimetry.',
+      'Polyethylene habitat shielding + real-time dosimetry.',
   },
   {
     id: 'isolation',
@@ -54,15 +54,15 @@ const HAZARDS: Hazard[] = [
     subtitle: 'Behavioral Health',
     icon: UsersRound,
     summary:
-      'Small crews living in confined volumes for months without natural daylight cycles or real-time Earth contact.',
+      'Long-duration confinement without natural daylight or real-time Earth contact.',
     indicator: 'Sleep Duration & Mood',
     unit: 'h/day & 1–5 Scale',
     normalRange: '≥ 7 h sleep · Mood 4–5',
-    criticalThreshold: '< 6 h sleep or Mood ≤ 2/5 (Fatigue / Burnout)',
+    criticalThreshold: '< 6 h sleep or Mood ≤ 2/5 (Fatigue)',
     physiologicalRisk:
-      'Circadian rhythm desynchronization, degraded operational cognition, and interpersonal crew friction.',
+      'Circadian disruption, cognitive decline, and crew friction.',
     countermeasure:
-      'Blue-enriched spectral lighting protocols and a daily countermeasure streak checklist.',
+      'Blue-enriched lighting + daily countermeasure streak.',
   },
   {
     id: 'distance',
@@ -71,15 +71,15 @@ const HAZARDS: Hazard[] = [
     subtitle: 'Autonomous Care',
     icon: Compass,
     summary:
-      'Over 384,400 km from Earth at the lunar south pole. Immediate medical evacuation is not feasible.',
+      '384,400+ km from Earth with no immediate medical evacuation.',
     indicator: 'Blood Glucose & Nutrition',
     unit: 'mg/dL',
     normalRange: '70 – 140 mg/dL',
     criticalThreshold: '< 70 mg/dL (Hypoglycemia) or > 180 mg/dL',
     physiologicalRisk:
-      'Metabolic instability, delayed ground support, and strict reliance on onboard diagnostic autonomy.',
+      'Metabolic instability and delayed ground medical support.',
     countermeasure:
-      'Orbvital autonomous clinical decision trees paired with store-and-forward flight surgeon telemedicine.',
+      'Onboard clinical triage + store-and-forward telemedicine.',
   },
   {
     id: 'gravity',
@@ -88,15 +88,15 @@ const HAZARDS: Hazard[] = [
     subtitle: 'Vestibular & Fluid Shift',
     icon: Scale,
     summary:
-      'Transition between orbital microgravity (0g) and lunar gravity (1/6 g), triggering vestibular and fluid shifts.',
+      'Transitions from 0g transit to 1/6g lunar surface gravity.',
     indicator: 'Blood Pressure & Heart Rate',
     unit: 'mmHg & bpm',
     normalRange: '< 130 / < 85 mmHg',
-    criticalThreshold: '≥ 140/90 mmHg (Hypertension) or Systolic < 90 mmHg',
+    criticalThreshold: '≥ 140/90 mmHg or Systolic < 90 mmHg',
     physiologicalRisk:
-      'Cephalad fluid redistribution (SANS neuro-ocular syndrome) and accelerated bone mineral loss.',
+      'Cephalad fluid shift (SANS) and bone mineral loss.',
     countermeasure:
-      'Two hours daily of cycle ergometer resistance training and lower-extremity compression garments.',
+      '2h/day resistive cycle training + compression garments.',
   },
   {
     id: 'hostile-environment',
@@ -105,15 +105,15 @@ const HAZARDS: Hazard[] = [
     subtitle: 'Habitat Atmosphere',
     icon: Biohazard,
     summary:
-      'Sealed lunar habitat atmosphere exposed to abrasive lunar regolith dust and CO₂ fluctuations.',
+      'Sealed cabin exposed to abrasive lunar dust and CO₂ shifts.',
     indicator: 'Oxygen Saturation (SpO₂)',
     unit: '%',
     normalRange: '≥ 95 % SpO₂',
-    criticalThreshold: '< 92 % SpO₂ (Hypoxemia / Hypercapnia)',
+    criticalThreshold: '< 92 % SpO₂ (Hypoxemia)',
     physiologicalRisk:
-      'Pulmonary atelectasis, respirable lunar dust toxicity, and tissue hypoxia from cabin pressure drops.',
+      'Lunar dust toxicity, atelectasis, and tissue hypoxia.',
     countermeasure:
-      'Suitport dust decontamination airlocks, activated-carbon HEPA filtration, and emergency O₂ cannulas.',
+      'Suitport dust locks, HEPA filtration, and O₂ cannulas.',
   },
 ];
 
@@ -128,8 +128,7 @@ export function HazardsSection() {
             The 5 Hazards of Spaceflight
           </h2>
           <p className="mt-2 text-sm sm:text-base text-stem max-w-2xl">
-            Physiological risks defined by NASA’s Human Research Program and their direct mapping
-            to onboard vital signs.
+            NASA HRP physiological risks mapped to onboard vitals.
           </p>
         </div>
 

@@ -112,7 +112,7 @@ export default function VisualizerPage() {
             ) : (
               <div className="surface-card p-8 text-center space-y-3">
                 <p className="text-sm text-blueberry font-medium">
-                  Sign in or create a mission to track its live elapsed-time 3D simulation.
+                  Sign in or create a mission to start.
                 </p>
                 <Link
                   href="/missions/new"

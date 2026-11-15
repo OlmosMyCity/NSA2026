@@ -74,7 +74,7 @@ export function TrendsView() {
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
         <EmptyState
           title="No history yet"
-          description="Once you log readings, you will see how each physiological indicator evolves over time."
+          description="Log a reading to track vital trends."
           actionHref="/readings/new"
           actionLabel="Log Reading"
         />
@@ -95,8 +95,7 @@ export function TrendsView() {
             Trends
           </h1>
           <p className="mt-1 text-sm text-stem max-w-2xl">
-            How your indicators change over time. Subtle background bands mark nominal, watch, and
-            critical thresholds.
+            Vital sign history across nominal, watch, and critical bands.
           </p>
         </div>
         {crewSelector}

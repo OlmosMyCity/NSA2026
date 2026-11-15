@@ -220,7 +220,7 @@ export function HealthDashboard() {
         {crewSelector && <div className="flex justify-end">{crewSelector}</div>}
         <EmptyState
           title="No readings recorded yet"
-          description="Log a first vital-signs reading and the twin will light up zone by zone. You can also explore it with a simulated baseline."
+          description="Log vitals or load a simulated baseline."
           actionHref="/readings/new"
           actionLabel="Log reading"
         />
