@@ -23,7 +23,6 @@ export function TrendsView() {
   const [indicator, setIndicator] = useState<IndicatorId>('heartRate');
 
   const now = latest ? Date.parse(latest.takenAt) + 3_600_000 : Date.now();
-  const xDomain: [number, number] = [now - days * 86_400_000, now];
 
   const series = useMemo(
     () => Object.fromEntries(INDICATOR_IDS.map((id) => [id, buildTrend(readings, id, days, now)])),
@@ -152,7 +151,7 @@ export function TrendsView() {
         </div>
 
         {points.length ? (
-          <TrendChart indicator={indicator} points={points} xDomain={xDomain} />
+          <TrendChart indicator={indicator} points={points} />
         ) : (
           <p className="py-16 text-center text-sm text-stem">
             No readings for this indicator in the selected range.
@@ -258,7 +257,7 @@ export function TrendsView() {
                 </div>
                 <div className="mt-2">
                   {s.length ? (
-                    <TrendChart indicator={id} points={s} xDomain={xDomain} height={64} compact />
+                    <TrendChart indicator={id} points={s} height={64} compact />
                   ) : (
                     <div className="flex h-16 items-center text-xs text-stem">No data</div>
                   )}
