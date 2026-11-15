@@ -115,7 +115,9 @@ class FaceTracker:
                     base_options=base_options,
                     running_mode=mp_vision.RunningMode.IMAGE,
                     num_faces=1,
-                    min_face_detection_confidence=0.45,
+                    min_face_detection_confidence=0.25,
+                    min_face_presence_confidence=0.25,
+                    min_tracking_confidence=0.25,
                 )
                 _SHARED_MP_LANDMARKER = mp_vision.FaceLandmarker.create_from_options(options)
                 _SHARED_MP_MODE = "tasks_landmarker"

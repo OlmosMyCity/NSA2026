@@ -33,30 +33,17 @@ import {
   ingestVisionTelemetry,
   resetVisionHttp,
   syncVisionGalleryHttp,
-  tickSimulatorHttp,
 } from '../../services/visionService';
 import { MockVisionSimulator } from '../../mocks/visionMock';
-import dynamic from 'next/dynamic';
 import { ENV } from '@/config/env';
-
-const SyntheticHead3D = dynamic(() => import('./SyntheticHead3D'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center font-mono text-[11px] text-slate-400">
-      Loading synthetic subject…
-    </div>
-  ),
-});
 
 const SYNC_INTERVAL_MS = 30_000;
 const DEFAULT_CAMERA_MODE: CameraMode = 'rgb_pos';
-const DEFAULT_SIM_BPM = 72;
-const DEFAULT_SIM_STATE = 'nominal' as const;
 
 export function VisionBiometricsPanel() {
   const { astronautId, setAstronautId, crew } = useActiveAstronaut();
 
-  const [source, setSource] = useState<VisionSource>('simulator');
+  const [source] = useState<VisionSource>('webcam');
   const [context, setContext] = useState<MonitoringContext>('cabin_active');
   const [streaming, setStreaming] = useState<boolean>(true);
 
@@ -308,16 +295,12 @@ export function VisionBiometricsPanel() {
       setWebcamError(null);
       if (typeof window !== 'undefined' && !window.isSecureContext) {
         setWebcamError(
-          'Camera blocked: the browser only allows cameras on https:// or http://localhost. Switched back to cabin feed.'
+          'Camera blocked: the browser only allows cameras on https:// or http://localhost.'
         );
-        setSource('simulator');
         return;
       }
       if (!navigator.mediaDevices?.getUserMedia) {
-        setWebcamError(
-          'This browser does not support camera capture. Switched back to cabin feed.'
-        );
-        setSource('simulator');
+        setWebcamError('This browser does not support camera capture.');
         return;
       }
       try {
@@ -346,8 +329,7 @@ export function VisionBiometricsPanel() {
                   : err instanceof Error
                     ? err.message
                     : 'unknown error';
-          setWebcamError(`Could not access local camera: ${reason}. Switched back to cabin feed.`);
-          setSource('simulator');
+          setWebcamError(`Could not access local camera: ${reason}.`);
         }
       }
     }
@@ -512,8 +494,8 @@ export function VisionBiometricsPanel() {
         const frame = sim.next({
           camera_mode: DEFAULT_CAMERA_MODE,
           context: contextRef.current,
-          sim_bpm: DEFAULT_SIM_BPM,
-          sim_state: DEFAULT_SIM_STATE,
+          sim_bpm: 72,
+          sim_state: 'nominal',
         });
         latestTelemetryRef.current = frame;
         setTelemetry(frame);
@@ -524,99 +506,64 @@ export function VisionBiometricsPanel() {
         const ws = wsRef.current;
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-        if (sourceRef.current === 'simulator') {
-          awaitingRef.current = true;
-          ws.send(
-            JSON.stringify({
-              type: 'tick',
-              camera_mode: DEFAULT_CAMERA_MODE,
-              context: contextRef.current,
-              sim_bpm: DEFAULT_SIM_BPM,
-              sim_state: DEFAULT_SIM_STATE,
-            })
-          );
-        } else if (sourceRef.current === 'webcam') {
-          const video = webcamVideoRef.current;
-          const canvas = captureCanvasRef.current;
-          if (video && canvas && video.readyState >= 2) {
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-              awaitingRef.current = true;
-              ws.send(
-                JSON.stringify({
-                  type: 'frame',
-                  image_b64: dataUrl,
-                  timestamp: performance.now() / 1000.0,
-                  camera_mode: DEFAULT_CAMERA_MODE,
-                  context: contextRef.current,
-                  include_hud: false,
-                })
-              );
-            }
-          }
-        }
-        return;
-      }
-
-      if (sourceRef.current === 'simulator') {
-        awaitingRef.current = true;
-        void tickSimulatorHttp({
-          camera_mode: DEFAULT_CAMERA_MODE,
-          context: contextRef.current,
-          sim_bpm: DEFAULT_SIM_BPM,
-          sim_state: DEFAULT_SIM_STATE,
-        })
-          .then((frame) => {
-            if (unmounted) return;
-            latestTelemetryRef.current = frame;
-            setTelemetry(frame);
-            setWsStatus('http-live');
-          })
-          .catch(() => {
-            if (!unmounted) setWsStatus('offline');
-          })
-          .finally(() => {
-            awaitingRef.current = false;
-          });
-      } else if (sourceRef.current === 'webcam') {
         const video = webcamVideoRef.current;
         const canvas = captureCanvasRef.current;
         if (video && canvas && video.readyState >= 2) {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
             awaitingRef.current = true;
-            canvas.toBlob(
-              (blob) => {
-                if (!blob || unmounted) {
-                  awaitingRef.current = false;
-                  return;
-                }
-                void analyzeWebcamFrameHttp({
-                  blob,
-                  camera_mode: DEFAULT_CAMERA_MODE,
-                  context: contextRef.current,
-                  include_hud: false,
-                })
-                  .then((frame) => {
-                    if (unmounted) return;
-                    latestTelemetryRef.current = frame;
-                    setTelemetry(frame);
-                    setWsStatus('http-live');
-                  })
-                  .catch(() => {
-                    if (!unmounted) setWsStatus('offline');
-                  })
-                  .finally(() => {
-                    awaitingRef.current = false;
-                  });
-              },
-              'image/jpeg',
-              0.65
+            ws.send(
+              JSON.stringify({
+                type: 'frame',
+                image_b64: dataUrl,
+                timestamp: performance.now() / 1000.0,
+                camera_mode: DEFAULT_CAMERA_MODE,
+                context: contextRef.current,
+                include_hud: false,
+              })
             );
           }
+        }
+        return;
+      }
+
+      const video = webcamVideoRef.current;
+      const canvas = captureCanvasRef.current;
+      if (video && canvas && video.readyState >= 2) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          awaitingRef.current = true;
+          canvas.toBlob(
+            (blob) => {
+              if (!blob || unmounted) {
+                awaitingRef.current = false;
+                return;
+              }
+              void analyzeWebcamFrameHttp({
+                blob,
+                camera_mode: DEFAULT_CAMERA_MODE,
+                context: contextRef.current,
+                include_hud: false,
+              })
+                .then((frame) => {
+                  if (unmounted) return;
+                  latestTelemetryRef.current = frame;
+                  setTelemetry(frame);
+                  setWsStatus('http-live');
+                })
+                .catch(() => {
+                  if (!unmounted) setWsStatus('offline');
+                })
+                .finally(() => {
+                  awaitingRef.current = false;
+                });
+            },
+            'image/jpeg',
+            0.65
+          );
         }
       }
     }, 50);
@@ -863,17 +810,8 @@ export function VisionBiometricsPanel() {
               autoPlay
               playsInline
               muted
-              className={`h-full w-full object-cover ${source === 'webcam' ? 'block' : 'hidden'}`}
+              className="block h-full w-full object-cover"
             />
-            {source !== 'webcam' && (
-              <div className="absolute inset-0">
-                <SyntheticHead3D telemetry={telemetry} />
-                <div
-                  className="hud-scanline pointer-events-none absolute inset-x-0 h-16"
-                  aria-hidden="true"
-                />
-              </div>
-            )}
 
             {/* 60 FPS Smooth YOLO Detection & Identity Canvas */}
             <canvas
@@ -881,69 +819,55 @@ export function VisionBiometricsPanel() {
               className="pointer-events-none absolute inset-0 h-full w-full"
             />
 
-            {(source === 'webcam' || telemetry) && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`rounded-pill border px-2.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-md ${
-                      isRecognized
-                        ? 'border-[var(--status-nominal-border)] bg-slate-950/75 text-status-nominal'
-                        : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
-                    }`}
-                  >
-                    {isRecognized
-                      ? `ID LOCKED: ${identity?.astronaut_name?.toUpperCase()}`
-                      : telemetry?.face_detected
-                        ? 'UNVERIFIED SUBJECT · LOCKED'
-                        : 'SCANNING SUBJECT...'}
-                  </span>
-                  {telemetry && (
-                    <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
-                      {telemetry.heart_rate.bpm > 0
-                        ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM`
-                        : 'CALIBRATING'}{' '}
-                      · {telemetry.mood.dominant_mood}
-                    </span>
-                  )}
-                </div>
+            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={`rounded-pill border px-2.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-md ${
+                    isRecognized
+                      ? 'border-[var(--status-nominal-border)] bg-slate-950/75 text-status-nominal'
+                      : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
+                  }`}
+                >
+                  {isRecognized
+                    ? `ID LOCKED: ${identity?.astronaut_name?.toUpperCase()}`
+                    : telemetry?.face_detected
+                      ? 'UNVERIFIED SUBJECT · LOCKED'
+                      : 'SCANNING SUBJECT...'}
+                </span>
                 {telemetry && (
-                  <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-blueberry">
-                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
-                      STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS{' '}
-                      {telemetry.sleep.perclos.toFixed(1)}%
-                    </span>
-                    <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
-                      {isRecognized ? 'AUTO-INGEST: ARMED' : 'AUTO-INGEST: PAUSED'}
-                    </span>
-                  </div>
+                  <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
+                    {telemetry.heart_rate.bpm > 0
+                      ? `${telemetry.heart_rate.bpm.toFixed(0)} BPM`
+                      : 'CALIBRATING'}{' '}
+                    · {telemetry.mood.dominant_mood}
+                  </span>
                 )}
               </div>
-            )}
+              {telemetry && (
+                <div className="flex items-center justify-between gap-2 font-mono text-[10px] text-blueberry">
+                  <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
+                    STRESS {telemetry.mood.stress_index.toFixed(0)}% · PERCLOS{' '}
+                    {telemetry.sleep.perclos.toFixed(1)}%
+                  </span>
+                  <span className="rounded bg-slate-950/75 px-2 py-0.5 backdrop-blur-md">
+                    {isRecognized ? 'AUTO-INGEST: ARMED' : 'AUTO-INGEST: PAUSED'}
+                  </span>
+                </div>
+              )}
+            </div>
             <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />
           </div>
 
-          {/* Source & Context Controls */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-[11px] font-medium text-stem">
-              <span>Sensor Source</span>
-              <select
-                value={source}
-                onChange={(e) => {
-                  setSource(e.target.value as VisionSource);
-                  handleResetPipeline();
-                }}
-                className="twin-select font-semibold"
-              >
-                <option value="simulator">Cabin Optical Feed</option>
-                <option value="webcam">Local Camera</option>
-              </select>
-            </label>
-
+          {/* Context Controls */}
+          <div className="grid gap-3">
             <label className="space-y-1 text-[11px] font-medium text-stem">
               <span>Mission Context</span>
               <select
                 value={context}
-                onChange={(e) => setContext(e.target.value as MonitoringContext)}
+                onChange={(e) => {
+                  setContext(e.target.value as MonitoringContext);
+                  handleResetPipeline();
+                }}
                 className="twin-select font-semibold"
               >
                 <option value="cabin_active">Cabin Active</option>

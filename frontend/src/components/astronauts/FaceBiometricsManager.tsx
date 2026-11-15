@@ -140,9 +140,15 @@ export function FaceBiometricsManager({
       if (nextList.length < ANGLE_PRESETS.length) {
         setSelectedLabel(ANGLE_PRESETS[nextList.length]);
       }
-      setSuccessMsg(
-        `Biometric vector enrolled (${extracted.embedding.length}D · Quality ${extracted.quality_score.toFixed(0)}%).`
-      );
+      if (extracted.backend === 'browser_canvas_128d') {
+        setError(
+          'Vision AI (:8000) was offline during capture — saved a browser fallback vector that will NOT match live Vision AI recognition. Start Vision AI and re-enroll this sample.'
+        );
+      } else {
+        setSuccessMsg(
+          `Biometric vector enrolled (${extracted.embedding.length}D · Quality ${extracted.quality_score.toFixed(0)}%).`
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to enroll facial biometric sample.');
     } finally {
