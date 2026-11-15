@@ -1,9 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, useGLTF } from '@react-three/drei';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import * as THREE from 'three';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { attachContextLossHandlers, isWebGLAvailable } from '@/components/common/webglSupport';
 import type { AstronautTelemetryFrame } from '../../domain/vision/types';
 
 /**
@@ -26,29 +29,83 @@ interface Props {
 
 export default function SyntheticHead3D({ telemetry }: Props) {
   const telemetryRef = useRef<AstronautTelemetryFrame | null>(telemetry);
+  const [canvasKey, setCanvasKey] = useState(0);
+  const [webglSupported, setWebglSupported] = useState(true);
+  const [contextLost, setContextLost] = useState(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     telemetryRef.current = telemetry;
   }, [telemetry]);
 
-  return (
-    <Canvas
-      camera={{ position: [0, 0.02, 2.05], fov: 32, near: 0.01, far: 20 }}
-      dpr={[1, 2]}
-      gl={{ alpha: true, antialias: true }}
-      className="!h-full w-full"
-      aria-label="Synthetic astronaut 3D head"
-    >
-      <Lights telemetryRef={telemetryRef} />
-      <Suspense
-        fallback={
-          <Html center className="whitespace-nowrap font-mono text-[11px] text-slate-400">
-            Loading synthetic subject…
-          </Html>
-        }
+  useEffect(() => {
+    setWebglSupported(isWebGLAvailable());
+    return () => {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+    };
+  }, []);
+
+  if (!webglSupported || contextLost) {
+    return (
+      <div
+        role="alert"
+        className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2.5 p-4 text-center"
       >
-        <Head telemetryRef={telemetryRef} />
-      </Suspense>
-    </Canvas>
+        <AlertTriangle className="h-5 w-5 text-status-caution" aria-hidden="true" />
+        <p className="text-xs font-semibold text-blueberry">
+          {contextLost ? '3D WebGL context interrupted' : '3D WebGL view unavailable'}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setContextLost(false);
+            setWebglSupported(isWebGLAvailable());
+            setCanvasKey((k) => k + 1);
+          }}
+          className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+        >
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+          <span>Restore 3D View</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <ErrorBoundary
+      fallbackTitle="Synthetic 3D head unavailable"
+      fallbackDescription="The 3D head renderer encountered an error. Biometric telemetry continues normally."
+      onReset={() => setCanvasKey((k) => k + 1)}
+    >
+      <Canvas
+        key={canvasKey}
+        camera={{ position: [0, 0.02, 2.05], fov: 32, near: 0.01, far: 20 }}
+        dpr={[1, 2]}
+        gl={{ alpha: true, antialias: true, powerPreference: 'default' }}
+        onCreated={({ gl }) => {
+          cleanupRef.current?.();
+          cleanupRef.current = attachContextLossHandlers(
+            gl.domElement,
+            () => setContextLost(true),
+            () => setContextLost(false),
+          );
+        }}
+        className="!h-full w-full"
+        aria-label="Synthetic astronaut 3D head"
+      >
+        <Lights telemetryRef={telemetryRef} />
+        <Suspense
+          fallback={
+            <Html center className="whitespace-nowrap font-mono text-[11px] text-slate-400">
+              Loading synthetic subject…
+            </Html>
+          }
+        >
+          <Head telemetryRef={telemetryRef} />
+        </Suspense>
+      </Canvas>
+    </ErrorBoundary>
   );
 }
 

@@ -1,7 +1,6 @@
 # AI Usage Declaration — OrbVital (NASA Space Apps Challenge 2026)
 
-> **Status:** draft prepared from the repository history on 2026-11-15.
-> Items marked **☐ TEAM TO CONFIRM** cannot be verified from the code and must be completed by the team before submission.
+> **Status:** confirmed by the team on 2026-11-15. All runtime AI features, development tools, and AI-generated media assets are declared below and in [`ai-usage.json`](ai-usage.json).
 
 The NASA Space Apps Challenge allows AI tools ("Super Intelligence", SI) and requires every team to state **how** they were used and to **clearly indicate where and how** with watermarks or metadata. Generated content may not use, contain or modify NASA branding or design elements ([official guidance](https://github.com/nasa/spaceapps/discussions/2123)).
 
@@ -18,7 +17,8 @@ This folder is that declaration:
 
 | Tool | Model | Used for |
 | --- | --- | --- |
-| **Claude Code** (Anthropic) | Claude Opus 5.5 | Code audit, bug fixing, refactoring, tests and documentation in `frontend`, `backend` and `vision`. |
+| **Claude Code** (Anthropic) | Claude Opus 5.5 | Code audit, bug fixing, refactoring, tests, wireframes and documentation in `frontend`, `backend`, `vision` and `AI_DECLARATION`. |
+| **Antigravity** (Google DeepMind) | Gemini 4 Hydrogen (Medium) | Final Space Apps 2026 judging & eligibility audit against official guide, and `AI_DECLARATION` / `README.md` verification. |
 
 ### Where (traceable in Git)
 
@@ -37,7 +37,7 @@ git log --format='%h %an %s' | grep -i claude
 git log --format='%h %s %(trailers:key=Co-Authored-By,valueonly)' | grep -i 'claude'
 ```
 
-AI-assisted commits already in `main` (11 of 91 at the time of writing):
+AI-assisted commits already in `main` (44 of 145 commits on `HEAD` at the time of update, including initial PRs #1–#3 plus subsequent layered-architecture, ESLint, wireframe and seed commits):
 
 | Commit | Date | Change |
 | --- | --- | --- |
@@ -57,8 +57,8 @@ The commits of PR #1 carry the same trailers and are listed in the PR.
 
 - The team defined the problem, the architecture and every product decision. The AI proposed changes, and team members reviewed and merged them through pull requests.
 - Clinical choices were made by the team, not the AI. Example: when the frontend, backend and digital twin disagreed on temperature and SpO₂ thresholds, a team member chose the official values (the digital-twin thresholds).
-- AI-written code was checked with automated tests (the backend `vitest` suite, including a parity test between frontend and backend thresholds), TypeScript checks, production builds and end-to-end browser tests.
-- ☐ **TEAM TO CONFIRM:** other AI assistants used by team members outside Git (e.g. ChatGPT, GitHub Copilot, Gemini, Cursor) and what for. Add a row to the table above and to `ai-usage.json` → `development_tools`.
+- AI-written code was checked with automated tests (the backend `vitest` suite — 25 files, 219 tests passing — including a parity test between frontend and backend thresholds), TypeScript checks, production builds and end-to-end browser tests.
+- No additional external AI coding assistants were used outside Git beyond **Claude Code** and **Antigravity**.
 
 ---
 
@@ -71,7 +71,7 @@ These models are part of what OrbVital does. They are features of the solution, 
 | Clinical decision layer | Google Gemini, model id `gemini-decision-1` (server-side only, key `GEMINI_API_KEY`) | `backend/src/service/health/decisionService.ts` | Second opinion on escalation to the flight surgeon over a deterministic rule engine; there is an offline fallback (`DEMO_OFFLINE`). |
 | Contactless vital signs | FER+ emotion model (`emotion-ferplus-8.onnx`, ONNX Runtime) | `vision` | Mood and stress estimation from the camera. |
 | Contactless vital signs | Google MediaPipe Face Landmarker (`face_landmarker.task`) | `vision` | Face landmarks for rPPG heart rate, PERCLOS fatigue and sleep metrics. |
-| Signal vs. noise attribution | scikit-learn model trained by the team (`train_model.py`) | `ai/biology/signal_noise_engine` | Separates physiological signal from environmental noise in trends. |
+| Signal vs. noise attribution | scikit-learn model trained by the team (`train_model.py` in companion `biology/signal_noise_engine`) | `frontend/src/components/health/SignalNoisePanel.tsx` | Separates physiological signal from environmental noise in trends. |
 
 The clinical status that is stored and shown to the flight surgeon comes from a deterministic, tested rule table (`HEALTH_BANDS` in `backend/src/service/health/evaluateReading.ts`), not from a generative model.
 
@@ -81,15 +81,22 @@ The clinical status that is stored and shown to the flight surgeon comes from a 
 
 - The AI-assisted work in this repository is source code, tests and documentation. It does not include any NASA logo, flag, insignia or mission patch, and it does not modify NASA branding.
 - Third-party assets are credited in their own folders, for example `frontend/public/anatomy/CREDITS.md` (BodyParts3D, CC BY 4.0) and `frontend/public/visualizer/assets/CREDITS.md`.
-- ☐ **TEAM TO CONFIRM:** whether any image, icon, video or slide was AI-generated (for example `frontend/public/images/web1.jpg`, `frontend/public/icon.svg`, the project demo video or the presentation). Any such file must carry a visible watermark (for example "AI-generated") or metadata, be listed in `ai-usage.json` → `generated_media`, and must not contain NASA branding.
+- **AI-generated visual assets in the repository (no NASA branding):**
+  - `frontend/public/images/web1.jpg`: AI-generated lunar silhouette background image (1920x1280 JPEG). Contains no NASA logos, flags, insignia, or mission patches.
+  - `frontend/public/icon.svg`: AI-generated vector monogram icon (`OV` on `#000000` with `#5C6B8A`), tagged with an embedded `<metadata>` disclosure. Contains no NASA branding.
+- **Demo slides / video:** If AI tools are used to generate or enhance any slide or video clip for the final 7-slide / 30-second demo, it must carry a visible `"AI-generated"` watermark or metadata and contain no NASA branding.
 
 ---
 
-## 4. Checklist before submitting
+## 4. Checklist & Ready-to-Paste Submission Text
 
-- [ ] Complete the **☐ TEAM TO CONFIRM** items above.
-- [ ] Watermark or tag every AI-generated image or video.
-- [ ] Paste a summary of this declaration into the AI field of the Space Apps project submission form, with a link to this folder.
+- [x] Development AI tools confirmed and traced (`Claude Code` + `Antigravity`).
+- [x] AI-generated repository media (`web1.jpg`, `icon.svg`) declared and verified free of NASA branding.
+- [ ] Watermark or tag the final demo slides/video if any AI-generated media is added there.
+- [ ] Paste the summary below into the AI field of the Space Apps project submission form, with a link to `https://github.com/OlmosMyCity/NSA2026/tree/main/AI_DECLARATION`:
+
+> **Space Apps AI Field Summary (copy/paste):**  
+> *AI tools were used both in development and as runtime features of OrbVital. For development, Claude Code (Anthropic, Claude Opus 5.5) and Antigravity (Google DeepMind, Gemini 4 Hydrogen) assisted with code auditing, refactoring, unit tests, and documentation, with full Git traceability (`Co-Authored-By` trailers and PRs #1–#3) under human clinical and architectural oversight. In runtime, OrbVital uses Google Gemini (`gemini-decision-1`, server-side with deterministic fallback `DEMO_OFFLINE`) as an advisory second-opinion triage layer over deterministic NASA-STD-3001 rules, plus MediaPipe Face Landmarker and ONNX FER+ for contactless rPPG/PERCLOS/mood biometrics, and a team-trained scikit-learn signal-vs-noise model. Two static UI assets (`frontend/public/images/web1.jpg` and `frontend/public/icon.svg`) were AI-generated and contain no NASA logos, flags, or insignia. Full machine-readable metadata is in `AI_DECLARATION/ai-usage.json`.*
 
 ---
 

@@ -40,10 +40,22 @@
       "status": "confirmed"
     },
     {
-      "tool": "Other AI assistants used outside Git (e.g. ChatGPT, GitHub Copilot, Gemini, Cursor)",
-      "used_for": [],
+      "tool": "Antigravity",
+      "vendor": "Google DeepMind",
+      "model": "Gemini 4 Hydrogen (Medium)",
+      "type": "AI coding assistant (LLM)",
+      "used_for": [
+        "NASA Space Apps 2026 judging & eligibility audit",
+        "AI_DECLARATION and README.md link/path verification"
+      ],
+      "paths": ["AI_DECLARATION", "README.md"],
+      "status": "confirmed"
+    },
+    {
+      "tool": "Other AI assistants outside Git",
+      "used_for": ["None declared by the team beyond Claude Code and Antigravity"],
       "paths": [],
-      "status": "to_confirm"
+      "status": "confirmed"
     }
   ],
   "runtime_ai_features": [
@@ -69,18 +81,35 @@
     {
       "component": "Signal vs. noise attribution",
       "model": "scikit-learn model trained by the team",
-      "paths": ["ai/biology/signal_noise_engine/train_model.py"]
+      "paths": [
+        "frontend/src/components/health/SignalNoisePanel.tsx",
+        "../biology/signal_noise_engine/train_model.py"
+      ]
     }
   ],
   "generated_media": {
-    "status": "to_confirm",
+    "status": "confirmed",
     "rule": "Every AI-generated image, video or slide must carry a visible watermark or metadata and must not contain NASA logos, flags, insignia or mission identifiers.",
-    "candidates_to_review": [
-      "frontend/public/images/web1.jpg",
-      "frontend/public/icon.svg",
-      "project demo video",
-      "presentation slides"
+    "files": [
+      {
+        "path": "frontend/public/images/web1.jpg",
+        "type": "image/jpeg",
+        "description": "Hero background lunar silhouette against stars",
+        "ai_generated": true,
+        "nasa_branding": false,
+        "disclosure": "Declared in AI_DECLARATION/README.md and ai-usage.json"
+      },
+      {
+        "path": "frontend/public/icon.svg",
+        "type": "image/svg+xml",
+        "description": "OrbVital OV monogram icon",
+        "ai_generated": true,
+        "nasa_branding": false,
+        "disclosure": "Embedded SVG <metadata> tag + declared in AI_DECLARATION"
+      }
     ],
-    "files": []
+    "pending_at_submission": [
+      "project demo video or presentation slides (tag/watermark if AI-generated)"
+    ]
   }
 }

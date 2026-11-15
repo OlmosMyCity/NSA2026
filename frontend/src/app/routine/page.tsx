@@ -48,6 +48,15 @@ export default function RoutinePage() {
     loadCrew();
   }, [user, isAdmin]);
 
+  useEffect(() => {
+    if (!selectedAstronautId) return;
+    const onSync = () => {
+      setRoutineState(routineService.getRoutineState(selectedAstronautId));
+    };
+    window.addEventListener('orbvital:routine-updated', onSync);
+    return () => window.removeEventListener('orbvital:routine-updated', onSync);
+  }, [selectedAstronautId]);
+
   const handleSelectAstronaut = (astroId: string) => {
     setSelectedAstronautId(astroId);
     setRoutineState(routineService.getRoutineState(astroId));
