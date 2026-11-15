@@ -65,8 +65,8 @@ export default function VisualizerPage() {
               3D Mission Trajectory Visualizer
             </h1>
             <p className="mt-1.5 text-sm text-stem max-w-2xl">
-              Track any mission&apos;s live elapsed-time moment across Earth LEO, Moon, Mars,
-              Venus, or Jupiter.
+              Track any crewed mission&apos;s live elapsed-time moment across Earth LEO and cislunar
+              space.
             </p>
           </div>
         </div>
