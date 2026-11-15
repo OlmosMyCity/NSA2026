@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Activity,
   AlertTriangle,
   Brain,
   Camera,
@@ -28,6 +27,18 @@ import {
   resetVisionHttp,
   tickSimulatorHttp,
 } from '../services/visionService';
+import { MockVisionSimulator } from '../services/visionMock';
+import dynamic from 'next/dynamic';
+
+const SyntheticHead3D = dynamic(() => import('./SyntheticHead3D'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center font-mono text-[11px] text-slate-400">
+      Loading synthetic subject…
+    </div>
+  ),
+});
+import { ENV } from '@/features/common/config/env';
 
 const SYNC_INTERVAL_MS = 30_000;
 const DEFAULT_CAMERA_MODE: CameraMode = 'rgb_pos';
@@ -41,11 +52,12 @@ export function VisionBiometricsPanel() {
   const [context, setContext] = useState<MonitoringContext>('cabin_active');
   const [streaming, setStreaming] = useState<boolean>(true);
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'offline'>('connecting');
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'mock-live' | 'offline'>('connecting');
   const [telemetry, setTelemetry] = useState<AstronautTelemetryFrame | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const mockSimRef = useRef<MockVisionSimulator | null>(null);
   const awaitingRef = useRef<boolean>(false);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -78,6 +90,18 @@ export function VisionBiometricsPanel() {
 
     async function enableWebcam() {
       setWebcamError(null);
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        setWebcamError(
+          'Camera blocked: the browser only allows cameras on https:// or http://localhost. Switched back to cabin feed.'
+        );
+        setSource('simulator');
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setWebcamError('This browser does not support camera capture. Switched back to cabin feed.');
+        setSource('simulator');
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480, frameRate: { ideal: 30 } },
@@ -91,9 +115,20 @@ export function VisionBiometricsPanel() {
         if (webcamVideoRef.current) {
           webcamVideoRef.current.srcObject = stream;
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setWebcamError('Could not access local camera. Switched back to cabin feed.');
+          const name = err instanceof DOMException ? err.name : '';
+          const reason =
+            name === 'NotAllowedError' || name === 'SecurityError'
+              ? 'camera permission denied (check the lock icon in the address bar)'
+              : name === 'NotFoundError' || name === 'OverconstrainedError'
+              ? 'no camera found on this device'
+              : name === 'NotReadableError' || name === 'AbortError'
+              ? 'camera is in use by another app (Zoom, Teams, OBS, Python service...)'
+              : err instanceof Error
+              ? err.message
+              : 'unknown error';
+          setWebcamError(`Could not access local camera: ${reason}. Switched back to cabin feed.`);
           setSource('simulator');
         }
       }
@@ -124,15 +159,43 @@ export function VisionBiometricsPanel() {
   // Optical telemetry connection with automatic HTTP fallback
   useEffect(() => {
     const wsUrl = getVisionWsUrl();
-    if (!wsUrl) {
-      setWsStatus('offline');
-      return;
-    }
 
     let unmounted = false;
-    let mode: 'ws' | 'http' = 'ws';
+    let mode: 'ws' | 'http' | 'mock' = 'ws';
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let wsOpened = false;
+    let lastMockAt = 0;
+
+    // Modo mock: si ai/vision (:8000) no responde, se usa telemetría simulada en el
+    // navegador. Si el servicio está corriendo, se usa el real (cámara incluida).
+    const MOCK_FRAME_MS = 100; // ~10 FPS
+    const MOCK_PROBE_MS = 10_000;
+
+    function startMock() {
+      if (unmounted || mode === 'mock') return;
+      mode = 'mock';
+      if (!mockSimRef.current) mockSimRef.current = new MockVisionSimulator();
+      awaitingRef.current = false;
+      setWsStatus('mock-live');
+      if (wsUrl) reconnectTimer = setTimeout(probeRealService, MOCK_PROBE_MS);
+    }
+
+    async function probeRealService() {
+      if (unmounted || mode !== 'mock') return;
+      const health = await checkVisionHealth();
+      if (unmounted || mode !== 'mock') return;
+      if (health?.status === 'ok') {
+        mockSimRef.current = null;
+        if (wsUrl!.includes('.vercel.app')) {
+          mode = 'http';
+          setWsStatus('http-live');
+        } else {
+          connectWs();
+        }
+      } else {
+        reconnectTimer = setTimeout(probeRealService, MOCK_PROBE_MS);
+      }
+    }
 
     async function fallbackToHttpOrRetry() {
       if (unmounted) return;
@@ -142,6 +205,8 @@ export function VisionBiometricsPanel() {
         mode = 'http';
         awaitingRef.current = false;
         setWsStatus('http-live');
+      } else if (ENV.USE_MOCKS) {
+        startMock();
       } else {
         setWsStatus('offline');
         reconnectTimer = setTimeout(connectWs, 3000);
@@ -193,8 +258,13 @@ export function VisionBiometricsPanel() {
       };
     }
 
-    const isVercelServerless = wsUrl.includes('.vercel.app');
-    if (isVercelServerless) {
+    if (!wsUrl) {
+      if (ENV.USE_MOCKS) {
+        startMock();
+      } else {
+        setWsStatus('offline');
+      }
+    } else if (wsUrl.includes('.vercel.app')) {
       void fallbackToHttpOrRetry();
     } else {
       connectWs();
@@ -202,6 +272,22 @@ export function VisionBiometricsPanel() {
 
     const frameLoop = setInterval(() => {
       if (!streamingRef.current || awaitingRef.current) return;
+
+      if (mode === 'mock') {
+        const sim = mockSimRef.current;
+        const now = Date.now();
+        if (!sim || now - lastMockAt < MOCK_FRAME_MS) return;
+        lastMockAt = now;
+        const frame = sim.next({
+          camera_mode: DEFAULT_CAMERA_MODE,
+          context: contextRef.current,
+          sim_bpm: DEFAULT_SIM_BPM,
+          sim_state: DEFAULT_SIM_STATE,
+        });
+        latestTelemetryRef.current = frame;
+        setTelemetry(frame);
+        return;
+      }
 
       if (mode === 'ws') {
         const ws = wsRef.current;
@@ -306,6 +392,7 @@ export function VisionBiometricsPanel() {
 
     return () => {
       unmounted = true;
+      mockSimRef.current = null;
       clearInterval(frameLoop);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (wsRef.current) {
@@ -340,7 +427,9 @@ export function VisionBiometricsPanel() {
   }, [streaming, syncTelemetry]);
 
   const handleResetPipeline = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (mockSimRef.current) {
+      mockSimRef.current.reset();
+    } else if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'reset' }));
     } else {
       void resetVisionHttp();
@@ -350,7 +439,7 @@ export function VisionBiometricsPanel() {
   const hr = telemetry?.heart_rate;
   const mood = telemetry?.mood;
   const sleep = telemetry?.sleep;
-  const isLive = wsStatus === 'connected' || wsStatus === 'http-live';
+  const isLive = wsStatus === 'connected' || wsStatus === 'http-live' || wsStatus === 'mock-live';
 
   return (
     <div className="space-y-6">
@@ -462,7 +551,13 @@ export function VisionBiometricsPanel() {
               muted
               className={`h-full w-full object-cover ${source === 'webcam' ? 'block' : 'hidden'}`}
             />
-            {source === 'webcam' ? (
+            {source !== 'webcam' && (
+              <div className="absolute inset-0">
+                <SyntheticHead3D telemetry={telemetry} />
+                <div className="hud-scanline pointer-events-none absolute inset-x-0 h-16" aria-hidden="true" />
+              </div>
+            )}
+            {(source === 'webcam' || telemetry) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span
@@ -472,7 +567,11 @@ export function VisionBiometricsPanel() {
                         : 'border-[var(--status-caution-border)] bg-slate-950/75 text-status-caution'
                     }`}
                   >
-                    {telemetry?.face_detected ? 'SUBJECT LOCKED' : 'SCANNING SUBJECT...'}
+                    {source !== 'webcam'
+                      ? 'CABIN SUBJECT · 3D'
+                      : telemetry?.face_detected
+                      ? 'SUBJECT LOCKED'
+                      : 'SCANNING SUBJECT...'}
                   </span>
                   {telemetry && (
                     <span className="rounded-pill border border-line bg-slate-950/75 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-blueberry backdrop-blur-md">
@@ -487,17 +586,6 @@ export function VisionBiometricsPanel() {
                     </span>
                   </div>
                 )}
-              </div>
-            ) : telemetry?.annotated_frame_jpeg_b64 ? (
-              <img
-                src={`data:image/jpeg;base64,${telemetry.annotated_frame_jpeg_b64}`}
-                alt="Crew Optical Feed"
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-slate-400">
-                <Activity className="h-6 w-6 animate-pulse text-sky-400" aria-hidden="true" />
-                <span>Waiting for optical telemetry stream...</span>
               </div>
             )}
             <canvas ref={captureCanvasRef} width={384} height={288} className="hidden" />
