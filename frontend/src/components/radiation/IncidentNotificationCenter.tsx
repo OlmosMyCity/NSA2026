@@ -112,11 +112,12 @@ export function IncidentNotificationCenter() {
 
   // Auto-ocultar el aviso tras unos segundos; un nuevo evento reinicia el temporizador
   const latest = notifications[0];
+  const latestId = latest?.id;
   useEffect(() => {
-    if (!latest) return;
+    if (!latestId) return;
     const timer = setTimeout(() => setNotifications([]), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [latest?.id]);
+  }, [latestId]);
 
   if (!latest) return null;
 
