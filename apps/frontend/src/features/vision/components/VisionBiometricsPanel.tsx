@@ -28,7 +28,14 @@ import type {
   VisionIngestResponse,
   VisionSource,
 } from '../domain/types';
-import { getVisionWsUrl, ingestVisionTelemetry } from '../services/visionService';
+import {
+  analyzeWebcamFrameHttp,
+  checkVisionHealth,
+  getVisionWsUrl,
+  ingestVisionTelemetry,
+  resetVisionHttp,
+  tickSimulatorHttp,
+} from '../services/visionService';
 
 const SYNC_INTERVAL_SEC = 30;
 
@@ -49,7 +56,7 @@ export function VisionBiometricsPanel() {
   const [simBpm, setSimBpm] = useState<number>(72);
   const [streaming, setStreaming] = useState<boolean>(true);
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting');
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'http-live' | 'offline'>('connecting');
   const [telemetry, setTelemetry] = useState<AstronautTelemetryFrame | null>(null);
   const [webcamError, setWebcamError] = useState<string | null>(null);
 
@@ -211,7 +218,7 @@ export function VisionBiometricsPanel() {
     };
   }, [source]);
 
-  // WebSocket connection to ai/vision
+  // WebSocket connection to ai/vision with automatic HTTP streaming fallback
   useEffect(() => {
     const wsUrl = getVisionWsUrl();
     if (!wsUrl) {
@@ -220,16 +227,35 @@ export function VisionBiometricsPanel() {
     }
 
     let unmounted = false;
+    let mode: 'ws' | 'http' = 'ws';
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let wsOpened = false;
 
-    function connect() {
+    async function fallbackToHttpOrRetry() {
       if (unmounted) return;
+      const health = await checkVisionHealth();
+      if (unmounted) return;
+      if (health?.status === 'ok') {
+        mode = 'http';
+        awaitingRef.current = false;
+        setWsStatus('http-live');
+      } else {
+        setWsStatus('offline');
+        reconnectTimer = setTimeout(connectWs, 3000);
+      }
+    }
+
+    function connectWs() {
+      if (unmounted) return;
+      mode = 'ws';
+      wsOpened = false;
       setWsStatus('connecting');
       const ws = new WebSocket(wsUrl!);
       wsRef.current = ws;
 
       ws.onopen = () => {
         if (unmounted) return;
+        wsOpened = true;
         setWsStatus('connected');
         awaitingRef.current = false;
       };
@@ -248,35 +274,88 @@ export function VisionBiometricsPanel() {
       };
 
       ws.onerror = () => {
-        if (!unmounted) setWsStatus('offline');
+        if (!unmounted && !wsOpened) {
+          void fallbackToHttpOrRetry();
+        }
       };
 
       ws.onclose = () => {
         if (unmounted) return;
-        setWsStatus('offline');
-        reconnectTimer = setTimeout(connect, 2500);
+        if (!wsOpened) {
+          void fallbackToHttpOrRetry();
+        } else {
+          setWsStatus('offline');
+          reconnectTimer = setTimeout(connectWs, 2500);
+        }
       };
     }
 
-    connect();
+    connectWs();
 
     const frameLoop = setInterval(() => {
-      const ws = wsRef.current;
-      if (!streamingRef.current || !ws || ws.readyState !== WebSocket.OPEN || awaitingRef.current) {
+      if (!streamingRef.current || awaitingRef.current) return;
+
+      if (mode === 'ws') {
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        if (sourceRef.current === 'simulator') {
+          awaitingRef.current = true;
+          ws.send(
+            JSON.stringify({
+              type: 'tick',
+              camera_mode: cameraModeRef.current,
+              context: contextRef.current,
+              sim_bpm: simBpmRef.current,
+              sim_state: simStateRef.current,
+            })
+          );
+        } else if (sourceRef.current === 'webcam') {
+          const video = webcamVideoRef.current;
+          const canvas = captureCanvasRef.current;
+          if (video && canvas && video.readyState >= 2) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+              awaitingRef.current = true;
+              ws.send(
+                JSON.stringify({
+                  type: 'frame',
+                  image_b64: dataUrl,
+                  timestamp: performance.now() / 1000.0,
+                  camera_mode: cameraModeRef.current,
+                  context: contextRef.current,
+                  include_hud: true,
+                })
+              );
+            }
+          }
+        }
         return;
       }
 
+      // HTTP streaming fallback (for serverless / container hosts without WS upgrade)
       if (sourceRef.current === 'simulator') {
         awaitingRef.current = true;
-        ws.send(
-          JSON.stringify({
-            type: 'tick',
-            camera_mode: cameraModeRef.current,
-            context: contextRef.current,
-            sim_bpm: simBpmRef.current,
-            sim_state: simStateRef.current,
+        void tickSimulatorHttp({
+          camera_mode: cameraModeRef.current,
+          context: contextRef.current,
+          sim_bpm: simBpmRef.current,
+          sim_state: simStateRef.current,
+        })
+          .then((frame) => {
+            if (unmounted) return;
+            latestTelemetryRef.current = frame;
+            setTelemetry(frame);
+            setWsStatus('http-live');
           })
-        );
+          .catch(() => {
+            if (!unmounted) setWsStatus('offline');
+          })
+          .finally(() => {
+            awaitingRef.current = false;
+          });
       } else if (sourceRef.current === 'webcam') {
         const video = webcamVideoRef.current;
         const canvas = captureCanvasRef.current;
@@ -284,22 +363,38 @@ export function VisionBiometricsPanel() {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
             awaitingRef.current = true;
-            ws.send(
-              JSON.stringify({
-                type: 'frame',
-                image_b64: dataUrl,
-                timestamp: performance.now() / 1000.0,
-                camera_mode: cameraModeRef.current,
-                context: contextRef.current,
-                include_hud: true,
-              })
+            canvas.toBlob(
+              (blob) => {
+                if (!blob || unmounted) {
+                  awaitingRef.current = false;
+                  return;
+                }
+                void analyzeWebcamFrameHttp({
+                  blob,
+                  camera_mode: cameraModeRef.current,
+                  context: contextRef.current,
+                })
+                  .then((frame) => {
+                    if (unmounted) return;
+                    latestTelemetryRef.current = frame;
+                    setTelemetry(frame);
+                    setWsStatus('http-live');
+                  })
+                  .catch(() => {
+                    if (!unmounted) setWsStatus('offline');
+                  })
+                  .finally(() => {
+                    awaitingRef.current = false;
+                  });
+              },
+              'image/jpeg',
+              0.72
             );
           }
         }
       }
-    }, 65);
+    }, 180);
 
     return () => {
       unmounted = true;
@@ -354,6 +449,8 @@ export function VisionBiometricsPanel() {
   const handleResetPipeline = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'reset' }));
+    } else {
+      void resetVisionHttp();
     }
   };
 
@@ -404,14 +501,14 @@ export function VisionBiometricsPanel() {
 
           <span
             className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold ${
-              wsStatus === 'connected'
+              wsStatus === 'connected' || wsStatus === 'http-live'
                 ? 'border-status-nominal/40 bg-status-nominal/10 text-status-nominal'
                 : wsStatus === 'connecting'
                 ? 'border-status-caution/40 bg-status-caution/10 text-status-caution'
                 : 'border-status-critical/40 bg-status-critical/10 text-status-critical'
             }`}
           >
-            {wsStatus === 'connected' ? (
+            {wsStatus === 'connected' || wsStatus === 'http-live' ? (
               <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
               <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
@@ -419,6 +516,8 @@ export function VisionBiometricsPanel() {
             <span>
               {wsStatus === 'connected'
                 ? `Vision WS Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
+                : wsStatus === 'http-live'
+                ? `Vision HTTP Live${telemetry ? ` · ${telemetry.fps.toFixed(0)} FPS` : ''}`
                 : wsStatus === 'connecting'
                 ? 'Connecting to Vision...'
                 : 'Vision Service Offline'}

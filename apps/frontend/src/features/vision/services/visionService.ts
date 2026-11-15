@@ -3,9 +3,60 @@ import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
 import type {
   AstronautTelemetryFrame,
+  CameraMode,
+  MonitoringContext,
+  SimState,
   VisionHealthResponse,
   VisionIngestResponse,
 } from '../domain/types';
+
+export function getVisionBaseUrl(): string | null {
+  if (!isReachableServiceUrl(ENV.VISION_URL)) return null;
+  return ENV.VISION_URL.replace(/\/+$/, '');
+}
+
+export async function tickSimulatorHttp(params: {
+  camera_mode: CameraMode;
+  context: MonitoringContext;
+  sim_bpm: number;
+  sim_state: SimState;
+}): Promise<AstronautTelemetryFrame> {
+  const base = getVisionBaseUrl();
+  if (!base) throw new Error('Vision URL not reachable');
+  const res = await fetch(`${base}/api/telemetry/tick`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...params, include_hud: true }),
+  });
+  if (!res.ok) throw new Error(`Vision HTTP ${res.status}`);
+  return (await res.json()) as AstronautTelemetryFrame;
+}
+
+export async function analyzeWebcamFrameHttp(params: {
+  blob: Blob;
+  camera_mode: CameraMode;
+  context: MonitoringContext;
+}): Promise<AstronautTelemetryFrame> {
+  const base = getVisionBaseUrl();
+  if (!base) throw new Error('Vision URL not reachable');
+  const form = new FormData();
+  form.append('file', params.blob, 'frame.jpg');
+  form.append('camera_mode', params.camera_mode);
+  form.append('context', params.context);
+  form.append('include_hud', 'true');
+  const res = await fetch(`${base}/api/analyze/frame`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) throw new Error(`Vision HTTP ${res.status}`);
+  return (await res.json()) as AstronautTelemetryFrame;
+}
+
+export async function resetVisionHttp(): Promise<void> {
+  const base = getVisionBaseUrl();
+  if (!base) return;
+  await fetch(`${base}/api/reset`, { method: 'POST' }).catch(() => undefined);
+}
 
 export function getVisionWsUrl(): string | null {
   if (!isReachableServiceUrl(ENV.VISION_URL)) return null;
