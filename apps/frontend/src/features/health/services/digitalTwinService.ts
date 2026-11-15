@@ -220,6 +220,7 @@ export async function evaluateDigitalTwinRemote(
           spo2Pct: r.spo2Pct,
           sleepHours: r.sleepHours,
           mood: r.mood,
+          resistanceExerciseMin: r.resistanceExerciseMin ?? undefined,
           takenAt: r.takenAt,
         })),
         environment: payload.environment,

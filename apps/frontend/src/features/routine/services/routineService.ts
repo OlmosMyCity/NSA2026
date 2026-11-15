@@ -78,11 +78,19 @@ const DEFAULT_DAILY_TASKS: Omit<RoutineTask, 'completed' | 'completedAt'>[] = [
   },
   {
     id: 'task-hydration-electrolytes',
-    title: 'Hydration & Electrolytes Protocol',
-    description: 'Consume 2.5 L of water enriched with potassium and calcium citrate.',
+    title: 'Hydration & Potassium Citrate (2.5 L)',
+    description: 'Consume 2.5 L of water enriched with potassium and calcium citrate for plasma volume & renal stone prevention.',
     category: 'NUTRITION',
     estimatedMinutes: 15,
     hrpHazardTarget: 'Renal Lithiasis & Microgravity Dehydration',
+  },
+  {
+    id: 'task-nutrition-ration',
+    title: 'Space Ration, Glycemic & Vit-D Protocol',
+    description: '20 min balanced ration intake with 2000 IU Vitamin D3 & calcium synergy to stabilize glucose and bone remodeling.',
+    category: 'NUTRITION',
+    estimatedMinutes: 20,
+    hrpHazardTarget: 'Hostile Closed Environment (Metabolic & Bone Synergy)',
   },
   {
     id: 'task-mood-debrief',
@@ -152,6 +160,18 @@ class RoutineService {
         return refreshed;
       }
 
+      const existingIds = new Set(parsed.tasks.map((t) => t.id));
+      const missingTasks = DEFAULT_DAILY_TASKS.filter((t) => !existingIds.has(t.id)).map((t) => ({
+        ...t,
+        completed: false,
+        completedAt: null,
+      }));
+      if (missingTasks.length > 0) {
+        const merged = { ...parsed, tasks: [...parsed.tasks, ...missingTasks] };
+        localStorage.setItem(key, JSON.stringify(merged));
+        return merged;
+      }
+
       return parsed;
     } catch {
       return this.buildInitialState(astronautId, today);
@@ -160,14 +180,27 @@ class RoutineService {
 
   /** Toggles a daily task, updates the streak when all tasks are complete, and unlocks earned badges. */
   toggleTask(astronautId: string, taskId: string): AstronautRoutineState {
+    return this.persistTaskCompletion(astronautId, taskId);
+  }
+
+  /** Explicitly sets completion state for a daily countermeasure task. */
+  setTaskCompleted(astronautId: string, taskId: string, completed: boolean): AstronautRoutineState {
+    return this.persistTaskCompletion(astronautId, taskId, completed);
+  }
+
+  private persistTaskCompletion(
+    astronautId: string,
+    taskId: string,
+    forceCompleted?: boolean
+  ): AstronautRoutineState {
     const current = this.getRoutineState(astronautId);
     const updatedTasks = current.tasks.map((task) => {
       if (task.id === taskId) {
-        const nextCompleted = !task.completed;
+        const nextCompleted = forceCompleted ?? !task.completed;
         return {
           ...task,
           completed: nextCompleted,
-          completedAt: nextCompleted ? new Date().toISOString() : null,
+          completedAt: nextCompleted ? task.completedAt ?? new Date().toISOString() : null,
         };
       }
       return task;
