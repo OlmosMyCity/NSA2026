@@ -5,7 +5,7 @@ import type { IndicatorId } from '../../../domain/health/types';
 import { MOOD_OPTIONS } from './steps';
 
 const FIELD_CLASS =
-  'mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm font-mono font-semibold text-blueberry tabular-nums focus:border-blueberry focus:outline-none';
+  'mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm font-mono font-semibold text-blueberry tabular-nums focus:border-sky-400 focus:outline-none transition-colors';
 
 interface VitalFieldProps {
   indicator: IndicatorId;
@@ -48,7 +48,10 @@ export function VitalField({ indicator, value, onChange, badge }: VitalFieldProp
           max={def.input.max}
           step={def.input.step}
           value={Number.isFinite(value) ? value : ''}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => {
+            const raw = e.target.value;
+            onChange(raw === '' ? Number.NaN : Number(raw));
+          }}
           className={FIELD_CLASS}
         />
       )}

@@ -654,14 +654,14 @@ export function VisionBiometricsPanel({
     }
   }, []);
 
-  // Silent background persistence every 30s ONLY when face is recognized
+  // Silent background persistence every 30s ONLY in standalone mode when face is recognized
   useEffect(() => {
-    if (!streaming) return;
+    if (embedded || !streaming) return;
     const timer = setInterval(() => {
       void syncTelemetry();
     }, SYNC_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [streaming, syncTelemetry]);
+  }, [embedded, streaming, syncTelemetry]);
 
   const onApplyVitalsRef = useRef(onApplyVitals);
   useEffect(() => {
@@ -692,7 +692,7 @@ export function VisionBiometricsPanel({
   const capturedSummary = telemetry ? buildCapturedVitals(telemetry) : null;
 
   return (
-    <div className={embedded ? 'space-y-4 rounded-lg border border-line bg-surface-tinted/35 p-4 sm:p-5' : 'space-y-6'}>
+    <div className={embedded ? 'space-y-4' : 'space-y-6'}>
       {embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -881,7 +881,11 @@ export function VisionBiometricsPanel({
       {/* Main Split: Optical Feed + Controls | Biometric Cards */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* Left: Optical Sensor Feed & Stream Controls */}
-        <div className="surface-card space-y-4 p-4 sm:p-5">
+        <div
+          className={`${
+            embedded ? 'rounded-lg border border-line bg-surface-tinted/35' : 'surface-card'
+          } space-y-4 p-4 sm:p-5`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Camera className="h-4 w-4 text-berry" aria-hidden="true" />
@@ -980,7 +984,7 @@ export function VisionBiometricsPanel({
         {/* Right: Biometric Telemetry Cards (Compact Sync Card when embedded) */}
         {embedded ? (
           <div className="space-y-4">
-            <section className="surface-card space-y-4 p-4 sm:p-5">
+            <section className="rounded-lg border border-line bg-surface-tinted/35 space-y-4 p-4 sm:p-5">
               <div className="flex items-center justify-between border-b border-line pb-2.5">
                 <div className="flex items-center gap-2">
                   <HeartPulse className="h-4 w-4 text-status-critical" aria-hidden="true" />

@@ -14,7 +14,7 @@ The frontend follows a **Layered Architecture** under `src/`, keeping `src/app/`
 | `src/components/<feature>/` | Presentation | UI components grouped by feature (`health`, `visualizer`, `vision`, `radiation`, `admin`, `missions`, `astronauts`, `routine`, `auth`, `landing`, `common`) |
 | `src/hooks/` | State | React hooks (`useAstronauts`, `useMissions`, `useHealthReadings`, `useActiveAstronaut`, `useViewerBridge`) |
 | `src/context/` | State | `AuthContext` provider |
-| `src/services/` | Data access | API clients over `httpClient.ts` (health, digital twin, biodosimetry, missions, astronauts, auth, radiation, vision, routine, admin triage, storage) |
+| `src/services/` | Data access | API clients over `httpClient.ts` (health, digital twin, missions, astronauts, auth, radiation, vision, routine, admin triage, storage) |
 | `src/domain/<feature>/` | Domain | Types and pure client-side logic |
 | `src/config/` | Configuration | `env.ts` |
 | `src/mocks/` | Offline data | `mockDb.ts`, `healthHistory.ts`, `visionMock.ts` |

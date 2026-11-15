@@ -12,7 +12,6 @@ import { astronautService } from '@/services/astronautService';
 import { missionService } from '@/services/missionService';
 import type { Mission } from '@/domain/missions/types';
 import { MissionHealthView } from '@/components/visualizer/MissionHealthView';
-import { MolecularTwinSection } from '@/components/visualizer/MolecularTwinSection';
 
 export default function VisualizerPage() {
   const { user, isAuthenticated, isAdmin } = useAuth();
@@ -96,7 +95,7 @@ export default function VisualizerPage() {
             </h1>
             <p className="mt-1.5 text-sm text-stem max-w-2xl">
               Track crewed mission trajectories alongside live NOAA SWPC solar radiation alerts,
-              shielding dose rates, and molecular DNA-repair kinetics.
+              cislunar telemetry, and shielding dose rates.
             </p>
           </div>
         </div>
@@ -106,9 +105,7 @@ export default function VisualizerPage() {
           fallbackTitle="Solar radiation status temporarily unavailable"
           fallbackDescription="NOAA SWPC space-weather telemetry could not be displayed."
         >
-          <div className="overflow-hidden rounded-lg border border-line">
-            <RadiationStatusBanner />
-          </div>
+          <RadiationStatusBanner />
         </ErrorBoundary>
 
         <div className="space-y-5">
@@ -158,7 +155,7 @@ export default function VisualizerPage() {
           {selectedMissionId ? (
             <ErrorBoundary
               fallbackTitle="3D orbit viewer temporarily unavailable"
-              fallbackDescription="An unexpected rendering error occurred in the 3D mission view. Solar telemetry and biophysics remain active."
+              fallbackDescription="An unexpected rendering error occurred in the 3D mission view. Solar radiation telemetry remains active."
             >
               <MissionHealthView key={selectedMissionId} missionId={selectedMissionId} />
             </ErrorBoundary>
@@ -185,14 +182,6 @@ export default function VisualizerPage() {
             </div>
           )}
         </div>
-
-        {/* Radioprotector Docking & DNA Damage/Repair Kinetics */}
-        <ErrorBoundary
-          fallbackTitle="Molecular radiobiology panel temporarily unavailable"
-          fallbackDescription="The 3D molecular complex or DNA repair kinetics view could not be rendered."
-        >
-          <MolecularTwinSection />
-        </ErrorBoundary>
       </div>
     </AppLayout>
   );

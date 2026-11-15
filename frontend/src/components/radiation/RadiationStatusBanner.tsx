@@ -17,7 +17,6 @@ import {
   getSolarAlertBand,
   getUniversalSolarProtocol,
   type OperationalRole,
-  type SolarProtocolBlock,
   type SolarProtocolBlockId,
 } from '@/domain/health/solarWind';
 import type { RoutineCategory } from '@/domain/routine/types';
@@ -38,41 +37,50 @@ const S2_OR_HIGHER = new Set<NOAAStormScale>([
   'S5_EXTREME',
 ]);
 
-const SCALE_STYLES: Record<NOAAStormScale, { badge: string; border: string; bg: string; label: string }> = {
+const SCALE_STYLES: Record<
+  NOAAStormScale,
+  { badge: string; border: string; bg: string; accentBar: string; label: string }
+> = {
   S0_NOMINAL: {
-    badge: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30',
-    border: 'border-emerald-500/25',
-    bg: 'bg-emerald-500/5',
+    badge: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300',
+    border: 'border-emerald-500/30',
+    bg: 'bg-slate-950/75',
+    accentBar: 'border-l-2 border-l-emerald-400',
     label: 'S0 Nominal',
   },
   S1_MINOR: {
-    badge: 'bg-amber-500/15 text-amber-800 border-amber-500/30',
-    border: 'border-amber-500/30',
-    bg: 'bg-amber-500/10',
+    badge: 'border-amber-400/45 bg-amber-500/15 text-amber-200',
+    border: 'border-amber-500/35',
+    bg: 'bg-slate-950/80',
+    accentBar: 'border-l-2 border-l-amber-400',
     label: 'S1 Minor',
   },
   S2_MODERATE: {
-    badge: 'bg-amber-500/20 text-amber-900 border-amber-600/40',
+    badge: 'border-amber-400/55 bg-amber-500/20 text-amber-200',
     border: 'border-amber-500/50',
-    bg: 'bg-amber-500/10',
+    bg: 'bg-amber-950/35',
+    accentBar: 'border-l-2 border-l-amber-400',
     label: 'S2 Moderate',
   },
   S3_STRONG: {
-    badge: 'bg-orange-500/20 text-orange-900 border-orange-600/40',
+    badge: 'border-orange-400/55 bg-orange-500/20 text-orange-200',
     border: 'border-orange-500/50',
-    bg: 'bg-orange-500/10',
+    bg: 'bg-orange-950/40',
+    accentBar: 'border-l-2 border-l-orange-400',
     label: 'S3 Strong',
   },
   S4_SEVERE: {
-    badge: 'bg-rose-500/20 text-rose-900 border-rose-600/40',
+    badge: 'border-rose-400/60 bg-rose-500/20 text-rose-200',
     border: 'border-rose-500/60',
-    bg: 'bg-rose-500/10',
+    bg: 'bg-rose-950/45',
+    accentBar: 'border-l-2 border-l-rose-400',
     label: 'S4 Severe',
   },
   S5_EXTREME: {
-    badge: 'bg-rose-600/25 text-rose-950 border-rose-700/50',
-    border: 'border-rose-600/70',
-    bg: 'bg-rose-600/15',
+    badge: 'border-rose-400/75 bg-rose-600/30 text-rose-100',
+    border: 'border-rose-500/75',
+    bg: 'bg-rose-950/60',
+    accentBar: 'border-l-2 border-l-rose-500',
     label: 'S5 Extreme',
   },
 };
@@ -92,9 +100,9 @@ const BLOCK_TO_ROUTINE_CATEGORY: Record<SolarProtocolBlockId, RoutineCategory> =
 
 /**
  * Global solar radiation & early-warning banner polled every 60s.
- * Organizes mitigation into the 4 standard space-medicine blocks across 3 severity bands
- * (S0-S1 / S2-S3 / S4-S5), persists checklist state into `/routine`, displays Autonomous
- * Onboard Mode rules for comms latency/blackout, and supports 1-click Flight Surgeon directives.
+ * Restricts persisted emergency checklist items to S2+ / early-warning conditions,
+ * displays Autonomous Onboard Mode latency rules + live shielding dose rates,
+ * and supports 1-click Flight Surgeon directives.
  */
 export function RadiationStatusBanner() {
   const { user, isAuthenticated } = useAuth();
@@ -135,8 +143,8 @@ export function RadiationStatusBanner() {
   const stormScale: NOAAStormScale = status?.currentTelemetry.stormScale ?? 'S0_NOMINAL';
   const earlyWarningActive = Boolean(status?.earlyWarning?.isWarningActive);
   const alertBand = getSolarAlertBand(stormScale, earlyWarningActive);
+  const isElevatedOrStorm = alertBand !== 'S0_S1';
   const universalProtocol = useMemo(() => getUniversalSolarProtocol(alertBand), [alertBand]);
-  const showStormChecklist = S2_OR_HIGHER.has(stormScale);
   const style = SCALE_STYLES[stormScale];
 
   const roleMeasures = useMemo(
@@ -145,36 +153,47 @@ export function RadiationStatusBanner() {
   );
   const myGroup = roleMeasures[activeRole];
 
-  // Build deterministic routine-synced tasks for the 4 standard space-medicine blocks
+  // Restrict routine-synced emergency tasks to S2+ / active early-warning conditions (empty in S0_S1)
   const solarRoutineTasks = useMemo(() => {
-    const tasks: {
-      id: string;
-      blockId: SolarProtocolBlockId;
-      title: string;
-      description: string;
-      category: RoutineCategory;
-      estimatedMinutes: number;
-      hrpHazardTarget: string;
-    }[] = [];
+    if (!isElevatedOrStorm) return [];
 
-    universalProtocol.blocks.forEach((block: SolarProtocolBlock) => {
-      block.actions.forEach((action: string, idx: number) => {
-        tasks.push({
-          id: `solar-${alertBand}-${block.id}-${idx}`,
-          blockId: block.id,
-          title: `[${alertBand.replace('_', '–')}] ${action}`,
-          description: `${block.title} · Synchronized with Solar Weather Forecast`,
-          category: BLOCK_TO_ROUTINE_CATEGORY[block.id],
-          estimatedMinutes: 10,
-          hrpHazardTarget: `Space Radiation (${universalProtocol.label})`,
-        });
-      });
-    });
+    const physicalBlock = universalProtocol.blocks[0];
+    const biomedicalBlock = universalProtocol.blocks[1];
+    const wellbeingBlock = universalProtocol.blocks[2];
+    const hazardTarget = `Space Radiation (${universalProtocol.label})`;
 
-    return tasks;
-  }, [universalProtocol, alertBand]);
+    return [
+      {
+        id: `solar-${alertBand}-PHYSICAL_OPS`,
+        blockId: 'PHYSICAL_OPS' as SolarProtocolBlockId,
+        title: physicalBlock?.actions[0] ?? 'Abort/postpone EVA & move crew to shielded zone',
+        description: `${physicalBlock?.title ?? '1. Physical Protection'} · Synchronized with Solar Weather Forecast`,
+        category: BLOCK_TO_ROUTINE_CATEGORY.PHYSICAL_OPS,
+        estimatedMinutes: 10,
+        hrpHazardTarget: hazardTarget,
+      },
+      {
+        id: `solar-${alertBand}-BIOMEDICAL_DOSIMETRY`,
+        blockId: 'BIOMEDICAL_DOSIMETRY' as SolarProtocolBlockId,
+        title: biomedicalBlock?.actions[0] ?? 'Step up vital & active dosimeter logging to every 4–6 h',
+        description: `${biomedicalBlock?.title ?? '2. Biomedical Monitoring'} · Synchronized with Solar Weather Forecast`,
+        category: BLOCK_TO_ROUTINE_CATEGORY.BIOMEDICAL_DOSIMETRY,
+        estimatedMinutes: 10,
+        hrpHazardTarget: hazardTarget,
+      },
+      {
+        id: `solar-${alertBand}-CLINICAL_WELLBEING`,
+        blockId: 'CLINICAL_WELLBEING' as SolarProtocolBlockId,
+        title: wellbeingBlock?.actions[0] ?? 'Execute storm hydration (>=2.5 L) & radioprotective protocol',
+        description: `${wellbeingBlock?.title ?? '3. Clinical Countermeasures'} · Synchronized with Solar Weather Forecast`,
+        category: BLOCK_TO_ROUTINE_CATEGORY.CLINICAL_WELLBEING,
+        estimatedMinutes: 10,
+        hrpHazardTarget: hazardTarget,
+      },
+    ];
+  }, [isElevatedOrStorm, universalProtocol, alertBand]);
 
-  // Sync solar protocol tasks with `/routine` (`routineService`) so both views share one persisted state
+  // Sync solar protocol tasks with `/routine` (`routineService`) and purge stale `solar-*` tasks in S0_S1
   useEffect(() => {
     if (!status || !isAuthenticated) return;
     const state = routineService.syncSolarProtocolTasks(
@@ -271,41 +290,64 @@ export function RadiationStatusBanner() {
     p.energyChannel.includes('10'),
   );
 
+  const shieldingComparison = [
+    {
+      label: 'EVA Suit',
+      dose: status.biologicalDoses?.EVA_SUIT?.doseRateMicroSvPerHour ?? 28.0,
+      riskLabel: status.biologicalDoses?.EVA_SUIT?.clinicalRiskLevel ?? 'ELEVATED',
+      riskClass: 'text-amber-300',
+    },
+    {
+      label: 'Crew Cabin',
+      dose: status.biologicalDoses?.CREW_CABIN_NOMINAL?.doseRateMicroSvPerHour ?? 18.0,
+      riskLabel: status.biologicalDoses?.CREW_CABIN_NOMINAL?.clinicalRiskLevel ?? 'NOMINAL',
+      riskClass: 'text-sky-300',
+    },
+    {
+      label: 'Storm Shelter',
+      dose: status.biologicalDoses?.STORM_SHELTER?.doseRateMicroSvPerHour ?? 4.0,
+      riskLabel: status.biologicalDoses?.STORM_SHELTER?.clinicalRiskLevel ?? 'SHIELDED',
+      riskClass: 'text-emerald-300',
+    },
+  ];
+
   return (
-    <div className={`w-full border-b ${style.border} ${style.bg}`}>
-      <div className="max-w-container mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+    <div className={`w-full rounded-sm border ${style.border} ${style.bg} ${style.accentBar}`}>
+      <div className="max-w-container mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2.5">
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold border ${style.badge}`}
+              className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider tabular-nums ${style.badge}`}
             >
               Solar Radiation: {style.label}
             </span>
-            <span className="font-mono text-[11px] font-semibold text-blueberry/80">
-              [{universalProtocol.label}]
+            <span className="font-mono text-xs font-semibold text-blueberry">
+              {universalProtocol.label}
             </span>
             {status.currentTelemetry.latestXray?.currentClass && (
-              <span className="text-blueberry/80 font-mono">
+              <span className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-xs text-blueberry tabular-nums">
                 X-Ray: {status.currentTelemetry.latestXray.currentClass}
               </span>
             )}
             {proton10 && (
-              <span className="text-blueberry/80 font-mono">
+              <span className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-xs text-blueberry tabular-nums">
                 Protons &gt;10 MeV: {proton10.fluxPfu.toFixed(1)} pfu
               </span>
             )}
             {earlyWarningActive && status.earlyWarning?.triggerEvent && (
-              <span className="inline-flex items-center gap-1 text-amber-900 font-semibold">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-700" aria-hidden="true" />
-                Early Warning: {status.earlyWarning.triggerEvent}
-                {status.earlyWarning.estimatedProtonArrivalMinutes != null &&
-                  ` (~${status.earlyWarning.estimatedProtonArrivalMinutes} min)`}
+              <span className="inline-flex items-center gap-1.5 rounded-sm border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 font-mono text-xs font-semibold text-amber-200 tabular-nums">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-300 shrink-0" aria-hidden="true" />
+                <span>
+                  Early Warning: {status.earlyWarning.triggerEvent}
+                  {status.earlyWarning.estimatedProtonArrivalMinutes != null &&
+                    ` (~${status.earlyWarning.estimatedProtonArrivalMinutes} min)`}
+                </span>
               </span>
             )}
             {status.telemetryDegraded && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-950">
-                <WifiOff className="h-3 w-3" aria-hidden="true" />
-                Autonomous Onboard Mode (Local SWPC)
+              <span className="inline-flex items-center gap-1.5 rounded-sm border border-amber-400/45 bg-amber-950/70 px-2.5 py-1 font-mono text-[11px] font-semibold text-amber-200">
+                <WifiOff className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>Autonomous Onboard Mode (Local SWPC)</span>
               </span>
             )}
           </div>
@@ -313,10 +355,10 @@ export function RadiationStatusBanner() {
           <div className="flex items-center gap-2">
             {incident && (
               <span
-                className={`px-2 py-0.5 rounded-full font-semibold border ${
+                className={`inline-flex items-center rounded-sm border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums ${
                   incident.status === 'ACKNOWLEDGED'
-                    ? 'bg-emerald-500/15 text-emerald-800 border-emerald-500/30'
-                    : 'bg-rose-500/15 text-rose-800 border-rose-500/30'
+                    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+                    : 'border-rose-400/50 bg-rose-500/20 text-rose-200'
                 }`}
               >
                 Incident: {incident.status}
@@ -325,14 +367,15 @@ export function RadiationStatusBanner() {
             {isAuthenticated && (
               <button
                 type="button"
+                aria-expanded={expanded}
                 onClick={() => setExpanded((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-0.5 text-[11px] font-semibold text-blueberry hover:bg-surface-tinted"
+                className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:border-berry hover:bg-surface-hover"
               >
                 <span>Measures · {ROLE_SHORT[activeRole]}</span>
                 {expanded ? (
-                  <ChevronUp className="h-3 w-3" aria-hidden="true" />
+                  <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
               </button>
             )}
@@ -340,202 +383,196 @@ export function RadiationStatusBanner() {
         </div>
 
         {expanded && isAuthenticated && (
-          <div className="mt-3 pt-3 border-t border-black/10 space-y-4 text-xs">
-            {/* Autonomous Onboard Mode banner (latency / blackout fallback matrix) */}
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-start gap-2">
-                <WifiOff className="h-4 w-4 text-amber-800 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                <div>
-                  <p className="font-bold text-amber-950">
-                    Autonomous Onboard Mode (Comms Latency / Blackout Protocol)
-                  </p>
-                  <p className="text-[11px] text-amber-900">
-                    {universalProtocol.autonomousRule} · Pre-approved matrix: S0–S1 Watch | S2–S3 Hold EVA &amp; Stage Shelter | S4–S5 Mandatory STORM_SHELTER.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/routine"
-                className="inline-flex items-center gap-1 rounded-md border border-amber-700/30 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-amber-950 hover:bg-white self-start sm:self-auto"
-              >
-                <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Synced with /routine</span>
-              </Link>
-            </div>
-
-            {/* 4 Standard Space-Medicine Blocks (Universal Checklist persisted to /routine) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {universalProtocol.blocks.map((block) => {
-                const blockTasks = solarRoutineTasks.filter((t) => t.blockId === block.id);
-                return (
-                  <div
-                    key={block.id}
-                    className="rounded-lg border border-line bg-surface/90 p-3.5 space-y-2"
-                  >
-                    <h4 className="font-bold text-blueberry">{block.title}</h4>
-                    <ul className="space-y-1.5">
-                      {blockTasks.map((task, idx) => (
-                        <li key={task.id} className="flex items-start gap-2">
-                          <input
-                            id={task.id}
-                            type="checkbox"
-                            checked={Boolean(completedMap[task.id])}
-                            onChange={() => toggleItem(task.id)}
-                            className="mt-0.5 h-3.5 w-3.5 rounded border-slate-400"
-                          />
-                          <label htmlFor={task.id} className="cursor-pointer leading-snug text-blueberry">
-                            {block.actions[idx]}
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Role-specific command bar & cross-role coordination */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2 rounded-lg border border-line bg-surface/90 p-3.5 space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h4 className="font-bold text-blueberry">{myGroup.roleTitle}</h4>
-                    <p className="text-[11px] text-stem">{myGroup.subtitle}</p>
-                  </div>
-                  <span className="font-mono text-[11px] text-stem">
-                    Confirmed: {checkedCount}/{solarRoutineTasks.length}
+          <div className="mt-3 pt-4 border-t border-line space-y-4 text-xs animate-materialize">
+            {/* Row 1: Autonomous Onboard Protocol & Shielding Attenuation Strip */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+              <div className="lg:col-span-7 rounded-sm border border-amber-400/35 border-l-2 border-l-amber-400 bg-amber-950/45 p-3.5 flex flex-col justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <WifiOff className="h-4 w-4 text-amber-300 shrink-0" aria-hidden="true" />
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-amber-200">
+                    Autonomous Onboard Mode · Comms Latency / Blackout Protocol
                   </span>
                 </div>
+                <p className="text-xs font-medium text-blueberry leading-relaxed">
+                  {universalProtocol.autonomousRule}
+                </p>
+                <p className="font-mono text-[11px] text-amber-200/90">
+                  Pre-approved matrix: S0–S1 Watch · S2–S3 Hold EVA &amp; Stage Shelter · S4–S5 Mandatory STORM_SHELTER
+                </p>
+              </div>
 
-                <ul className="list-disc pl-4 space-y-1 text-blueberry/90">
-                  {myGroup.actions.map((item, idx) => (
-                    <li key={idx} className="leading-snug">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+              <div className="lg:col-span-5 grid grid-cols-3 gap-2">
+                {shieldingComparison.map((cell) => (
+                  <div
+                    key={cell.label}
+                    className="rounded-sm border border-line bg-surface-subtle/70 p-3 flex flex-col justify-between"
+                  >
+                    <span className="text-[11px] font-mono text-stem uppercase">{cell.label}</span>
+                    <span className="mt-1 font-mono text-sm font-bold text-blueberry tabular-nums">
+                      {cell.dose.toFixed(1)} µSv/h
+                    </span>
+                    <span className={`mt-0.5 font-mono text-[10px] ${cell.riskClass}`}>
+                      {cell.riskLabel}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                <div className="pt-2 flex flex-wrap items-center gap-2.5">
-                  {activeRole === 'ADMIN' && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={sendingDirective}
-                        onClick={handleBroadcastDirective}
-                        className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-blueberry px-3 py-1.5 font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                      >
-                        <Send className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>
-                          {sendingDirective
-                            ? 'Transmitting directive...'
-                            : `1-Click Send ${universalProtocol.directiveTemplate.shortLabel} Directive`}
-                        </span>
-                      </button>
-                      <Link
-                        href="/admin"
-                        className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
-                      >
-                        Open Flight Surgeon Console
-                      </Link>
-                    </>
-                  )}
-
-                  {activeRole === 'OPERATOR' && (
-                    <>
-                      {incident && incident.status === 'OPEN' && (
-                        <button
-                          type="button"
-                          disabled={!allConfirmed || acknowledging}
-                          onClick={handleAcknowledge}
-                          className="px-3 py-1.5 rounded-md font-semibold bg-blueberry text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition"
-                        >
-                          {acknowledging ? 'Acknowledging...' : 'Acknowledge Incident'}
-                        </button>
-                      )}
-                      <Link
-                        href="/operator"
-                        className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
-                      >
-                        Open Operator Console
-                      </Link>
-                    </>
-                  )}
-
-                  {activeRole === 'USER' && (
-                    <>
-                      <Link
-                        href="/readings/new"
-                        className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-blueberry px-3 py-1.5 font-semibold text-white hover:opacity-90"
-                      >
-                        Log Biometric Reading
-                      </Link>
-                      <Link
-                        href="/routine"
-                        className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
-                      >
-                        Open Crew Routine
-                      </Link>
-                    </>
+            {/* Row 2: Operational Protocol & Role Coordination */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-8 rounded-sm border border-line bg-surface/90 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-blueberry">{myGroup.roleTitle}</h4>
+                    <p className="text-xs text-stem">{myGroup.subtitle}</p>
+                  </div>
+                  {isElevatedOrStorm ? (
+                    <span className="rounded-sm border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-amber-200 tabular-nums">
+                      Emergency Checklist Confirmed: {checkedCount}/3 (Synced with /routine)
+                    </span>
+                  ) : (
+                    <Link
+                      href="/routine"
+                      className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold text-stem hover:text-blueberry"
+                    >
+                      <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Daily Protocol Baseline</span>
+                    </Link>
                   )}
                 </div>
 
-                {directiveFeedback && (
-                  <p className="inline-flex items-center gap-1.5 text-emerald-800 font-medium">
-                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{directiveFeedback}</span>
-                  </p>
+                {!isElevatedOrStorm ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {universalProtocol.blocks.map((block) => (
+                      <div
+                        key={block.id}
+                        className="border-l-2 border-berry/70 bg-surface-subtle/40 pl-3 py-1.5"
+                      >
+                        <p className="text-xs font-semibold text-blueberry">{block.title}</p>
+                        <p className="mt-0.5 text-xs text-stem leading-relaxed">
+                          {block.actions[0]}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    {solarRoutineTasks.map((task) => (
+                      <label
+                        key={task.id}
+                        htmlFor={task.id}
+                        className="flex items-start gap-2.5 rounded-sm border border-line bg-surface-subtle/50 p-2.5 cursor-pointer hover:border-berry transition-colors"
+                      >
+                        <input
+                          id={task.id}
+                          type="checkbox"
+                          checked={Boolean(completedMap[task.id])}
+                          onChange={() => toggleItem(task.id)}
+                          className="mt-0.5 h-4 w-4 accent-emerald-400 rounded-sm"
+                        />
+                        <span className="text-xs font-medium text-blueberry leading-snug">
+                          {task.title}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 )}
-                {ackError && <p className="text-rose-700">{ackError}</p>}
+
+                <div className="pt-2 border-t border-line flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {activeRole === 'ADMIN' && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={sendingDirective}
+                          onClick={handleBroadcastDirective}
+                          className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-plate px-3 py-1.5 font-semibold text-ink-inverse hover:bg-white disabled:opacity-50"
+                        >
+                          <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>
+                            {sendingDirective
+                              ? 'Transmitting directive...'
+                              : `1-Click Send ${universalProtocol.directiveTemplate.shortLabel} Directive`}
+                          </span>
+                        </button>
+                        <Link
+                          href="/admin"
+                          className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
+                        >
+                          Open Flight Surgeon Console
+                        </Link>
+                      </>
+                    )}
+
+                    {activeRole === 'OPERATOR' && (
+                      <>
+                        {incident && incident.status === 'OPEN' && (
+                          <button
+                            type="button"
+                            disabled={!allConfirmed || acknowledging}
+                            onClick={handleAcknowledge}
+                            className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-plate px-3 py-1.5 font-semibold text-ink-inverse hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {acknowledging ? 'Acknowledging...' : 'Acknowledge Incident'}
+                          </button>
+                        )}
+                        <Link
+                          href="/operator"
+                          className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
+                        >
+                          Open Operator Console
+                        </Link>
+                      </>
+                    )}
+
+                    {activeRole === 'USER' && (
+                      <>
+                        <Link
+                          href="/readings/new"
+                          className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-plate px-3 py-1.5 font-semibold text-ink-inverse hover:bg-white"
+                        >
+                          Log Biometric Reading
+                        </Link>
+                        <Link
+                          href="/routine"
+                          className="font-semibold text-berry underline underline-offset-4 hover:text-blueberry"
+                        >
+                          Open Crew Routine
+                        </Link>
+                      </>
+                    )}
+                  </div>
+
+                  {directiveFeedback && (
+                    <p className="inline-flex items-center gap-1.5 text-emerald-300 font-medium">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span>{directiveFeedback}</span>
+                    </p>
+                  )}
+                  {ackError && <p className="text-rose-300 font-medium">{ackError}</p>}
+                </div>
               </div>
 
-              <div className="rounded-lg border border-line bg-surface/70 p-3.5 space-y-2.5">
+              <div className="lg:col-span-4 rounded-sm border border-line bg-surface/80 p-4 space-y-3">
                 <h4 className="font-semibold text-blueberry">Cross-Role Coordination</h4>
                 {(['OPERATOR', 'ADMIN', 'USER'] as OperationalRole[])
                   .filter((r) => r !== activeRole)
                   .map((r) => (
                     <div
                       key={r}
-                      className="space-y-1 border-t border-line/60 pt-2 first:border-t-0 first:pt-0"
+                      className="space-y-1 border-t border-line/60 pt-2.5 first:border-t-0 first:pt-0"
                     >
-                      <p className="font-semibold text-blueberry/90">{roleMeasures[r].roleTitle}</p>
-                      <p className="text-[11px] text-stem leading-snug">
+                      <p className="text-xs font-semibold text-blueberry">
+                        {roleMeasures[r].roleTitle}
+                      </p>
+                      <p className="text-xs text-stem leading-relaxed">
                         {roleMeasures[r].actions[0]}
                       </p>
                     </div>
                   ))}
               </div>
             </div>
-
-            {/* S2+ backend mitigation checklist summary */}
-            {showStormChecklist && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-black/10">
-                <div>
-                  <h4 className="font-semibold text-blueberry mb-1.5">
-                    Backend Flight Rules ({stormScale})
-                  </h4>
-                  <ul className="list-disc pl-4 space-y-1 text-blueberry/90">
-                    {status.mitigation.actionChecklist.map((item, idx) => (
-                      <li key={idx} className="leading-snug">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-blueberry mb-1.5">
-                    Medical Countermeasures
-                  </h4>
-                  <ul className="list-disc pl-4 space-y-1 text-blueberry/90">
-                    {status.mitigation.medicalCountermeasures.map((item, idx) => (
-                      <li key={idx} className="leading-snug">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
