@@ -10,6 +10,7 @@ import { storageService } from '@/features/common/services/storageService';
 import { Astronaut } from '../domain/types';
 import { Mission } from '@/features/missions/domain/types';
 import { AstronautFallbackAvatar } from './AstronautFallbackAvatar';
+import { FaceBiometricsManager } from './FaceBiometricsManager';
 import {
   UploadCloud,
   X,
@@ -300,6 +301,15 @@ export function AstronautForm({ initialData, isEditing = false }: AstronautFormP
             </div>
           </div>
         </div>
+
+        {isEditing && initialData && (
+          <div className="pt-2">
+            <FaceBiometricsManager
+              astronautId={initialData.id}
+              astronautName={name || initialData.name}
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-4 pt-4">
           <Link

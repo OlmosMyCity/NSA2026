@@ -13,6 +13,8 @@
 import type {
   AstronautTelemetryFrame,
   CameraMode,
+  EnrolledCrewProfile,
+  IdentityMetrics,
   MonitoringContext,
   SimState,
 } from '../domain/types';
@@ -110,6 +112,15 @@ export class MockVisionSimulator {
   private yawnCount = 0;
   private restlessEvents = 0;
   private blinkPhase = 0;
+  private gallery: EnrolledCrewProfile[] = [];
+  private activeAstronautId: string | null = null;
+
+  setGallery(profiles: EnrolledCrewProfile[], preferredAstronautId?: string): void {
+    this.gallery = profiles.filter((p) => p.embeddings && p.embeddings.length > 0);
+    if (preferredAstronautId) {
+      this.activeAstronautId = preferredAstronautId;
+    }
+  }
 
   reset(): void {
     this.startedAt = 0;
@@ -253,6 +264,42 @@ export class MockVisionSimulator {
 
     const fps = clamp(1 / Math.max(dt, 0.001), 1, 30);
 
+    const swayX = Math.sin(now * 0.9) * 0.015;
+    const swayY = Math.cos(now * 0.7) * 0.012;
+    const bboxNorm = [
+      round(0.31 + swayX, 4),
+      round(0.15 + swayY, 4),
+      0.38,
+      0.66,
+    ];
+
+    const matchedProfile =
+      (this.activeAstronautId
+        ? this.gallery.find((g) => g.astronaut_id === this.activeAstronautId)
+        : undefined) ?? this.gallery[0];
+
+    const identity: IdentityMetrics = matchedProfile
+      ? {
+          recognized: true,
+          astronaut_id: matchedProfile.astronaut_id,
+          astronaut_name: matchedProfile.astronaut_name,
+          confidence: round(94.2 + Math.sin(now * 0.5) * 2.1, 1),
+          similarity: 0.89,
+          enrolled_count: this.gallery.length,
+          status: 'recognized',
+          bbox_norm: bboxNorm,
+        }
+      : {
+          recognized: false,
+          astronaut_id: null,
+          astronaut_name: null,
+          confidence: 0,
+          similarity: 0,
+          enrolled_count: this.gallery.length,
+          status: this.gallery.length === 0 ? 'empty_gallery' : 'unknown',
+          bbox_norm: bboxNorm,
+        };
+
     const frame: AstronautTelemetryFrame = {
       timestamp: now,
       frame_index: this.frameIndex,
@@ -304,6 +351,7 @@ export class MockVisionSimulator {
         spectrum_power: spectrumPower,
         status: hrStatus,
       },
+      identity,
       annotated_frame_jpeg_b64: null,
     };
 

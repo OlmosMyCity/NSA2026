@@ -8,6 +8,8 @@ import {
   AstronautFilters,
   CreateAstronautInput,
   UpdateAstronautInput,
+  FaceBiometricSample,
+  MissionBiometricProfile,
 } from '../domain/types';
 
 class AstronautService {
@@ -29,12 +31,14 @@ class AstronautService {
         );
       }
 
-      // Asociar nombre de misión
+      // Asociar nombre de misión y conteo de muestras biométricas
       const withMission = filtered.map((a) => {
         const mission = mockDb.missions.find((m) => m.id === a.missionId);
+        const faceSamplesCount = mockDb.faceSamples.filter((s) => s.astronautId === a.id).length;
         return {
           ...a,
           mission: mission ? { id: mission.id, name: mission.name } : undefined,
+          _count: { faceSamples: faceSamplesCount },
         };
       });
 
@@ -152,6 +156,83 @@ class AstronautService {
     }
 
     await httpClient.delete(`/astronauts/${id}`);
+  }
+
+  async listBiometrics(astronautId: string): Promise<FaceBiometricSample[]> {
+    if (ENV.USE_MOCKS) {
+      return mockDb.faceSamples.filter((s) => s.astronautId === astronautId);
+    }
+    const res = await httpClient.get<{ data: FaceBiometricSample[] }>(`/astronauts/${astronautId}/biometrics`);
+    return res.data;
+  }
+
+  async getBiometricGallery(missionId?: string): Promise<MissionBiometricProfile[]> {
+    if (ENV.USE_MOCKS) {
+      const astros = mockDb.astronauts.filter(
+        (a) => !a.deletedAt && (!missionId || a.missionId === missionId)
+      );
+      return astros.map((a) => {
+        const samples = mockDb.faceSamples.filter((s) => s.astronautId === a.id);
+        return {
+          astronautId: a.id,
+          astronautName: a.name,
+          role: a.role,
+          missionId: a.missionId,
+          photoUrl: a.photoUrl ?? null,
+          sampleCount: samples.length,
+          embeddings: samples.map((s) => s.embedding),
+        };
+      });
+    }
+    const params: Record<string, string> = {};
+    if (missionId) params.missionId = missionId;
+    const res = await httpClient.get<{ data: MissionBiometricProfile[] }>('/astronauts/biometrics/gallery', {
+      params,
+    });
+    return res.data;
+  }
+
+  async enrollBiometric(
+    astronautId: string,
+    input: { imageUrl: string; label?: string; embedding: number[]; qualityScore?: number }
+  ): Promise<FaceBiometricSample> {
+    if (ENV.USE_MOCKS) {
+      const existing = mockDb.faceSamples.filter((s) => s.astronautId === astronautId);
+      if (existing.length >= 5) {
+        throw new Error('Maximum of 5 facial biometric samples per crew member reached.');
+      }
+      const created: FaceBiometricSample = {
+        id: `face-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        astronautId,
+        imageUrl: input.imageUrl,
+        label: input.label || `Sample #${existing.length + 1}`,
+        embedding: input.embedding,
+        qualityScore: input.qualityScore ?? 92,
+        uploadedById: null,
+        createdAt: new Date().toISOString(),
+      };
+      mockDb.faceSamples.push(created);
+      const astro = mockDb.astronauts.find((a) => a.id === astronautId);
+      if (astro && !astro.photoUrl) {
+        astro.photoUrl = input.imageUrl;
+      }
+      mockDb.save();
+      return created;
+    }
+
+    return httpClient.post<FaceBiometricSample>(`/astronauts/${astronautId}/biometrics`, input);
+  }
+
+  async deleteBiometric(astronautId: string, sampleId: string): Promise<void> {
+    if (ENV.USE_MOCKS) {
+      mockDb.faceSamples = mockDb.faceSamples.filter(
+        (s) => !(s.astronautId === astronautId && s.id === sampleId)
+      );
+      mockDb.save();
+      return;
+    }
+
+    await httpClient.delete(`/astronauts/${astronautId}/biometrics/${sampleId}`);
   }
 }
 

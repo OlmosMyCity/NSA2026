@@ -57,12 +57,14 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
         const res = await astronautService.list({ limit: 50 });
         const isAdmin = user?.role === 'ADMIN';
         const myAstro = res.data.find((a) => a.userId === user?.id || a.id === user?.astronautId);
-        const visibleCrew = isAdmin || !myAstro ? res.data : [myAstro];
+        // Regla de negocio: cualquier miembro de la misión puede registrar datos de sus compañeros de misión
+        const visibleCrew =
+          isAdmin || !myAstro
+            ? res.data
+            : res.data.filter((a) => a.missionId === myAstro.missionId);
 
         setAstronauts(visibleCrew);
-        if (!isAdmin && myAstro) {
-          setSelectedAstronautId(myAstro.id);
-        } else if (!selectedAstronautId && visibleCrew.length > 0) {
+        if (!selectedAstronautId && visibleCrew.length > 0) {
           setSelectedAstronautId(myAstro ? myAstro.id : visibleCrew[0].id);
         }
       } catch {
@@ -205,7 +207,7 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
         <select
           id="select-astronaut"
           value={selectedAstronautId}
-          disabled={user?.role !== 'ADMIN' && astronauts.length <= 1}
+          disabled={astronauts.length <= 1}
           onChange={(e) => setSelectedAstronautId(e.target.value)}
           className="mt-2 w-full border-0 border-b border-line bg-transparent py-2 px-0 text-sm text-blueberry focus:border-blueberry focus:outline-none disabled:opacity-75 [&>option]:bg-canvas [&>option]:text-blueberry"
         >
@@ -215,6 +217,12 @@ export function ReadingFormWizard({ initialAstronautId }: ReadingFormWizardProps
             </option>
           ))}
         </select>
+        {user && selectedAstronautId && (
+          <p className="mt-1.5 text-[11px] text-stem">
+            Recorded by account: <strong className="text-blueberry">{user.name}</strong> (mission
+            buddy assistance enabled)
+          </p>
+        )}
       </div>
 
       {errorMessage && (

@@ -50,6 +50,11 @@ export class PrismaAstronautRepository implements IAstronautRepository {
               name: true,
             },
           },
+          _count: {
+            select: {
+              faceSamples: true,
+            },
+          },
         },
       }),
     ]);

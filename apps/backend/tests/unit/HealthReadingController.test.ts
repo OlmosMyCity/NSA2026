@@ -9,7 +9,8 @@ describe("HealthReadingController - Seguridad IDOR y validación clínica", () =
   const invalidateUseCase = { execute: vi.fn() } as any;
   const correctUseCase = { execute: vi.fn() } as any;
   const getByIdUseCase = { execute: vi.fn() } as any;
-  const astronautRepo = { findByUserId: vi.fn() } as any;
+  const astronautRepo = { findByUserId: vi.fn(), findById: vi.fn() } as any;
+  const ingestVisionUseCase = { execute: vi.fn() } as any;
 
   const controller = new HealthReadingController(
     { execute: vi.fn() } as any,
@@ -18,7 +19,8 @@ describe("HealthReadingController - Seguridad IDOR y validación clínica", () =
     invalidateUseCase,
     { execute: vi.fn() } as any,
     correctUseCase,
-    astronautRepo
+    astronautRepo,
+    ingestVisionUseCase
   );
 
   const validMetrics = {
@@ -79,6 +81,56 @@ describe("HealthReadingController - Seguridad IDOR y validación clínica", () =
     const adminRes = makeRes();
     await controller.create(adminReq, adminRes, next);
     expect(adminRes.status).toHaveBeenCalledWith(201);
+  });
+
+  it("permite a un USER registrar e ingestar lecturas para un compañero de la MISMA misión con recordedById", async () => {
+    astronautRepo.findByUserId.mockResolvedValue({ id: "astro-01", missionId: "mission-01" });
+    astronautRepo.findById.mockResolvedValue({ id: "astro-03", missionId: "mission-01" });
+    createUseCase.execute.mockResolvedValue({ id: "r-buddy-1" });
+    ingestVisionUseCase.execute.mockResolvedValue({ reading: { id: "r-vision-1" } });
+
+    const createReq = {
+      user: { id: "user-crew-01", email: "r.wiseman@nasa.gov", role: Role.USER },
+      body: { astronautId: "astro-03", ...validMetrics },
+    } as unknown as Request;
+    const createRes = makeRes();
+    await controller.create(createReq, createRes, vi.fn());
+    expect(createRes.status).toHaveBeenCalledWith(201);
+    expect(createUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        astronautId: "astro-03",
+        recordedById: "user-crew-01",
+      })
+    );
+
+    const visionReq = {
+      user: { id: "user-crew-01", email: "r.wiseman@nasa.gov", role: Role.USER },
+      body: { astronautId: "astro-03", heartRateBpm: 68, identityConfidence: 95.4 },
+    } as unknown as Request;
+    const visionRes = makeRes();
+    await controller.ingestVision(visionReq, visionRes, vi.fn());
+    expect(visionRes.status).toHaveBeenCalledWith(201);
+    expect(ingestVisionUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        astronautId: "astro-03",
+        recordedById: "user-crew-01",
+        identityConfidence: 95.4,
+      })
+    );
+  });
+
+  it("bloquea a un USER si intenta ingestar datos para un tripulante de OTRA misión", async () => {
+    astronautRepo.findByUserId.mockResolvedValue({ id: "astro-01", missionId: "mission-01" });
+    astronautRepo.findById.mockResolvedValue({ id: "astro-05", missionId: "mission-02" });
+
+    const visionReq = {
+      user: { id: "user-crew-01", email: "r.wiseman@nasa.gov", role: Role.USER },
+      body: { astronautId: "astro-05", heartRateBpm: 68 },
+    } as unknown as Request;
+    const next = vi.fn();
+    await controller.ingestVision(visionReq, makeRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+    expect(ingestVisionUseCase.execute).not.toHaveBeenCalled();
   });
 
   it("P1: PUT/PATCH/DELETE de lecturas responden 405 y explican la alternativa", () => {

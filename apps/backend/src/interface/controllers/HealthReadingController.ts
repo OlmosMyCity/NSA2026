@@ -29,10 +29,38 @@ export class HealthReadingController {
     private readonly ingestVisionTelemetryUseCase?: IngestVisionTelemetryUseCase
   ) {}
 
-  private async resolveOwnAstronautId(req: Request): Promise<string | null> {
+  private async resolveOwnAstronaut(req: Request): Promise<{ id: string; missionId?: string } | null> {
     if (!req.user || !this.astronautRepo?.findByUserId) return null;
     const astro = await this.astronautRepo.findByUserId(req.user.id);
+    if (!astro) return null;
+    return { id: astro.id, missionId: astro.missionId };
+  }
+
+  private async resolveOwnAstronautId(req: Request): Promise<string | null> {
+    const astro = await this.resolveOwnAstronaut(req);
     return astro?.id ?? null;
+  }
+
+  /**
+   * Regla de negocio: cualquier tripulante de la misma misión puede registrar o ingestar
+   * mediciones para un compañero de su misión (p. ej. asistencia en cabina/EVA), y ADMIN para todos.
+   */
+  private async assertCanRecordForAstronaut(req: Request, targetAstronautId: string, action: string): Promise<void> {
+    if (!req.user || req.user.role === Role.ADMIN) return;
+    const ownAstro = await this.resolveOwnAstronaut(req);
+    if (!ownAstro) {
+      throw new ForbiddenError(`No tienes permiso para ${action} mediciones de otro tripulante.`);
+    }
+    if (ownAstro.id === targetAstronautId) return;
+
+    if (ownAstro.missionId && this.astronautRepo?.findById) {
+      const targetAstro = await this.astronautRepo.findById(targetAstronautId);
+      if (targetAstro && targetAstro.missionId === ownAstro.missionId) {
+        return;
+      }
+    }
+
+    throw new ForbiddenError(`No tienes permiso para ${action} mediciones de un tripulante de otra misión.`);
   }
 
   /** Un tripulante solo actúa sobre sus propias lecturas; el Flight Surgeon (ADMIN) sobre todas. */
@@ -132,16 +160,12 @@ export class HealthReadingController {
     try {
       const payload = parseWithValidation(createHealthReadingSchema, req.body ?? {});
 
-      if (req.user && req.user.role !== Role.ADMIN) {
-        const ownAstronautId = await this.resolveOwnAstronautId(req);
-        if (!ownAstronautId || payload.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para registrar mediciones de otro tripulante.");
-        }
-      }
+      await this.assertCanRecordForAstronaut(req, payload.astronautId, "registrar");
 
       const reading = await this.createHealthReadingUseCase.execute({
         ...payload,
         takenAt: payload.takenAt ?? undefined,
+        recordedById: req.user?.id ?? null,
       });
 
       res.status(201).json(reading);
@@ -220,16 +244,12 @@ export class HealthReadingController {
 
       const payload = parseWithValidation(visionIngestSchema, req.body ?? {});
 
-      if (req.user && req.user.role !== Role.ADMIN) {
-        const ownAstronautId = await this.resolveOwnAstronautId(req);
-        if (!ownAstronautId || payload.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para registrar telemetría de otro tripulante.");
-        }
-      }
+      await this.assertCanRecordForAstronaut(req, payload.astronautId, "registrar telemetría de");
 
       const result = await this.ingestVisionTelemetryUseCase.execute({
         ...payload,
         takenAt: payload.takenAt ?? undefined,
+        recordedById: req.user?.id ?? null,
       });
 
       res.status(201).json(result);

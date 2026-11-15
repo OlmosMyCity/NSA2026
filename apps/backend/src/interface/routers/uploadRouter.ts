@@ -8,11 +8,11 @@ import type { StorageFolder } from "../../infrastructure/services/StorageService
 
 export const uploadRouter = Router();
 
-function registerUploadRoute(folder: StorageFolder) {
+function registerUploadRoute(folder: StorageFolder, allowedRoles: Role[]) {
   uploadRouter.post(
     `/${folder}`,
     authenticate,
-    authorizeRoles(Role.ADMIN),
+    authorizeRoles(...allowedRoles),
     ...imageUpload("file", folder, "url"),
     (req, res) => {
       if (!req.body?.url) {
@@ -23,5 +23,5 @@ function registerUploadRoute(folder: StorageFolder) {
   );
 }
 
-registerUploadRoute("astronauts");
-registerUploadRoute("missions");
+registerUploadRoute("astronauts", [Role.ADMIN, Role.USER]);
+registerUploadRoute("missions", [Role.ADMIN]);

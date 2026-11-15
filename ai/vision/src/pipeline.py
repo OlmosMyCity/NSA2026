@@ -6,13 +6,17 @@ from typing import List, Optional
 import cv2
 import numpy as np
 
+from src.engines.identity_engine import FaceIdentityEngine
 from src.engines.mood_engine import MoodEngine
 from src.engines.rppg_engine import RPPGEngine
 from src.engines.sleep_engine import SleepQualityEngine
 from src.schemas import (
     AstronautTelemetryFrame,
+    BiometricExtractResponse,
     CameraMode,
+    EnrolledCrewProfile,
     HeartRateMetrics,
+    IdentityMetrics,
     MonitoringContext,
     MoodMetrics,
     SleepMetrics,
@@ -28,6 +32,7 @@ class AstronautBiometricsPipeline:
         self.rppg_engine = RPPGEngine()
         self.sleep_engine = SleepQualityEngine()
         self.mood_engine = MoodEngine()
+        self.identity_engine = FaceIdentityEngine()
         self.frame_index: int = 0
         self._last_ts: Optional[float] = None
         self._fps_ema: float = 30.0
@@ -37,8 +42,16 @@ class AstronautBiometricsPipeline:
         self.rppg_engine.reset()
         self.sleep_engine.reset()
         self.mood_engine.reset()
+        self.identity_engine.reset()
         self.frame_index = 0
         self._last_ts = None
+
+    def set_gallery(self, profiles: List[EnrolledCrewProfile]) -> int:
+        return self.identity_engine.set_gallery(profiles)
+
+    def extract_biometric(self, frame_bgr: np.ndarray) -> BiometricExtractResponse:
+        face_res = self.face_tracker.process_frame(frame_bgr)
+        return self.identity_engine.extract_biometric_sample(frame_bgr, face_res)
 
     def process_frame(
         self,
@@ -93,7 +106,10 @@ class AstronautBiometricsPipeline:
             bpm=hr_metrics.bpm,
         )
 
-        # 5. Compute Overall Health Index & Operational Alerts
+        # 5. Match Facial Identity against enrolled crew gallery
+        identity_metrics: IdentityMetrics = self.identity_engine.update(frame_bgr, face_res)
+
+        # 6. Compute Overall Health Index & Operational Alerts
         overall_health, alerts = self._evaluate_mission_health(
             face_res.face_detected, hr_metrics, sleep_metrics, mood_metrics, context
         )
@@ -101,7 +117,7 @@ class AstronautBiometricsPipeline:
         annotated_b64: Optional[str] = None
         if include_annotated_frame:
             annotated_bgr = self.draw_hud_overlay(
-                frame_bgr, face_res, hr_metrics, sleep_metrics, mood_metrics, camera_mode
+                frame_bgr, face_res, hr_metrics, sleep_metrics, mood_metrics, camera_mode, identity_metrics
             )
             ok, buf = cv2.imencode(".jpg", annotated_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ok:
@@ -119,6 +135,7 @@ class AstronautBiometricsPipeline:
             mood=mood_metrics,
             sleep=sleep_metrics,
             heart_rate=hr_metrics,
+            identity=identity_metrics,
             annotated_frame_jpeg_b64=annotated_b64,
         )
         self.latest_telemetry = telemetry
@@ -172,6 +189,7 @@ class AstronautBiometricsPipeline:
         sleep: SleepMetrics,
         mood: MoodMetrics,
         camera_mode: CameraMode,
+        identity: Optional[IdentityMetrics] = None,
     ) -> np.ndarray:
         vis = frame_bgr.copy()
         h, w = vis.shape[:2]
@@ -183,11 +201,17 @@ class AstronautBiometricsPipeline:
 
         if face_res.face_detected and face_res.bbox is not None:
             x, y, fw, fh = face_res.bbox
-            hud_color = (210, 240, 60) if sleep.fatigue_level == "Nominal" else (60, 165, 255)
+            if identity and identity.recognized:
+                hud_color = (110, 235, 130)  # Nominal green in BGR
+            elif identity and identity.enrolled_count > 0:
+                hud_color = (70, 145, 255)   # Warning amber/orange when unverified
+            else:
+                hud_color = (210, 240, 60) if sleep.fatigue_level == "Nominal" else (60, 165, 255)
             if sleep.microsleep_detected:
                 hud_color = (60, 60, 255)
 
-            # Corner brackets around astronaut face
+            # YOLO-style bounding box + tactical corner brackets
+            cv2.rectangle(vis, (x, y), (x + fw, y + fh), hud_color, 1)
             clen = max(14, int(0.12 * min(fw, fh)))
             for cx_corner, cy_corner, sx, sy in [
                 (x, y, 1, 1),
@@ -197,6 +221,28 @@ class AstronautBiometricsPipeline:
             ]:
                 cv2.line(vis, (cx_corner, cy_corner), (cx_corner + sx * clen, cy_corner), hud_color, 2)
                 cv2.line(vis, (cx_corner, cy_corner), (cx_corner, cy_corner + sy * clen), hud_color, 2)
+
+            # YOLO identity header pill above bounding box
+            if identity is not None:
+                if identity.recognized and identity.astronaut_name:
+                    id_label = f"{identity.astronaut_name.upper()}  {identity.confidence:.0f}%"
+                elif identity.enrolled_count > 0:
+                    id_label = "UNKNOWN SUBJECT - LOCKED"
+                else:
+                    id_label = "SUBJECT DETECTED"
+                (tw, th), _ = cv2.getTextSize(id_label, cv2.FONT_HERSHEY_SIMPLEX, 0.44, 1)
+                ly = max(th + 10, y - 4)
+                cv2.rectangle(vis, (x, ly - th - 8), (x + tw + 12, ly + 2), hud_color, -1)
+                cv2.putText(
+                    vis,
+                    id_label,
+                    (x + 6, ly - 4),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.44,
+                    (15, 20, 15),
+                    1,
+                    cv2.LINE_AA,
+                )
 
             # Draw rPPG ROI polygons (Forehead & Cheeks)
             overlay = vis.copy()

@@ -77,6 +77,12 @@ export const storageService = {
       return blob.url;
     }
 
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (process.env.NODE_ENV !== "production") {
+        return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      }
+    }
+
     const { url, key, bucket } = getSupabaseConfig();
 
     const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {

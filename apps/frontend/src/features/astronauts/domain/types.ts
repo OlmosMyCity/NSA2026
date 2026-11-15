@@ -17,6 +17,30 @@ export interface Astronaut {
     id: string;
     name: string;
   };
+  _count?: {
+    faceSamples?: number;
+  };
+}
+
+export interface FaceBiometricSample {
+  id: string;
+  astronautId: string;
+  imageUrl: string;
+  label: string | null;
+  embedding: number[];
+  qualityScore: number;
+  uploadedById: string | null;
+  createdAt: string;
+}
+
+export interface MissionBiometricProfile {
+  astronautId: string;
+  astronautName: string;
+  role: string;
+  missionId: string;
+  photoUrl: string | null;
+  sampleCount: number;
+  embeddings: number[][];
 }
 
 export interface PaginatedAstronauts {

@@ -23,32 +23,28 @@ export function useActiveAstronaut() {
     let active = true;
 
     const resolve = async () => {
-      if (ENV.USE_MOCKS) {
-        if (!active) return;
-        setSelectedId(user?.astronautId ?? DEMO_ASTRONAUT_ID);
-        setIsResolving(false);
-        return;
-      }
-
-      const isAdmin = user?.role === 'ADMIN';
-      if (user?.astronautId && !isAdmin) {
-        if (!active) return;
-        setSelectedId(user.astronautId);
-        setIsResolving(false);
-        return;
-      }
-
       try {
         const res = await astronautService.list({ limit: 50 });
         if (!active) return;
-        setCrew(res.data);
+
+        const isAdmin = user?.role === 'ADMIN';
+        const ownAstro = res.data.find(
+          (a) => a.userId === user?.id || a.id === user?.astronautId
+        );
+        // Regla de negocio: cualquier miembro de la misión puede asistir/seleccionar a compañeros de su misma misión
+        const visibleCrew =
+          isAdmin || !ownAstro
+            ? res.data
+            : res.data.filter((a) => a.missionId === ownAstro.missionId);
+
+        setCrew(visibleCrew);
         setSelectedId((prev) => {
-          if (prev && res.data.some((a) => a.id === prev)) return prev;
-          return user?.astronautId ?? res.data[0]?.id;
+          if (prev && visibleCrew.some((a) => a.id === prev)) return prev;
+          return ownAstro?.id ?? user?.astronautId ?? visibleCrew[0]?.id ?? DEMO_ASTRONAUT_ID;
         });
       } catch {
         if (!active) return;
-        setSelectedId(user?.astronautId);
+        setSelectedId(user?.astronautId ?? DEMO_ASTRONAUT_ID);
       } finally {
         if (active) setIsResolving(false);
       }
@@ -58,7 +54,7 @@ export function useActiveAstronaut() {
     return () => {
       active = false;
     };
-  }, [authLoading, user?.astronautId, user?.role]);
+  }, [authLoading, user?.id, user?.astronautId, user?.role]);
 
   return {
     astronautId: selectedId,

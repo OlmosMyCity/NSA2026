@@ -81,6 +81,7 @@ export class CreateHealthReadingUseCase {
       recommendation: evaluation.recommendation,
       notes: dto.notes,
       takenAt: dto.takenAt,
+      recordedById: dto.recordedById ?? null,
     });
 
     // 3. Abrir incidentes médicos por alertas sin duplicar los activos

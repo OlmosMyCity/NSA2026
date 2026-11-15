@@ -83,8 +83,10 @@ model User {
   astronaut             Astronaut?
   acknowledgedIncidents Incident[]      @relation("IncidentAcknowledger")
   closedIncidents       Incident[]      @relation("IncidentCloser")
-  issuedDirectives      Directive[]     @relation("DirectiveIssuer")
-  invalidatedReadings   HealthReading[] @relation("ReadingInvalidator")
+  issuedDirectives      Directive[]           @relation("DirectiveIssuer")
+  invalidatedReadings   HealthReading[]       @relation("ReadingInvalidator")
+  recordedReadings      HealthReading[]       @relation("ReadingRecorder")
+  uploadedFaceSamples   AstronautFaceSample[] @relation("FaceSampleUploader")
 
   @@map("users")
 }
@@ -130,11 +132,28 @@ model Astronaut {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  readings   HealthReading[]
-  incidents  Incident[]
-  directives Directive[]
+  readings    HealthReading[]
+  incidents   Incident[]
+  directives  Directive[]
+  faceSamples AstronautFaceSample[]
 
   @@map("astronauts")
+}
+
+model AstronautFaceSample {
+  id           String    @id @default(uuid())
+  astronautId  String
+  astronaut    Astronaut @relation(fields: [astronautId], references: [id], onDelete: Cascade)
+  imageUrl     String
+  label        String?
+  embedding    Json
+  qualityScore Float     @default(0)
+  uploadedById String?
+  uploadedBy   User?     @relation("FaceSampleUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+
+  @@index([astronautId])
+  @@map("astronaut_face_samples")
 }
 
 model HealthReading {
@@ -172,6 +191,8 @@ model HealthReading {
   invalidatedReason String?
   invalidatedById   String?
   invalidatedBy     User?          @relation("ReadingInvalidator", fields: [invalidatedById], references: [id], onDelete: SetNull)
+  recordedById      String?
+  recordedBy        User?          @relation("ReadingRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
   supersedesId      String?        @unique
   supersedes        HealthReading? @relation("ReadingCorrection", fields: [supersedesId], references: [id], onDelete: Restrict)
   supersededBy      HealthReading? @relation("ReadingCorrection")
@@ -179,6 +200,7 @@ model HealthReading {
   @@index([astronautId, takenAt])
   @@index([astronautId, isValid, takenAt])
   @@index([invalidatedById])
+  @@index([recordedById])
   @@map("health_readings")
 }
 

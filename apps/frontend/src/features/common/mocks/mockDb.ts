@@ -43,6 +43,18 @@ export interface MockAstronaut {
   updatedAt: string;
   deletedAt?: string | null;
   mission?: { id: string; name: string };
+  _count?: { faceSamples?: number };
+}
+
+export interface MockFaceSample {
+  id: string;
+  astronautId: string;
+  imageUrl: string;
+  label: string | null;
+  embedding: number[];
+  qualityScore: number;
+  uploadedById: string | null;
+  createdAt: string;
 }
 
 export interface MockHealthReading {
@@ -324,6 +336,7 @@ class MockDatabase {
   missions: MockMission[] = [...INITIAL_MISSIONS];
   astronauts: MockAstronaut[] = [...INITIAL_ASTRONAUTS];
   readings: MockHealthReading[] = [...INITIAL_READINGS];
+  faceSamples: MockFaceSample[] = [];
 
   constructor() {
     this.hydrateFromStorage();
@@ -340,6 +353,9 @@ class MockDatabase {
 
       const storedReadings = localStorage.getItem('artemis_mock_readings');
       if (storedReadings) this.readings = JSON.parse(storedReadings);
+
+      const storedFaceSamples = localStorage.getItem('artemis_mock_face_samples');
+      if (storedFaceSamples) this.faceSamples = JSON.parse(storedFaceSamples);
     } catch {
       // Ignorar fallback
     }
@@ -351,6 +367,7 @@ class MockDatabase {
       localStorage.setItem('artemis_mock_missions', JSON.stringify(this.missions));
       localStorage.setItem('artemis_mock_astronauts', JSON.stringify(this.astronauts));
       localStorage.setItem('artemis_mock_readings', JSON.stringify(this.readings));
+      localStorage.setItem('artemis_mock_face_samples', JSON.stringify(this.faceSamples));
     } catch {
       // Ignorar fallback
     }

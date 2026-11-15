@@ -22,6 +22,8 @@ export interface VisionTelemetryIngestDTO {
   cameraMode?: string;
   context?: string;
   fatigueLevel?: string;
+  identityConfidence?: number;
+  recordedById?: string | null;
   notes?: string | null;
   takenAt?: Date | null;
 }
@@ -89,6 +91,9 @@ export function deriveSleepHours(dto: VisionTelemetryIngestDTO, fallbackSleepHou
 function buildVisionNotes(dto: VisionTelemetryIngestDTO): string | null {
   if (dto.notes && dto.notes.trim()) {
     return dto.notes.trim().slice(0, 1000);
+  }
+  if (typeof dto.identityConfidence === "number" && Number.isFinite(dto.identityConfidence) && dto.identityConfidence > 0) {
+    return `Optical biometric ingestion (Face ID match ${dto.identityConfidence.toFixed(1)}%).`;
   }
   return null;
 }
@@ -164,6 +169,7 @@ export class IngestVisionTelemetryUseCase {
           recommendation: evaluation.recommendation,
           notes: buildVisionNotes(dto),
           takenAt: dto.takenAt ?? new Date(),
+          recordedById: dto.recordedById ?? null,
         },
       });
 

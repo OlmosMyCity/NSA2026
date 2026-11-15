@@ -9,6 +9,9 @@ export type AstronautWithMission = Omit<Astronaut, "currentLocation" | "location
     id: string;
     name: string;
   };
+  _count?: {
+    faceSamples?: number;
+  };
 };
 
 export interface CreateAstronautDTO {
