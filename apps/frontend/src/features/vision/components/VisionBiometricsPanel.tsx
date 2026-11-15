@@ -570,7 +570,7 @@ export function VisionBiometricsPanel() {
               </p>
             ) : (
               <p className="text-[11px] text-stem">
-                Feeds Digital Twin, Signal vs. Noise Biodosimetry, and Medical Incident triggers automatically.
+                Feeds Digital Twin and Medical Incident triggers automatically.
               </p>
             )}
             {syncError && (
