@@ -290,7 +290,12 @@ export function VisionBiometricsPanel() {
       };
     }
 
-    connectWs();
+    const isVercelServerless = wsUrl.includes('.vercel.app');
+    if (isVercelServerless) {
+      void fallbackToHttpOrRetry();
+    } else {
+      connectWs();
+    }
 
     const frameLoop = setInterval(() => {
       if (!streamingRef.current || awaitingRef.current) return;
