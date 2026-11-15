@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Maximize2, Pause, Play } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Maximize2, Pause, Play } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { AccessDenied } from '@/components/auth/AccessDenied';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Skeleton } from '@/components/common/Skeleton';
 import { astronautService } from '@/services/astronautService';
 import type { Astronaut } from '@/domain/astronauts/types';
@@ -13,6 +13,12 @@ import type { Mission } from '@/domain/missions/types';
 import { useHealthReadings } from '@/hooks/useHealthReadings';
 import { metOf, phaseAt, readingAt, readingsOnTimeline } from '../../domain/visualizer/missionClock';
 import { trajectoryUrl } from '../../domain/visualizer/trajectories';
+import {
+  TRAJECTORY_PRESETS,
+  VEHICLE_OPTIONS,
+  getMissionSimConfig,
+  saveMissionSimConfig,
+} from '../../domain/visualizer/missionSimulationConfig';
 import { useViewerBridge } from '../../hooks/useViewerBridge';
 import { MissionMomentPanel } from './MissionMomentPanel';
 import { MissionTimeline } from './MissionTimeline';
@@ -35,16 +41,24 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   const [crew, setCrew] = useState<Astronaut[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [astronautId, setAstronautId] = useState<string | undefined>();
+  const [trajectoryPreset, setTrajectoryPreset] = useState<string>('auto');
+  const [vehicleId, setVehicleId] = useState<string>('auto');
 
   useEffect(() => {
     let alive = true;
     setCrew([]);
     setAstronautId(undefined);
+    setLoadError(null);
+
+    const saved = getMissionSimConfig(missionId);
+    setTrajectoryPreset(saved?.trajectoryPreset || 'auto');
+    setVehicleId(saved?.vehicleId || 'auto');
+
     Promise.all([missionService.getById(missionId), astronautService.list({ missionId, limit: 50 })])
       .then(([m, c]) => {
         if (!alive) return;
         setMission(m);
-        setCrew(c.data);
+        setCrew(Array.isArray(c.data) ? c.data : []);
       })
       .catch(
         (err: unknown) =>
@@ -55,22 +69,30 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
     };
   }, [missionId]);
 
-  const isCrewMember = !!user?.astronautId && crew.some((a) => a.id === user.astronautId);
-  const canView = isAdmin || isCrewMember;
+  const ownCrewMember = useMemo(
+    () => crew.find((a) => (user?.astronautId && a.id === user.astronautId) || (user?.id && a.userId === user.id)),
+    [crew, user?.astronautId, user?.id],
+  );
+  const canReadHealth = isAdmin || !!ownCrewMember;
   useEffect(() => {
     if (!crew.length) return;
-    setAstronautId((cur) => cur ?? (isAdmin ? crew[0].id : user?.astronautId));
-  }, [crew, isAdmin, user?.astronautId]);
+    setAstronautId((cur) => cur ?? (isAdmin ? crew[0].id : ownCrewMember?.id));
+  }, [crew, isAdmin, ownCrewMember?.id]);
 
-  const { rows, isLoading: readingsLoading } = useHealthReadings(canView ? astronautId : undefined);
+  const { rows, isLoading: readingsLoading } = useHealthReadings(canReadHealth ? astronautId : undefined);
 
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const viewerSrc = mission ? trajectoryUrl(mission) : null;
+  const viewerSrc = mission
+    ? trajectoryUrl(mission, {
+        dataFile: trajectoryPreset !== 'auto' ? trajectoryPreset : undefined,
+        vehicleId: vehicleId !== 'auto' ? vehicleId : undefined,
+      })
+    : null;
   const { ready, time, seek, play, pause } = useViewerBridge(frameRef, viewerSrc);
 
   const now = Date.now();
   const nowMetRaw = mission ? metOf(new Date(now).toISOString(), mission.startDate) : 0;
-  const tEnd = ready?.tEnd ?? Infinity;
+  const tEnd = typeof ready?.tEnd === 'number' && Number.isFinite(ready.tEnd) ? ready.tEnd : Infinity;
   const nowMet = Math.min(Math.max(nowMetRaw, 0), tEnd);
 
   const phases = useMemo(() => ready?.phases ?? [], [ready?.phases]);
@@ -120,7 +142,28 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   }
 
   if (!mission) return <Skeleton className="h-[600px] w-full rounded-lg" />;
-  if (!canView) return <AccessDenied />;
+
+  const handleTrajectoryChange = (nextPreset: string) => {
+    setTrajectoryPreset(nextPreset);
+    const existing = getMissionSimConfig(mission.id);
+    saveMissionSimConfig(mission.id, {
+      vehicleId,
+      trajectoryPreset: nextPreset,
+      customTrajectoryJson: nextPreset === 'auto' ? existing?.customTrajectoryJson ?? null : null,
+      customFileName: nextPreset === 'auto' ? existing?.customFileName ?? null : null,
+    });
+  };
+
+  const handleVehicleChange = (nextVehicle: string) => {
+    setVehicleId(nextVehicle);
+    const existing = getMissionSimConfig(mission.id);
+    saveMissionSimConfig(mission.id, {
+      vehicleId: nextVehicle,
+      trajectoryPreset,
+      customTrajectoryJson: existing?.customTrajectoryJson ?? null,
+      customFileName: existing?.customFileName ?? null,
+    });
+  };
 
   const cursorMet = time?.t ?? nowMet;
   const momentMet = pinnedMet ?? cursorMet;
@@ -133,7 +176,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
         <div>
           <p className="text-sm text-stem tabular-nums">
-            {STATUS_LABEL[mission.status]}
+            {STATUS_LABEL[mission.status] ?? mission.status}
             {mission.status === 'IN_PROGRESS' && nowMetRaw >= 0 && ` · mission day ${day + 1}`}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
@@ -141,51 +184,104 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
           </h1>
         </div>
 
-        {isAdmin ? (
-          <div role="radiogroup" aria-label="Crew member" className="ui-tabs">
-            {crew.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                role="radio"
-                aria-checked={a.id === astronautId}
-                onClick={() => setAstronautId(a.id)}
-                className={`ui-tab text-xs font-semibold ${
-                  a.id === astronautId ? 'ui-tab-active' : ''
-                }`}
-              >
-                {a.name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm font-medium text-berry">
-            {crew.find((a) => a.id === astronautId)?.name}
-          </p>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {isAdmin ? (
+            <div role="radiogroup" aria-label="Crew member" className="ui-tabs">
+              {crew.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={a.id === astronautId}
+                  onClick={() => setAstronautId(a.id)}
+                  className={`ui-tab text-xs font-semibold ${
+                    a.id === astronautId ? 'ui-tab-active' : ''
+                  }`}
+                >
+                  {a.name}
+                </button>
+              ))}
+            </div>
+          ) : ownCrewMember ? (
+            <p className="text-sm font-medium text-berry">{ownCrewMember.name}</p>
+          ) : null}
+        </div>
       </header>
+
+      {/* Trajectory & Vehicle Simulation Controls */}
+      <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs font-semibold text-stem">
+            <span>Trajectory:</span>
+            <select
+              aria-label="Trajectory preset"
+              value={trajectoryPreset}
+              onChange={(e) => handleTrajectoryChange(e.target.value)}
+              className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+            >
+              {TRAJECTORY_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2 text-xs font-semibold text-stem">
+            <span>Spacecraft:</span>
+            <select
+              aria-label="Spacecraft vehicle"
+              value={vehicleId}
+              onChange={(e) => handleVehicleChange(e.target.value)}
+              className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+            >
+              {VEHICLE_OPTIONS.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {viewerSrc && (
+          <a
+            href={viewerSrc}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-berry hover:text-blueberry"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Open 3D in new tab</span>
+          </a>
+        )}
+      </div>
 
       {viewerSrc ? (
         <>
-
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div className="relative overflow-hidden rounded-lg border border-line bg-[#060911] shadow-sm">
-              {!ready && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-plate/70">
-                  Loading simulation…
-                </div>
-              )}
-              <iframe
-                key={viewerSrc}
-                ref={frameRef}
-                src={viewerSrc}
-                title={`3D Trajectory of ${mission.name}`}
-                allow="fullscreen"
-                className={`block h-[60vh] min-h-[420px] w-full transition-opacity duration-500 ${
-                  ready ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
-            </div>
+            <ErrorBoundary
+              fallbackTitle="3D orbital canvas interrupted"
+              fallbackDescription="Unable to render the 3D iframe inside this pane. Try opening it in a new tab or retrying."
+            >
+              <div className="relative overflow-hidden rounded-lg border border-line bg-[#060911] shadow-sm">
+                {!ready && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-plate/70">
+                    Loading simulation…
+                  </div>
+                )}
+                <iframe
+                  key={viewerSrc}
+                  ref={frameRef}
+                  src={viewerSrc}
+                  title={`3D Trajectory of ${mission.name}`}
+                  allow="fullscreen"
+                  className={`block h-[60vh] min-h-[420px] w-full transition-opacity duration-500 ${
+                    ready ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              </div>
+            </ErrorBoundary>
 
             <aside className="surface-card">
               <MissionMomentPanel met={momentMet} nowMet={nowMet} phase={phase} reading={selected} />
@@ -249,7 +345,11 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
               <Skeleton className="h-[112px] w-full rounded-md" />
             )}
             {!readingsLoading && !items.length && (
-              <p className="mt-2 text-sm text-stem">This crew member has no readings yet.</p>
+              <p className="mt-2 text-sm text-stem">
+                {canReadHealth
+                  ? 'This crew member has no readings yet.'
+                  : 'Timeline synchronized with flight phase. Individual crew biometrics are restricted to the assigned astronaut and Flight Surgeon.'}
+              </p>
             )}
           </section>
         </>

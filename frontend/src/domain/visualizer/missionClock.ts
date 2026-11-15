@@ -33,11 +33,14 @@ export interface TimelineReading {
 
 /** Computes Mission Elapsed Time (MET) in seconds from liftoff (negative indicates pre-launch). */
 export function metOf(iso: string, missionStart: string): number {
-  return (Date.parse(iso) - Date.parse(missionStart)) / 1000;
+  const t = Date.parse(iso);
+  const t0 = Date.parse(missionStart);
+  if (!Number.isFinite(t) || !Number.isFinite(t0)) return 0;
+  return (t - t0) / 1000;
 }
 
 export function phaseAt(phases: MissionPhase[], met: number): MissionPhase | null {
-  if (met < 0 || !phases.length) return null;
+  if (!Number.isFinite(met) || met < 0 || !phases.length) return null;
   return phases.find((p) => met <= p.t_end) ?? phases[phases.length - 1];
 }
 
@@ -82,27 +85,42 @@ export const BASELINE_SHARE = 0.14;
  * a linear baseline span before T+0.
  */
 export function createMissionScale(phases: MissionPhase[], baselineSeconds: number) {
-  const w = phases.map((p) => Math.log1p(p.t_end - p.t_start));
+  const safePhases = Array.isArray(phases) ? phases : [];
+  const safeBaseline = Number.isFinite(baselineSeconds) && baselineSeconds > 0 ? baselineSeconds : 86400;
+  const w = safePhases.map((p) => Math.log1p(Math.max(0, p.t_end - p.t_start)));
   const total = w.reduce((a, b) => a + b, 0) || 1;
   const edges = [BASELINE_SHARE];
   for (const x of w) edges.push(edges[edges.length - 1] + (x / total) * (1 - BASELINE_SHARE));
 
   function toFraction(met: number): number {
+    if (!Number.isFinite(met)) return BASELINE_SHARE;
     if (met < 0) {
-      const u = baselineSeconds > 0 ? Math.max(0, 1 + met / baselineSeconds) : 1;
+      const u = safeBaseline > 0 ? Math.max(0, 1 + met / safeBaseline) : 1;
       return u * BASELINE_SHARE;
     }
-    const i = Math.max(0, phases.findIndex((p) => met <= p.t_end));
-    const p = phases[i] ?? phases[phases.length - 1];
-    const idx = phases[i] ? i : phases.length - 1;
-    const u = Math.min(Math.max((met - p.t_start) / (p.t_end - p.t_start || 1), 0), 1);
-    return edges[idx] + u * (edges[idx + 1] - edges[idx]);
+    if (!safePhases.length) {
+      const fallbackSpan = 86400 * 8;
+      return BASELINE_SHARE + Math.min(1, Math.max(0, met / fallbackSpan)) * (1 - BASELINE_SHARE);
+    }
+    const found = safePhases.findIndex((p) => met <= p.t_end);
+    const idx = found >= 0 ? found : safePhases.length - 1;
+    const p = safePhases[idx];
+    const span = p.t_end - p.t_start || 1;
+    const u = Math.min(Math.max((met - p.t_start) / span, 0), 1);
+    return edges[idx] + u * ((edges[idx + 1] ?? 1) - edges[idx]);
   }
 
   return { toFraction, edges };
 }
 
+export function formatSafeDate(formatter: Intl.DateTimeFormat, iso?: string | null): string {
+  if (!iso) return '—';
+  const ts = Date.parse(iso);
+  return Number.isFinite(ts) ? formatter.format(ts) : '—';
+}
+
 export function formatMET(met: number): string {
+  if (!Number.isFinite(met)) return 'T+ 0d 00:00';
   const sign = met < 0 ? 'T− ' : 'T+ ';
   const s = Math.abs(met);
   const d = Math.floor(s / 86400);

@@ -78,6 +78,7 @@ const SAMPLE_MISSIONS = [
 export function MissionsList() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const canListAllMissions = isAdmin || user?.role === 'OPERATOR';
 
   const {
     missions,
@@ -94,27 +95,29 @@ export function MissionsList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [assignedMission, setAssignedMission] = useState<Mission | null>(null);
-  const [loadingAssigned, setLoadingAssigned] = useState(!isAdmin);
+  const [loadingAssigned, setLoadingAssigned] = useState(!canListAllMissions);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canListAllMissions) {
       setLoadingAssigned(false);
       return;
     }
     let alive = true;
     async function loadAssigned() {
-      if (!user?.astronautId) {
-        if (alive) {
-          setAssignedMission(null);
-          setLoadingAssigned(false);
-        }
-        return;
-      }
       try {
-        const astro = await astronautService.getById(user.astronautId);
+        let targetMissionId: string | null | undefined;
+        if (user?.astronautId) {
+          const astro = await astronautService.getById(user.astronautId).catch(() => null);
+          targetMissionId = astro?.missionId;
+        } else if (user?.id) {
+          const astroRes = await astronautService.list({ limit: 50 }).catch(() => null);
+          const own = astroRes?.data.find((a) => a.userId === user.id);
+          targetMissionId = own?.missionId;
+        }
+
         if (!alive) return;
-        if (astro.missionId) {
-          const m = await missionService.getById(astro.missionId);
+        if (targetMissionId) {
+          const m = await missionService.getById(targetMissionId).catch(() => null);
           if (alive) setAssignedMission(m);
         } else if (alive) {
           setAssignedMission(null);
@@ -129,10 +132,10 @@ export function MissionsList() {
     return () => {
       alive = false;
     };
-  }, [isAdmin, user?.astronautId]);
+  }, [canListAllMissions, user?.astronautId, user?.id]);
 
-  const visibleMissions = isAdmin ? missions : assignedMission ? [assignedMission] : [];
-  const effectiveLoading = isAdmin ? isLoading : loadingAssigned;
+  const visibleMissions = canListAllMissions ? missions : assignedMission ? [assignedMission] : [];
+  const effectiveLoading = canListAllMissions ? isLoading : loadingAssigned;
 
   const handleCreateSamples = async () => {
     try {
@@ -183,10 +186,10 @@ export function MissionsList() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line pb-5">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-blueberry">
-            {isAdmin ? 'Missions & Habitats' : 'My Assigned Mission'}
+            {canListAllMissions ? 'Missions & Habitats' : 'My Assigned Mission'}
           </h1>
           <p className="mt-1.5 text-sm text-stem">
-            {isAdmin
+            {canListAllMissions
               ? 'Active crew habitats and trajectories.'
               : 'Your assigned mission habitat and trajectory telemetry.'}
           </p>
@@ -224,8 +227,8 @@ export function MissionsList() {
         </div>
       </div>
 
-      {/* Filter bar — borderless inline inputs (Admin only) */}
-      {isAdmin && (
+      {/* Filter bar — borderless inline inputs (Admin / Operator) */}
+      {canListAllMissions && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="relative w-full sm:max-w-md">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
@@ -259,7 +262,7 @@ export function MissionsList() {
         </div>
       )}
 
-      {error && isAdmin && (
+      {error && canListAllMissions && (
         <div className="ui-callout-critical flex items-center justify-between text-xs text-status-critical">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
@@ -278,16 +281,16 @@ export function MissionsList() {
 
       {effectiveLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: isAdmin ? 6 : 1 }).map((_, i) => (
+          {Array.from({ length: canListAllMissions ? 6 : 1 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
       ) : visibleMissions.length === 0 ? (
         <EmptyState
           icon={Rocket}
-          title={isAdmin ? 'No missions found' : 'No mission assigned yet'}
+          title={canListAllMissions ? 'No missions found' : 'No mission assigned yet'}
           description={
-            isAdmin
+            canListAllMissions
               ? 'No registered missions match the current filters.'
               : 'Contact your Flight Surgeon / Admin to be assigned to a mission.'
           }
@@ -306,7 +309,7 @@ export function MissionsList() {
         </div>
       )}
 
-      {isAdmin && !isLoading && missions.length > 0 && (
+      {canListAllMissions && !isLoading && missions.length > 0 && (
         <div className="surface-card flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 text-xs text-stem tabular-nums">
           <div>
             <span>Total: </span>

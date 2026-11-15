@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Mission, Environment, MissionStatus } from '../../domain/missions/types';
 import { MissionFallbackPatch } from './MissionFallbackPatch';
@@ -57,28 +57,33 @@ const STATUS_CONFIG: Record<
 export function MissionCard({ mission, onDeleteRequest }: MissionCardProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const [imgError, setImgError] = useState(false);
 
   const envConfig = ENVIRONMENT_CONFIG[mission.environment] || ENVIRONMENT_CONFIG.LUNAR_BASE;
   const statusConfig = STATUS_CONFIG[mission.status] || STATUS_CONFIG.IN_PROGRESS;
   const EnvIcon = envConfig.icon;
 
-  const formattedDate = new Date(mission.startDate).toLocaleDateString('en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  const parsedStart = Date.parse(mission.startDate);
+  const formattedDate = Number.isFinite(parsedStart)
+    ? new Date(parsedStart).toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '—';
 
   return (
     <article className="surface-card group relative flex flex-col justify-between p-5">
       <div>
         <div className="flex items-start justify-between gap-4">
-          {mission.patchUrl ? (
+          {mission.patchUrl && !imgError ? (
             <div className="relative h-16 w-16 overflow-hidden rounded-sm shrink-0">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={mission.patchUrl}
                 alt={`Official mission patch for ${mission.name}`}
-                fill
-                className="object-cover"
+                onError={() => setImgError(true)}
+                className="h-full w-full object-cover"
               />
             </div>
           ) : (

@@ -9,8 +9,10 @@ import {
   CheckCircle2,
   Eye,
   HeartPulse,
+  Keyboard,
   Lock,
   Moon,
+  RefreshCw,
   ScanFace,
   Upload,
   Video,
@@ -40,7 +42,46 @@ import { ENV } from '@/config/env';
 const SYNC_INTERVAL_MS = 30_000;
 const DEFAULT_CAMERA_MODE: CameraMode = 'rgb_pos';
 
-export function VisionBiometricsPanel() {
+export interface OpticalCapturedVitals {
+  heartRateBpm?: number;
+  sleepHours?: number;
+  stressIndex?: number;
+  perclos?: number;
+  heartRateSignalQuality?: number;
+  dominantMood?: string;
+}
+
+export interface VisionBiometricsPanelProps {
+  embedded?: boolean;
+  onApplyVitals?: (captured: OpticalCapturedVitals, options?: { force?: boolean }) => void;
+  onSkipToManual?: () => void;
+}
+
+function buildCapturedVitals(frame: AstronautTelemetryFrame): OpticalCapturedVitals {
+  const captured: OpticalCapturedVitals = {
+    stressIndex: frame.mood?.stress_index,
+    perclos: frame.sleep?.perclos,
+    heartRateSignalQuality: frame.heart_rate?.signal_quality,
+    dominantMood: frame.mood?.dominant_mood,
+  };
+  if (frame.heart_rate.bpm > 0 && Number.isFinite(frame.heart_rate.bpm)) {
+    captured.heartRateBpm = Math.min(220, Math.max(20, Math.round(frame.heart_rate.bpm)));
+  }
+  if (
+    typeof frame.sleep?.sleep_quality_score === 'number' &&
+    Number.isFinite(frame.sleep.sleep_quality_score)
+  ) {
+    const score = Math.min(100, Math.max(0, frame.sleep.sleep_quality_score));
+    captured.sleepHours = Number((4 + (score / 100) * 4.5).toFixed(1));
+  }
+  return captured;
+}
+
+export function VisionBiometricsPanel({
+  embedded = false,
+  onApplyVitals,
+  onSkipToManual,
+}: VisionBiometricsPanelProps = {}) {
   const { astronautId, setAstronautId, crew } = useActiveAstronaut();
 
   const [source] = useState<VisionSource>('webcam');
@@ -622,6 +663,16 @@ export function VisionBiometricsPanel() {
     return () => clearInterval(timer);
   }, [streaming, syncTelemetry]);
 
+  const onApplyVitalsRef = useRef(onApplyVitals);
+  useEffect(() => {
+    onApplyVitalsRef.current = onApplyVitals;
+  }, [onApplyVitals]);
+
+  useEffect(() => {
+    if (!telemetry || !onApplyVitalsRef.current) return;
+    onApplyVitalsRef.current(buildCapturedVitals(telemetry));
+  }, [telemetry]);
+
   const handleResetPipeline = () => {
     if (mockSimRef.current) {
       mockSimRef.current.reset();
@@ -638,129 +689,178 @@ export function VisionBiometricsPanel() {
   const identity = telemetry?.identity;
   const isRecognized = Boolean(identity?.recognized && identity?.astronaut_id);
   const isLive = wsStatus === 'connected' || wsStatus === 'http-live' || wsStatus === 'mock-live';
+  const capturedSummary = telemetry ? buildCapturedVitals(telemetry) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header & Controls */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-berry">
-            <Video className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Contactless Optical Biometrics · Face ID Routing</span>
+    <div className={embedded ? 'space-y-4 rounded-lg border border-line bg-surface-tinted/35 p-4 sm:p-5' : 'space-y-6'}>
+      {embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blueberry">
+              <Video className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+              <span>Optical Biometric Scan</span>
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-[11px] font-semibold ${
+                isLive
+                  ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
+                  : wsStatus === 'connecting'
+                    ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
+                    : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
+              }`}
+            >
+              {isLive ? (
+                <Wifi className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <WifiOff className="h-3 w-3" aria-hidden="true" />
+              )}
+              <span>
+                {isLive
+                  ? 'Sensor Active'
+                  : wsStatus === 'connecting'
+                    ? 'Connecting Sensor…'
+                    : 'Sensor Standby'}
+              </span>
+            </span>
           </div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
-            Crew Optical Biometrics &amp; Fatigue
-          </h1>
-          <p className="mt-1 text-xs text-stem">
-            Real-time YOLO face recognition automatically routes contactless vitals to the
-            identified crew member.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {onSkipToManual && (
+              <button
+                type="button"
+                onClick={onSkipToManual}
+                className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+              >
+                <Keyboard className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+                <span>Fill manually without camera</span>
+              </button>
+            )}
+          </div>
         </div>
+      ) : (
+        <>
+          {/* Header & Controls */}
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-berry">
+                <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Contactless Optical Biometrics · Face ID Routing</span>
+              </div>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-blueberry sm:text-3xl">
+                Crew Optical Biometrics &amp; Fatigue
+              </h1>
+              <p className="mt-1 text-xs text-stem">
+                Real-time YOLO face recognition automatically routes contactless vitals to the
+                identified crew member.
+              </p>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/profile"
-            className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
-          >
-            <ScanFace className="h-3.5 w-3.5 text-berry" />
-            <span>Manage Face ID ({enrolledProfiles.length} enrolled)</span>
-          </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/profile"
+                className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:bg-surface-tinted"
+              >
+                <ScanFace className="h-3.5 w-3.5 text-berry" />
+                <span>Manage Face ID ({enrolledProfiles.length} enrolled)</span>
+              </Link>
 
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
-              isLive
-                ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
-                : wsStatus === 'connecting'
-                  ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
-                  : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-semibold backdrop-blur-md ${
+                  isLive
+                    ? 'border-[var(--status-nominal-border)] bg-[var(--status-nominal-bg)] text-status-nominal'
+                    : wsStatus === 'connecting'
+                      ? 'border-[var(--status-caution-border)] bg-[var(--status-caution-bg)] text-status-caution'
+                      : 'border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-status-critical'
+                }`}
+              >
+                {isLive ? (
+                  <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                <span>
+                  {isLive
+                    ? 'Optical Telemetry Active'
+                    : wsStatus === 'connecting'
+                      ? 'Connecting Sensor…'
+                      : 'Sensor Standby'}
+                </span>
+              </span>
+            </div>
+          </header>
+
+          {/* Strict Facial Recognition Status Banner */}
+          <div
+            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border px-4 py-3 text-xs backdrop-blur-md ${
+              isRecognized
+                ? 'border-[var(--status-nominal-border)] bg-emerald-950/35 text-status-nominal'
+                : 'border-[var(--status-caution-border)] bg-amber-950/35 text-status-caution'
             }`}
           >
-            {isLive ? (
-              <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            <span>
-              {isLive
-                ? 'Optical Telemetry Active'
-                : wsStatus === 'connecting'
-                  ? 'Connecting Sensor…'
-                  : 'Sensor Standby'}
-            </span>
-          </span>
-        </div>
-      </header>
-
-      {/* Strict Facial Recognition Status Banner */}
-      <div
-        className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border px-4 py-3 text-xs backdrop-blur-md ${
-          isRecognized
-            ? 'border-[var(--status-nominal-border)] bg-emerald-950/35 text-status-nominal'
-            : 'border-[var(--status-caution-border)] bg-amber-950/35 text-status-caution'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          {isRecognized ? (
-            <ScanFace className="h-4 w-4 shrink-0 text-status-nominal" />
-          ) : (
-            <Lock className="h-4 w-4 shrink-0 text-status-caution" />
-          )}
-          <div>
-            {isRecognized ? (
-              <p className="font-semibold">
-                Identified Subject:{' '}
-                <strong className="underline underline-offset-2">{identity?.astronaut_name}</strong>{' '}
-                <span className="font-mono">({identity?.confidence.toFixed(1)}% match)</span> —
-                Strict Ingestion Unlocked
-              </p>
-            ) : enrolledProfiles.length === 0 ? (
-              <p className="font-semibold">
-                Strict Mode Active: No crew facial biometrics enrolled yet. Ingestion is locked
-                until at least 1 crew member enrolls Face ID.
-              </p>
-            ) : (
-              <p className="font-semibold">
-                Strict Mode Active: Subject in camera does not match any enrolled crew Face ID.
-                Ingestion is paused to prevent misattribution.
-              </p>
-            )}
-            {lastIngestInfo && (
-              <p className="mt-0.5 text-[11px] text-stem font-mono">
-                Last ingested reading: {lastIngestInfo.astronautName} ({lastIngestInfo.bpm} BPM) at{' '}
-                {lastIngestInfo.time}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isRecognized ? (
-            <button
-              type="button"
-              onClick={() => void syncTelemetry()}
-              disabled={isIngestingNow}
-              className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-status-nominal px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:opacity-90 disabled:opacity-50"
-            >
-              {isIngestingNow ? (
-                <span>Ingesting…</span>
+            <div className="flex items-center gap-2.5">
+              {isRecognized ? (
+                <ScanFace className="h-4 w-4 shrink-0 text-status-nominal" />
               ) : (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Ingest to {identity?.astronaut_name} Now</span>
-                </>
+                <Lock className="h-4 w-4 shrink-0 text-status-caution" />
               )}
-            </button>
-          ) : (
-            <Link
-              href="/profile"
-              className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-blueberry px-3.5 py-1.5 text-xs font-semibold text-plate hover:bg-berry"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span>Enroll Crew Face Photos</span>
-            </Link>
-          )}
-        </div>
-      </div>
+              <div>
+                {isRecognized ? (
+                  <p className="font-semibold">
+                    Identified Subject:{' '}
+                    <strong className="underline underline-offset-2">{identity?.astronaut_name}</strong>{' '}
+                    <span className="font-mono">({identity?.confidence.toFixed(1)}% match)</span> —
+                    Strict Ingestion Unlocked
+                  </p>
+                ) : enrolledProfiles.length === 0 ? (
+                  <p className="font-semibold">
+                    Strict Mode Active: No crew facial biometrics enrolled yet. Ingestion is locked
+                    until at least 1 crew member enrolls Face ID.
+                  </p>
+                ) : (
+                  <p className="font-semibold">
+                    Strict Mode Active: Subject in camera does not match any enrolled crew Face ID.
+                    Ingestion is paused to prevent misattribution.
+                  </p>
+                )}
+                {lastIngestInfo && (
+                  <p className="mt-0.5 text-[11px] text-stem font-mono">
+                    Last ingested reading: {lastIngestInfo.astronautName} ({lastIngestInfo.bpm} BPM) at{' '}
+                    {lastIngestInfo.time}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isRecognized ? (
+                <button
+                  type="button"
+                  onClick={() => void syncTelemetry()}
+                  disabled={isIngestingNow}
+                  className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-status-nominal px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:opacity-90 disabled:opacity-50"
+                >
+                  {isIngestingNow ? (
+                    <span>Ingesting…</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Ingest to {identity?.astronaut_name} Now</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <Link
+                  href="/profile"
+                  className="tactile-press inline-flex items-center gap-1.5 rounded-sm bg-blueberry px-3.5 py-1.5 text-xs font-semibold text-plate hover:bg-berry"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Enroll Crew Face Photos</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {webcamError && (
         <div className="rounded-lg border border-[var(--status-critical-border)] bg-slate-950/90 p-3 text-xs font-medium text-status-critical backdrop-blur-md">
@@ -877,136 +977,208 @@ export function VisionBiometricsPanel() {
           </div>
         </div>
 
-        {/* Right: 3 Biometric Cards */}
-        <div className="space-y-4">
-          {/* 1. Cardiovascular */}
-          <section className="surface-card space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between border-b border-line pb-2.5">
-              <div className="flex items-center gap-2">
-                <HeartPulse className="h-4 w-4 text-status-critical" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-blueberry">Cardiovascular</h2>
+        {/* Right: Biometric Telemetry Cards (Compact Sync Card when embedded) */}
+        {embedded ? (
+          <div className="space-y-4">
+            <section className="surface-card space-y-4 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-line pb-2.5">
+                <div className="flex items-center gap-2">
+                  <HeartPulse className="h-4 w-4 text-status-critical" aria-hidden="true" />
+                  <h2 className="text-sm font-semibold text-blueberry">Live Optical Readout</h2>
+                </div>
+                <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
+                  {hr ? hr.status : 'calibrating'}
+                </span>
               </div>
-              <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
-                {hr ? hr.status : 'idle'}
-              </span>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-[11px] text-stem">Heart Rate</p>
-                <p className="font-mono text-xl font-bold text-blueberry">
-                  {hr && hr.bpm > 0 ? hr.bpm.toFixed(1) : '--'}
-                  <span className="ml-1 text-[11px] font-normal text-stem">BPM</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-stem">HRV (RMSSD)</p>
-                <p className="font-mono text-base font-semibold text-blueberry">
-                  {hr ? `${hr.hrv_rmssd_ms.toFixed(1)} ms` : '--'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-stem">Respiration</p>
-                <p className="font-mono text-base font-semibold text-blueberry">
-                  {hr ? `${hr.respiration_rpm.toFixed(1)} rpm` : '--'}
-                </p>
-              </div>
-            </div>
-          </section>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border border-line/70 bg-surface-tinted/35 p-3">
+                  <p className="text-[11px] text-stem">Detected Heart Rate</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-blueberry tabular-nums">
+                    {capturedSummary?.heartRateBpm ?? '--'}
+                    <span className="ml-1 text-[11px] font-normal text-stem">BPM</span>
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-stem font-mono">
+                    HRV {hr ? `${hr.hrv_rmssd_ms.toFixed(0)} ms` : '--'} · Resp{' '}
+                    {hr ? `${hr.respiration_rpm.toFixed(0)} rpm` : '--'}
+                  </p>
+                </div>
 
-          {/* 2. Mood & Cognitive Stress */}
-          <section className="surface-card space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between border-b border-line pb-2.5">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-berry" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-blueberry">Mood &amp; Cognitive Stress</h2>
+                <div className="rounded-md border border-line/70 bg-surface-tinted/35 p-3">
+                  <p className="text-[11px] text-stem">Estimated Sleep (24h)</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-blueberry tabular-nums">
+                    {capturedSummary?.sleepHours !== undefined
+                      ? capturedSummary.sleepHours.toFixed(1)
+                      : '--'}
+                    <span className="ml-1 text-[11px] font-normal text-stem">h</span>
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-stem font-mono">
+                    PERCLOS {sleep ? `${sleep.perclos.toFixed(1)}%` : '--'} ·{' '}
+                    {sleep?.fatigue_level ?? 'Nominal'}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <p className="text-[11px] text-stem">Dominant State</p>
-              <p className="text-sm font-bold text-blueberry">{mood?.dominant_mood ?? '--'}</p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-stem">Stress Index</span>
-                  <span className="font-mono font-semibold text-blueberry">
-                    {mood ? `${mood.stress_index.toFixed(0)}%` : '--'}
+              <div className="rounded-md border border-line/70 bg-surface-tinted/20 p-3 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-stem">Cognitive State</span>
+                  <span className="font-semibold text-blueberry">
+                    {mood?.dominant_mood ?? '--'}
                   </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-tinted">
-                  <div
-                    className="h-full bg-status-critical transition-all"
-                    style={{ width: `${mood?.stress_index ?? 0}%` }}
-                  />
+                <div className="flex items-center justify-between text-[11px] font-mono text-stem">
+                  <span>Stress: {mood ? `${mood.stress_index.toFixed(0)}%` : '--'}</span>
+                  <span>Alertness: {mood ? `${mood.alertness_score.toFixed(0)}%` : '--'}</span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-stem">Cognitive Alertness</span>
-                  <span className="font-mono font-semibold text-blueberry">
-                    {mood ? `${mood.alertness_score.toFixed(0)}%` : '--'}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-tinted">
-                  <div
-                    className="h-full bg-status-nominal transition-all"
-                    style={{ width: `${mood?.alertness_score ?? 0}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
 
-          {/* 3. Sleep & Fatigue */}
-          <section className="surface-card space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between border-b border-line pb-2.5">
-              <div className="flex items-center gap-2">
-                <Moon className="h-4 w-4 text-indigo-500" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-blueberry">Sleep &amp; Fatigue</h2>
-              </div>
-              <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
-                {sleep?.fatigue_level ?? 'Nominal'}
-              </span>
-            </div>
+              <p className="text-[11px] leading-relaxed text-stem">
+                Detected heart rate and sleep duration sync automatically into the editable fields
+                below. You can review or overwrite any number before saving.
+              </p>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <div>
-                <p className="text-[11px] text-stem">Sleep Score</p>
-                <p className="font-mono text-base font-bold text-blueberry">
-                  {sleep ? `${sleep.sleep_quality_score.toFixed(0)}%` : '--'}
-                </p>
+              <button
+                type="button"
+                disabled={!capturedSummary}
+                onClick={() => capturedSummary && onApplyVitals?.(capturedSummary, { force: true })}
+                className="tactile-press inline-flex w-full items-center justify-center gap-2 rounded-sm border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-blueberry hover:bg-surface-tinted disabled:opacity-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
+                <span>Apply Scanned Values to Fields Below</span>
+              </button>
+            </section>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* 1. Cardiovascular */}
+            <section className="surface-card space-y-3 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-line pb-2.5">
+                <div className="flex items-center gap-2">
+                  <HeartPulse className="h-4 w-4 text-status-critical" aria-hidden="true" />
+                  <h2 className="text-sm font-semibold text-blueberry">Cardiovascular</h2>
+                </div>
+                <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
+                  {hr ? hr.status : 'idle'}
+                </span>
               </div>
-              <div>
-                <p className="text-[11px] text-stem">PERCLOS</p>
-                <p className="font-mono text-sm font-semibold text-blueberry">
-                  {sleep ? `${sleep.perclos.toFixed(1)}%` : '--'}
-                </p>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-[11px] text-stem">Heart Rate</p>
+                  <p className="font-mono text-xl font-bold text-blueberry">
+                    {hr && hr.bpm > 0 ? hr.bpm.toFixed(1) : '--'}
+                    <span className="ml-1 text-[11px] font-normal text-stem">BPM</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">HRV (RMSSD)</p>
+                  <p className="font-mono text-base font-semibold text-blueberry">
+                    {hr ? `${hr.hrv_rmssd_ms.toFixed(1)} ms` : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">Respiration</p>
+                  <p className="font-mono text-base font-semibold text-blueberry">
+                    {hr ? `${hr.respiration_rpm.toFixed(1)} rpm` : '--'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] text-stem">Blink Rate</p>
-                <p className="font-mono text-sm font-semibold text-blueberry">
-                  {sleep ? `${sleep.blink_rate_per_min.toFixed(1)}/m` : '--'}
-                </p>
+            </section>
+
+            {/* 2. Mood & Cognitive Stress */}
+            <section className="surface-card space-y-3 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-line pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-berry" aria-hidden="true" />
+                  <h2 className="text-sm font-semibold text-blueberry">Mood &amp; Cognitive Stress</h2>
+                </div>
               </div>
+
               <div>
-                <p className="text-[11px] text-stem">Yawns</p>
-                <p className="font-mono text-sm font-semibold text-blueberry">
-                  {sleep ? sleep.yawn_count : '--'}
-                </p>
+                <p className="text-[11px] text-stem">Dominant State</p>
+                <p className="text-sm font-bold text-blueberry">{mood?.dominant_mood ?? '--'}</p>
               </div>
-              <div>
-                <p className="text-[11px] text-stem">Sleep State</p>
-                <p className="flex items-center gap-1 text-xs font-semibold text-blueberry">
-                  <Eye className="h-3 w-3 text-berry" aria-hidden="true" />
-                  <span>{sleep?.sleep_stage_estimate ?? '--'}</span>
-                </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-stem">Stress Index</span>
+                    <span className="font-mono font-semibold text-blueberry">
+                      {mood ? `${mood.stress_index.toFixed(0)}%` : '--'}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-tinted">
+                    <div
+                      className="h-full bg-status-critical transition-all"
+                      style={{ width: `${mood?.stress_index ?? 0}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-stem">Cognitive Alertness</span>
+                    <span className="font-mono font-semibold text-blueberry">
+                      {mood ? `${mood.alertness_score.toFixed(0)}%` : '--'}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-tinted">
+                    <div
+                      className="h-full bg-status-nominal transition-all"
+                      style={{ width: `${mood?.alertness_score ?? 0}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
+
+            {/* 3. Sleep & Fatigue */}
+            <section className="surface-card space-y-3 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-line pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Moon className="h-4 w-4 text-indigo-500" aria-hidden="true" />
+                  <h2 className="text-sm font-semibold text-blueberry">Sleep &amp; Fatigue</h2>
+                </div>
+                <span className="rounded-pill bg-surface-tinted px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-stem">
+                  {sleep?.fatigue_level ?? 'Nominal'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div>
+                  <p className="text-[11px] text-stem">Sleep Score</p>
+                  <p className="font-mono text-base font-bold text-blueberry">
+                    {sleep ? `${sleep.sleep_quality_score.toFixed(0)}%` : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">PERCLOS</p>
+                  <p className="font-mono text-sm font-semibold text-blueberry">
+                    {sleep ? `${sleep.perclos.toFixed(1)}%` : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">Blink Rate</p>
+                  <p className="font-mono text-sm font-semibold text-blueberry">
+                    {sleep ? `${sleep.blink_rate_per_min.toFixed(1)}/m` : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">Yawns</p>
+                  <p className="font-mono text-sm font-semibold text-blueberry">
+                    {sleep ? sleep.yawn_count : '--'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-stem">Sleep State</p>
+                  <p className="flex items-center gap-1 text-xs font-semibold text-blueberry">
+                    <Eye className="h-3 w-3 text-berry" aria-hidden="true" />
+                    <span>{sleep?.sleep_stage_estimate ?? '--'}</span>
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
       </div>
     </div>
   );
