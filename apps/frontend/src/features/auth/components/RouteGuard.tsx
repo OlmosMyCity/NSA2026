@@ -4,12 +4,14 @@ import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { AccessDenied } from './AccessDenied';
+import type { Role } from '../domain/types';
 import { Radio } from 'lucide-react';
 
 interface RouteGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  requiredRole?: 'ADMIN' | 'USER';
+  /** Un rol o la lista de roles que pueden entrar. */
+  requiredRole?: Role | readonly Role[];
 }
 
 export function RouteGuard({
@@ -45,7 +47,8 @@ export function RouteGuard({
     return null;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  const allowedRoles = requiredRole === undefined ? null : [requiredRole].flat();
+  if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
     return <AccessDenied />;
   }
 

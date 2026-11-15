@@ -1,7 +1,7 @@
 import { ENV } from '@/features/common/config/env';
 import { httpClient } from '@/features/common/services/httpClient';
 import { mockDb } from '@/features/common/mocks/mockDb';
-import { CrewMemberTriage, FlightSurgeonMetrics } from '../domain/types';
+import { CrewMemberTriage, FlightSurgeonMetrics, TriageStatus } from '../domain/types';
 
 class AdminTriageService {
   async getTriageOverview(): Promise<{
@@ -25,29 +25,27 @@ class AdminTriageService {
           astronautId: astro.id,
           astronautName: astro.name,
           missionId: astro.missionId,
-          missionName: mission ? mission.name : 'Artemis IV Deep Space',
+          missionName: mission ? mission.name : 'Unassigned mission',
           role: astro.role,
-          environment: mission ? mission.environment : 'SPACECRAFT',
-          status: (latest ? latest.status : 'OK') as 'CRITICAL' | 'WARNING' | 'OK',
-          heartRate: latest ? latest.heartRateBpm : 70,
-          bloodPressure: latest
-            ? `${latest.systolicMmHg}/${latest.diastolicMmHg}`
-            : '120/80',
-          spo2: latest ? latest.spo2Pct : 98,
-          glucose: latest ? latest.glucoseMgDl : 90,
-          temperature: latest ? latest.temperatureC : 36.6,
-          sleepHours: latest ? latest.sleepHours : 7.5,
-          mood: latest ? latest.mood : 4,
+          environment: mission ? mission.environment : null,
+          status: (latest ? latest.status : 'NO_DATA') as TriageStatus,
+          heartRate: latest ? latest.heartRateBpm : null,
+          bloodPressure: latest ? `${latest.systolicMmHg}/${latest.diastolicMmHg}` : null,
+          spo2: latest ? latest.spo2Pct : null,
+          glucose: latest ? latest.glucoseMgDl : null,
+          temperature: latest ? latest.temperatureC : null,
+          sleepHours: latest ? latest.sleepHours : null,
+          mood: latest ? latest.mood : null,
           alerts: latest ? latest.alerts : [],
-          recommendation: latest ? latest.recommendation : 'Parámetros biomédicos estables.',
-          lastReadingAt: latest ? latest.takenAt : new Date().toISOString(),
+          recommendation: latest ? latest.recommendation : null,
+          lastReadingAt: latest ? latest.takenAt : null,
           photoUrl: astro.photoUrl,
         };
       });
 
-      // Ordenar por severidad de triage: CRITICAL primero, luego WARNING, luego OK
+      // Severidad de triage: CRITICAL, WARNING, NO_DATA y por último OK
       crew.sort((a, b) => {
-        const score = { CRITICAL: 3, WARNING: 2, OK: 1 };
+        const score: Record<TriageStatus, number> = { CRITICAL: 4, WARNING: 3, NO_DATA: 2, OK: 1 };
         return score[b.status] - score[a.status];
       });
 
@@ -56,6 +54,7 @@ class AdminTriageService {
         criticalCount: crew.filter((c) => c.status === 'CRITICAL').length,
         warningCount: crew.filter((c) => c.status === 'WARNING').length,
         nominalCount: crew.filter((c) => c.status === 'OK').length,
+        noDataCount: crew.filter((c) => c.status === 'NO_DATA').length,
       };
 
       return { crew, metrics };
@@ -74,10 +73,12 @@ class AdminTriageService {
         .filter((r) => r.astronautId === astronautId)
         .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())[0];
 
-      if (reading) {
-        reading.recommendation = `[FLIGHT SURGEON]: ${directives}`;
-        mockDb.save();
+      if (!reading) {
+        throw new Error('This crew member has no health readings yet. Request a measurement first.');
       }
+
+      reading.recommendation = `[FLIGHT SURGEON]: ${directives}`;
+      mockDb.save();
 
       return {
         success: true,

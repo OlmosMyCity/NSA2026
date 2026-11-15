@@ -15,9 +15,15 @@ import {
   X,
 } from 'lucide-react';
 import { adminTriageService } from '../services/adminTriageService';
-import { CrewMemberTriage, FlightSurgeonMetrics } from '../domain/types';
+import { CrewMemberTriage, FlightSurgeonMetrics, TriageStatus } from '../domain/types';
 import { AstronautFallbackAvatar } from '@/features/astronauts/components/AstronautFallbackAvatar';
 import { SkeletonCard } from '@/features/common/components/Skeleton';
+
+const NO_VALUE = '—';
+
+function withUnit(value: number | null, unit: string): string {
+  return value === null ? NO_VALUE : `${value}${unit}`;
+}
 
 export function FlightSurgeonConsole() {
   const [crew, setCrew] = useState<CrewMemberTriage[]>([]);
@@ -26,14 +32,16 @@ export function FlightSurgeonConsole() {
     criticalCount: 0,
     warningCount: 0,
     nominalCount: 0,
+    noDataCount: 0,
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'CRITICAL' | 'WARNING' | 'OK'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | TriageStatus>('ALL');
   const [selectedCrew, setSelectedCrew] = useState<CrewMemberTriage | null>(null);
   const [directiveText, setDirectiveText] = useState<string>('');
   const [isSendingDirective, setIsSendingDirective] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [directiveError, setDirectiveError] = useState<string | null>(null);
 
   const fetchTriage = async () => {
     try {
@@ -56,6 +64,7 @@ export function FlightSurgeonConsole() {
     if (!selectedCrew || !directiveText.trim()) return;
     try {
       setIsSendingDirective(true);
+      setDirectiveError(null);
       const res = await adminTriageService.sendClinicalDirectives(
         selectedCrew.astronautId,
         directiveText.trim()
@@ -66,6 +75,9 @@ export function FlightSurgeonConsole() {
       await fetchTriage();
     } catch (err) {
       console.error('Error sending directive:', err);
+      setDirectiveError(
+        err instanceof Error ? err.message : 'The directive could not be transmitted. Try again.'
+      );
     } finally {
       setIsSendingDirective(false);
     }
@@ -204,6 +216,20 @@ export function FlightSurgeonConsole() {
             All ({crew.length})
           </button>
 
+          {metrics.noDataCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilterStatus('NO_DATA')}
+              className={`tactile-press py-1.5 text-xs font-semibold tabular-nums transition-colors ${
+                filterStatus === 'NO_DATA'
+                  ? 'border-b-2 border-plate text-blueberry'
+                  : 'text-stem hover:text-blueberry'
+              }`}
+            >
+              No data ({metrics.noDataCount})
+            </button>
+          )}
+
           <button
             type="button"
             onClick={fetchTriage}
@@ -231,6 +257,7 @@ export function FlightSurgeonConsole() {
           {filteredCrew.map((astronaut) => {
             const isCritical = astronaut.status === 'CRITICAL';
             const isWarning = astronaut.status === 'WARNING';
+            const hasNoData = astronaut.status === 'NO_DATA';
 
             return (
               <article
@@ -270,7 +297,7 @@ export function FlightSurgeonConsole() {
                           {astronaut.role} · {astronaut.missionName}
                         </p>
                         <span className="mt-0.5 block font-mono text-[11px] text-stem">
-                          Habitat: {astronaut.environment}
+                          Habitat: {astronaut.environment ?? '—'}
                         </span>
                       </div>
                     </div>
@@ -288,7 +315,16 @@ export function FlightSurgeonConsole() {
                           <span>Watch</span>
                         </span>
                       )}
-                      {!isCritical && !isWarning && (
+                      {hasNoData && (
+                        <span className="ui-badge text-stem">
+                          <span
+                            className="h-2 w-2 rounded-full border border-current"
+                            aria-hidden="true"
+                          />
+                          <span>No data</span>
+                        </span>
+                      )}
+                      {!isCritical && !isWarning && !hasNoData && (
                         <span className="ui-badge text-status-nominal">
                           <span className="h-2 w-2 rounded-full bg-status-nominal" aria-hidden="true" />
                           <span>Nominal</span>
@@ -303,19 +339,20 @@ export function FlightSurgeonConsole() {
                       <span className="text-[11px] text-stem block">HR (bpm)</span>
                       <span
                         className={`font-mono text-sm font-bold tabular-nums ${
-                          astronaut.heartRate > 100 || astronaut.heartRate < 50
+                          astronaut.heartRate !== null &&
+                          (astronaut.heartRate > 100 || astronaut.heartRate < 50)
                             ? 'text-status-critical'
                             : 'text-blueberry'
                         }`}
                       >
-                        {astronaut.heartRate} bpm
+                        {withUnit(astronaut.heartRate, ' bpm')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[11px] text-stem block">BP (mmHg)</span>
                       <span className="font-mono text-sm font-bold tabular-nums text-blueberry">
-                        {astronaut.bloodPressure}
+                        {astronaut.bloodPressure ?? NO_VALUE}
                       </span>
                     </div>
 
@@ -323,10 +360,10 @@ export function FlightSurgeonConsole() {
                       <span className="text-[11px] text-stem block">SpO₂ (%)</span>
                       <span
                         className={`font-mono text-sm font-bold tabular-nums ${
-                          astronaut.spo2 < 95 ? 'text-status-caution' : 'text-blueberry'
+                          astronaut.spo2 !== null && astronaut.spo2 < 95 ? 'text-status-caution' : 'text-blueberry'
                         }`}
                       >
-                        {astronaut.spo2}%
+                        {withUnit(astronaut.spo2, '%')}
                       </span>
                     </div>
 
@@ -334,17 +371,17 @@ export function FlightSurgeonConsole() {
                       <span className="text-[11px] text-stem block">Temp (°C)</span>
                       <span
                         className={`font-mono text-sm font-bold tabular-nums ${
-                          astronaut.temperature > 37.8 ? 'text-status-critical' : 'text-blueberry'
+                          astronaut.temperature !== null && astronaut.temperature > 37.8 ? 'text-status-critical' : 'text-blueberry'
                         }`}
                       >
-                        {astronaut.temperature}°C
+                        {withUnit(astronaut.temperature, '°C')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[11px] text-stem block">Glucose</span>
                       <span className="font-mono text-sm font-bold tabular-nums text-blueberry">
-                        {astronaut.glucose} mg/dL
+                        {withUnit(astronaut.glucose, ' mg/dL')}
                       </span>
                     </div>
 
@@ -352,30 +389,39 @@ export function FlightSurgeonConsole() {
                       <span className="text-[11px] text-stem block">Sleep</span>
                       <span
                         className={`font-mono text-sm font-bold tabular-nums ${
-                          astronaut.sleepHours < 6 ? 'text-status-caution' : 'text-blueberry'
+                          astronaut.sleepHours !== null && astronaut.sleepHours < 6 ? 'text-status-caution' : 'text-blueberry'
                         }`}
                       >
-                        {astronaut.sleepHours} hrs
+                        {withUnit(astronaut.sleepHours, ' hrs')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[11px] text-stem block">Mood (1–5)</span>
                       <span className="font-mono text-sm font-bold tabular-nums text-blueberry">
-                        {astronaut.mood}/5
+                        {withUnit(astronaut.mood, '/5')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[11px] text-stem block">Last Reading</span>
                       <span className="font-mono text-xs tabular-nums text-berry">
-                        {new Date(astronaut.lastReadingAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {astronaut.lastReadingAt
+                          ? new Date(astronaut.lastReadingAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'Never'}
                       </span>
                     </div>
                   </div>
+
+                  {hasNoData && (
+                    <p className="mt-6 ui-callout text-xs text-stem">
+                      No health readings on record. Status is unknown until this crew member
+                      takes a measurement.
+                    </p>
+                  )}
 
                   {/* Active medical alerts */}
                   {astronaut.alerts && astronaut.alerts.length > 0 && (
@@ -418,12 +464,15 @@ export function FlightSurgeonConsole() {
 
                   <button
                     type="button"
+                    disabled={hasNoData}
+                    title={hasNoData ? 'A directive needs at least one health reading' : undefined}
                     onClick={() => {
                       setSelectedCrew(astronaut);
                       setDirectiveText('');
                       setFeedbackMessage(null);
+                      setDirectiveError(null);
                     }}
-                    className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry hover:bg-surface-tinted"
+                    className="tactile-press inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-blueberry hover:border-blueberry hover:bg-surface-tinted disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Send className="h-3.5 w-3.5 text-berry" aria-hidden="true" />
                     <span>Issue Medical Directive</span>
@@ -453,7 +502,7 @@ export function FlightSurgeonConsole() {
                   Clinical Directive for {selectedCrew.astronautName}
                 </h3>
                 <p className="mt-0.5 text-xs text-stem">
-                  Mission: {selectedCrew.missionName} · Module: {selectedCrew.environment}
+                  Mission: {selectedCrew.missionName} · Module: {selectedCrew.environment ?? '—'}
                 </p>
               </div>
               <button
@@ -493,6 +542,16 @@ export function FlightSurgeonConsole() {
                     member&apos;s medical record.
                   </span>
                 </div>
+
+                {directiveError && (
+                  <p
+                    role="alert"
+                    className="ui-callout-critical flex items-center gap-2 text-xs text-status-critical"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                    <span>{directiveError}</span>
+                  </p>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
                   <button
