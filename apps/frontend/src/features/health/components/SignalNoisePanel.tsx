@@ -107,21 +107,22 @@ export function SignalNoisePanel({
   return (
     <section
       aria-label="Signal vs. Noise Attribution"
-      className="surface-card p-5 sm:p-6 space-y-5"
+      className="surface-card p-6 sm:p-8 space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-line pb-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-berry">
-            <Cpu className="h-4 w-4" aria-hidden="true" />
-            <span>Signal vs. Noise Attribution · Biodosimetry</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-berry" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-blueberry">
+              Signal vs. Noise
+            </h2>
           </div>
-          <h2 className="mt-1 text-lg font-semibold text-blueberry">
-            Sensor Fusion: Radiation vs. Physiological Noise
-          </h2>
-          <p className="mt-0.5 text-xs text-stem">
-            Separates true genotoxic DNA damage (γ-H2AX / FDXR) from oxidative stress caused by sleep loss or microgravity (8-OHdG).
-          </p>
+          <div className="flex items-center gap-1.5 font-mono text-[11px] text-stem">
+            <span className="rounded bg-surface-subtle px-2 py-0.5">γ-H2AX</span>
+            <span className="rounded bg-surface-subtle px-2 py-0.5">FDXR</span>
+            <span className="rounded bg-surface-subtle px-2 py-0.5">8-OHdG</span>
+          </div>
         </div>
       </div>
 
