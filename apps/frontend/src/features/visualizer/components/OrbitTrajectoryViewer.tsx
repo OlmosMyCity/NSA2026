@@ -150,11 +150,95 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
       },
     ],
   },
+  {
+    id: 'apollo-11',
+    label: 'Apollo 11 · Lunar Landing',
+    environment: 'LUNAR BASE · CREWED',
+    dataFile: 'data/apollo_11.json',
+    subtitle: 'Sea of Tranquility (July 16–24, 1969)',
+    cards: [
+      {
+        title: 'Trans-Lunar Injection (TLI)',
+        body: 'Saturn V S-IVB accelerated Columbia & Eagle out of 185 km LEO toward the Moon.',
+      },
+      {
+        title: 'LM Eagle Powered Descent',
+        body: 'Neil Armstrong and Buzz Aldrin landed in Mare Tranquillitatis on July 20, 1969 at 20:17:39 UTC.',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: 'Apollo biomedical telemetry: launch tachycardia, 1/6 g EVA heart rate spikes, and fluid-shift diuresis.',
+      },
+    ],
+  },
+  {
+    id: 'apollo-13',
+    label: 'Apollo 13 · Free-Return',
+    environment: 'SPACECRAFT · CREWED',
+    dataFile: 'data/apollo_13.json',
+    subtitle: 'Cislunar Free-Return Abort (254 km)',
+    cards: [
+      {
+        title: '254 km Pericynthion Flyby',
+        body: 'After O2 tank #2 ruptured, LM Aquarius served as a lifeboat around the lunar far side.',
+      },
+      {
+        title: 'Hypothermia & CO₂ Scrubbing',
+        body: 'Cabin power-down dropped temperatures to 3°C while crew built square-to-round CO₂ scrubber adapters.',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: 'Sleep deprivation, dehydration, and cold-stress cardiovascular monitoring during 5.95-day abort.',
+      },
+    ],
+  },
+  {
+    id: 'apollo-17',
+    label: 'Apollo 17 · Taurus-Littrow',
+    environment: 'LUNAR ROVER · CREWED',
+    dataFile: 'data/apollo_17.json',
+    subtitle: 'Taurus-Littrow Valley (Dec 7–19, 1972)',
+    cards: [
+      {
+        title: '3 EVAs with Lunar Roving Vehicle',
+        body: 'Gene Cernan and Harrison Schmitt traversed 35.9 km across Taurus-Littrow Valley over 22 h of EVA.',
+      },
+      {
+        title: '12.58-Day Mission Duration',
+        body: 'Longest Apollo lunar surface expedition with full orbital & surface physiological telemetry.',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: '1/6 g musculoskeletal workload, lunar dust exposure, and post-EVA rehydration recovery.',
+      },
+    ],
+  },
+  {
+    id: 'apollo-8',
+    label: 'Apollo 8 · Lunar Orbit',
+    environment: 'SPACECRAFT · CREWED',
+    dataFile: 'data/apollo_8.json',
+    subtitle: 'First Crewed Lunar Orbit (111 km)',
+    cards: [
+      {
+        title: '10 Lunar Orbits at 111 km',
+        body: 'Frank Borman, Jim Lovell, and Bill Anders became the first humans to leave Earth orbit (Dec 1968).',
+      },
+      {
+        title: 'Trans-Earth Injection (TEI)',
+        body: 'SPS burn behind the lunar far side returned Apollo 8 to a Pacific splashdown on Dec 27, 1968.',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: 'First human deep-space radiation and space adaptation syndrome telemetry outside Van Allen belts.',
+      },
+    ],
+  },
 ];
 
 export function OrbitTrajectoryViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>('artemis-ii');
+  const [selectedId, setSelectedId] = useState<string>('apollo-11');
   const [vehicleId, setVehicleId] = useState<string>('auto');
   const [customBlobUrl, setCustomBlobUrl] = useState<string | null>(null);
   const [customName, setCustomName] = useState<string | null>(null);

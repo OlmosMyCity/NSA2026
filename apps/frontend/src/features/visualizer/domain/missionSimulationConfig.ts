@@ -6,15 +6,17 @@ export interface VehicleOption {
 
 export const VEHICLE_OPTIONS: VehicleOption[] = [
   { id: 'auto', label: 'Auto-match by mission', category: 'Default' },
+  { id: 'apollo', label: 'Apollo Command/Service Module', category: 'Apollo Lunar' },
+  { id: 'saturnv', label: 'Saturn V + Apollo CSM/LM', category: 'Apollo Launch' },
   { id: 'orion', label: 'Orion MPCV (Artemis II)', category: 'Cislunar / Deep Space' },
   { id: 'sls', label: 'SLS Block 1 + Orion', category: 'Cislunar / Deep Space' },
   { id: 'iss', label: 'ISS Orbital Station', category: 'LEO Station' },
   { id: 'dragon', label: 'Falcon 9 + Crew Dragon', category: 'LEO / ISS' },
   { id: 'soyuz', label: 'Soyuz MS', category: 'LEO / ISS' },
-  { id: 'lro', label: 'Lunar Reconnaissance Orbiter', category: 'Lunar Orbit' },
   { id: 'hls', label: 'Starship HLS', category: 'Lunar Descent' },
   { id: 'rover', label: 'Pressurized Lunar Rover', category: 'Lunar Surface' },
   { id: 'gateway', label: 'Lunar Gateway', category: 'NRHO Station' },
+  { id: 'lro', label: 'Lunar Reconnaissance Orbiter', category: 'Lunar Orbit' },
   { id: 'mars2020', label: 'Mars 2020 Perseverance', category: 'Mars Interplanetary' },
   { id: 'ares', label: 'Ares I Mars Transit', category: 'Mars Interplanetary' },
   { id: 'clipper', label: 'Europa Clipper', category: 'Outer System / Jupiter' },
@@ -28,12 +30,12 @@ export interface TrajectoryPresetOption {
 
 export const TRAJECTORY_PRESETS: TrajectoryPresetOption[] = [
   { id: 'auto', label: 'Auto-detect from mission environment' },
-  { id: 'data/artemis_ii.json', label: 'Artemis II · Free-Return Lunar Flyby (NASA)' },
-  { id: 'data/iss.json', label: 'ISS Expedition 72 · LEO 418 km, 51.6° (NASA)' },
-  { id: 'data/lro.json', label: 'LRO · Lunar Polar Orbit 50 km (NASA)' },
-  { id: 'data/mars2020.json', label: 'Mars 2020 Perseverance · Heliocentric Transfer (NASA)' },
-  { id: 'data/europa_clipper.json', label: 'Europa Clipper · Earth-Mars-Jupiter Transfer (NASA)' },
-  { id: 'data/parker_solar_probe.json', label: 'Parker Solar Probe · Venus Gravity Assist & Perihelion (NASA)' },
+  { id: 'data/apollo_11.json', label: 'Apollo 11 · First Lunar Landing (NASA · 8.14 d)' },
+  { id: 'data/iss.json', label: 'ISS Expedition 72 · LEO 415 km, 51.6° (NASA)' },
+  { id: 'data/apollo_13.json', label: 'Apollo 13 · Free-Return Abort 254 km (NASA · 5.95 d)' },
+  { id: 'data/apollo_17.json', label: 'Apollo 17 · Taurus-Littrow & LRV (NASA · 12.58 d)' },
+  { id: 'data/artemis_ii.json', label: 'Artemis II · Crewed Lunar Flyby (NASA · 9.06 d)' },
+  { id: 'data/apollo_8.json', label: 'Apollo 8 · First Crewed Lunar Orbit 111 km (NASA · 6.13 d)' },
 ];
 
 export interface MissionSimulationConfig {
