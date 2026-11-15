@@ -108,11 +108,53 @@ const MISSION_PRESETS: MissionTrajectoryPreset[] = [
       },
     ],
   },
+  {
+    id: 'europa-clipper',
+    label: 'Europa Clipper · Jupiter',
+    environment: 'OUTER SYSTEM · JUPITER',
+    dataFile: 'data/europa_clipper.json',
+    subtitle: 'Mars & Earth Gravity Assists (2024–2030)',
+    cards: [
+      {
+        title: 'Mars & Earth Gravity Assists',
+        body: 'Launched Oct 14, 2024 on Falcon Heavy; uses Mars (Mar 2025) and Earth (Dec 2026) flybys to reach Jupiter.',
+      },
+      {
+        title: 'Jovian Radiation Belt',
+        body: 'Extreme trapped-particle radiation environment at Jupiter (~42,000 km closest approach in this cruise).',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: 'Deep-space radiation shielding benchmarks and multi-year autonomous telemetry resilience.',
+      },
+    ],
+  },
+  {
+    id: 'parker-solar-probe',
+    label: 'Parker Solar Probe · Sun',
+    environment: 'INNER SYSTEM · HELIOPHYSICS',
+    dataFile: 'data/parker_solar_probe.json',
+    subtitle: 'Venus Gravity Assist & Perihelion 1 (2018)',
+    cards: [
+      {
+        title: 'Venus Gravity Assist',
+        body: 'Launched Aug 12, 2018 on Delta IV Heavy; uses Venus flyby (~2,720 km altitude) to shed orbital angular momentum.',
+      },
+      {
+        title: 'Perihelion 1 (24.8M km)',
+        body: 'Reaches 24.8 million km from the Sun behind a 11.4 cm carbon-composite Thermal Protection System.',
+      },
+      {
+        title: 'HRP Health Focus',
+        body: 'Solar Particle Event (SPE) early-warning telemetry and inner-heliosphere flux modeling.',
+      },
+    ],
+  },
 ];
 
 export function OrbitTrajectoryViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>('artemis-iv');
+  const [selectedId, setSelectedId] = useState<string>('artemis-ii');
   const [vehicleId, setVehicleId] = useState<string>('auto');
   const [customBlobUrl, setCustomBlobUrl] = useState<string | null>(null);
   const [customName, setCustomName] = useState<string | null>(null);
@@ -129,7 +171,7 @@ export function OrbitTrajectoryViewer() {
   const dataParam = customBlobUrl ?? activePreset.dataFile;
   const iframeQuery = new URLSearchParams({ data: dataParam });
   if (vehicleId !== 'auto') iframeQuery.set('vehicle', vehicleId);
-  const iframeSrc = `/visualizer/index.html?${iframeQuery.toString()}`;
+  const iframeSrc = `/mission-viewer/index.html?${iframeQuery.toString()}`;
 
   const handleUploadJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

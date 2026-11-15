@@ -97,15 +97,44 @@ function lambert(R1, R2, tof, mu, hRef) {
     if (!(yz > 0)) return NaN;
     return Math.pow(yz / stumpC(z), 1.5) * stumpS(z) + A * Math.sqrt(yz) - Math.sqrt(mu) * tof;
   };
-  let hi = 4 * Math.PI * Math.PI - 1e-7;
-  let lo = -400;
-  for (let k = 0; k < 400 && !(y(lo) > 0); k++) lo = (lo + hi) / 2;
-  for (let k = 0; k < 60 && F(lo) > 0; k++) {
-    const next = lo - 400;
-    if (!(y(next) > 0)) break;
-    lo = next;
+  const Z_MAX = 4 * Math.PI * Math.PI - 1e-6;
+  let lo = 0;
+  let hi = Z_MAX;
+  const y0 = y(0);
+  const f0 = F(0);
+  if (y0 > 0 && f0 >= 0) {
+    // Hyperbolic or parabolic transfer (z <= 0)
+    hi = 0;
+    lo = -1;
+    for (let k = 0; k < 60 && y(lo) > 0 && F(lo) > 0; k++) lo *= 2;
+    if (!(y(lo) > 0)) {
+      let a = lo, b = 0;
+      for (let k = 0; k < 80; k++) {
+        const m = (a + b) / 2;
+        if (y(m) > 0) b = m;
+        else a = m;
+      }
+      lo = b;
+    }
+  } else if (!(y0 > 0)) {
+    // Find starting point where y(z) > 0
+    if (A > 0) {
+      let a = 0, b = Z_MAX;
+      for (let k = 0; k < 80; k++) {
+        const m = (a + b) / 2;
+        if (y(m) > 0) b = m;
+        else a = m;
+      }
+      lo = b;
+      hi = Z_MAX;
+    } else {
+      lo = -1;
+      for (let k = 0; k < 60 && !(y(lo) > 0); k++) lo *= 2;
+      hi = 0;
+      while (lo > -1e6 && F(lo) > 0) lo *= 2;
+    }
   }
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 120; i++) {
     const mid = (lo + hi) / 2;
     const f = F(mid);
     if (Number.isNaN(f) || f < 0) lo = mid;
