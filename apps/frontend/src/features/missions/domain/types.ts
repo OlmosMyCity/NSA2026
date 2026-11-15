@@ -1,3 +1,6 @@
+import type { Paginated, PaginationMeta } from '@/features/common/domain/pagination';
+
+export type { PaginationMeta };
 export type Environment =
   | 'SPACECRAFT'
   | 'STATION'
@@ -22,17 +25,8 @@ export interface Mission {
   deletedAt?: string | null;
 }
 
-export interface PaginationMeta {
-  total: number;
-  currentPage: number;
-  limit: number;
-  totalPages: number;
-}
 
-export interface PaginatedMissions {
-  data: Mission[];
-  pagination: PaginationMeta;
-}
+export type PaginatedMissions = Paginated<Mission>;
 
 export interface MissionFilters {
   page?: number;

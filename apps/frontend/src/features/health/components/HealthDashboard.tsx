@@ -39,6 +39,7 @@ import { STATUS_THEME } from '../domain/status-theme';
 import type { BodyZoneId, IndicatorEvaluation, IndicatorId } from '../domain/types';
 import { useActiveAstronaut } from '../hooks/useActiveAstronaut';
 import { useHealthReadings } from '../hooks/useHealthReadings';
+import { NoMonitoredAstronaut } from './NoMonitoredAstronaut';
 import { useFreshnessPhase } from '../hooks/useFreshnessPhase';
 import { FreshnessRing } from './FreshnessRing';
 import { LocationControl } from './LocationControl';
@@ -278,6 +279,8 @@ export function HealthDashboard() {
 
   // Triage computed on a reading that has since expired is not shown as current.
   const shownResult = isLocked ? null : result;
+
+  if (!isResolving && !astronautId) return <NoMonitoredAstronaut />;
 
   if (isResolving || isLoading) {
     return (

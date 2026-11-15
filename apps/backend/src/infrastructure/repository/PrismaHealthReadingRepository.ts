@@ -17,6 +17,7 @@ import {
   PaginatedResult,
 } from "../../domain/models/HealthReading.js";
 import { prisma } from "../database/prismaClient.js";
+import { classifyIndicator, worstLevel } from "../../application/health/evaluateReading.js";
 
 /** Extracts readable alert text from heterogeneous JSON alert arrays persisted on readings. */
 function normalizeAlertMessages(alerts: unknown): string[] {
@@ -226,29 +227,17 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       };
     }
 
-    // Evaluate cardiovascular status (HR in bpm, BP in mmHg)
-    let cvStatus: HealthStatus = HealthStatus.OK;
-    if (latest.heartRateBpm > 100 || latest.heartRateBpm < 40 || latest.systolicMmHg >= 140 || latest.diastolicMmHg >= 90) {
-      cvStatus = HealthStatus.CRITICAL;
-    } else if (latest.heartRateBpm > 90 || latest.systolicMmHg >= 130 || latest.diastolicMmHg >= 85) {
-      cvStatus = HealthStatus.WARNING;
-    }
-
-    // Evaluate metabolic status (blood glucose in mg/dL)
-    let metaStatus: HealthStatus = HealthStatus.OK;
-    if (latest.glucoseMgDl < 70 || latest.glucoseMgDl > 180) {
-      metaStatus = HealthStatus.CRITICAL;
-    } else if (latest.glucoseMgDl > 140) {
-      metaStatus = HealthStatus.WARNING;
-    }
-
-    // Evaluate respiratory and immune status (SpO2 %, core temperature in °C)
-    let respStatus: HealthStatus = HealthStatus.OK;
-    if (latest.spo2Pct < 92 || latest.temperatureC > 38.0 || latest.temperatureC < 35.5) {
-      respStatus = HealthStatus.CRITICAL;
-    } else if (latest.spo2Pct <= 94 || latest.temperatureC >= 37.6) {
-      respStatus = HealthStatus.WARNING;
-    }
+    // Estados por sistema con la misma tabla clínica que evaluateReading.
+    const cvStatus: HealthStatus = worstLevel(
+      classifyIndicator("heartRate", latest.heartRateBpm),
+      classifyIndicator("systolic", latest.systolicMmHg),
+      classifyIndicator("diastolic", latest.diastolicMmHg)
+    );
+    const metaStatus: HealthStatus = classifyIndicator("glucose", latest.glucoseMgDl);
+    const respStatus: HealthStatus = worstLevel(
+      classifyIndicator("spo2", latest.spo2Pct),
+      classifyIndicator("temperature", latest.temperatureC)
+    );
 
     // Evaluate sleep and recovery (7-day rolling mean sleep duration in hours)
     const totalSleepHours = recentHistory7d.reduce((sum, r) => sum + r.sleepHours, 0);
@@ -256,20 +245,8 @@ export class PrismaHealthReadingRepository implements IHealthReadingRepository {
       recentHistory7d.length > 0
         ? Number((totalSleepHours / recentHistory7d.length).toFixed(1))
         : latest.sleepHours;
-    let sleepStatus: HealthStatus = HealthStatus.OK;
-    if (avgSleep < 6.0) {
-      sleepStatus = HealthStatus.CRITICAL;
-    } else if (avgSleep < 7.0) {
-      sleepStatus = HealthStatus.WARNING;
-    }
-
-    // Evaluate behavioral / mood status (1–5 ordinal scale)
-    let moodStatus: HealthStatus = HealthStatus.OK;
-    if (latest.mood <= 2) {
-      moodStatus = HealthStatus.CRITICAL;
-    } else if (latest.mood === 3) {
-      moodStatus = HealthStatus.WARNING;
-    }
+    const sleepStatus: HealthStatus = classifyIndicator("sleepHours", avgSleep);
+    const moodStatus: HealthStatus = classifyIndicator("mood", latest.mood);
 
     return {
       astronautId: astronaut.id,

@@ -55,7 +55,14 @@ async function main() {
 
   // 1. Usuarios (upsert por email para respetar cuentas existentes)
   const { admin: a, commander: c } = SEED_USERS;
-  const [adminHash, crewHash] = await Promise.all([bcrypt.hash(a.password, 10), bcrypt.hash(c.password, 10)]);
+  // Las contraseñas de demo (seedData.ts) solo se permiten fuera de producción; en producción deben venir del entorno.
+  const isProduction = process.env.NODE_ENV === "production";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || (isProduction ? undefined : a.password);
+  const crewPassword = process.env.SEED_CREW_PASSWORD || (isProduction ? undefined : c.password);
+  if (!adminPassword || !crewPassword) {
+    throw new Error("En producción defina SEED_ADMIN_PASSWORD y SEED_CREW_PASSWORD antes de ejecutar el seed.");
+  }
+  const [adminHash, crewHash] = await Promise.all([bcrypt.hash(adminPassword, 10), bcrypt.hash(crewPassword, 10)]);
   const admin = await prisma.user.upsert({
     where: { email: a.email },
     update: { name: a.name, role: Role.ADMIN, passwordHash: adminHash, deletedAt: null },

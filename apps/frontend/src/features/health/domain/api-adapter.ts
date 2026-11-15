@@ -4,15 +4,9 @@
  * telemetry points and frontend traffic-light status tokens.
  */
 
-import type { HealthStatus, IndicatorId, IndicatorReading, ApiHealthStatus } from './types';
+import type { HealthAlert, HealthStatus, IndicatorId, IndicatorReading, ApiHealthStatus } from './types';
 
-/** Structured clinical alert entry attached to a backend reading. */
-export interface ApiHealthAlert {
-  indicator: string;
-  level: 'WARNING' | 'CRITICAL';
-  message: string;
-  value: number;
-}
+export type ApiHealthAlert = HealthAlert;
 
 /** Backend `HealthReading` contract: one wide row containing all vital-sign fields. */
 export interface ApiHealthReading {
@@ -26,9 +20,10 @@ export interface ApiHealthReading {
   spo2Pct: number;
   sleepHours: number;
   mood: number;
+  /** No lo persiste el backend; solo lo usan los escenarios What-If del gemelo digital. */
   resistanceExerciseMin?: number | null;
   status: ApiHealthStatus;
-  alerts: Array<ApiHealthAlert | string>;
+  alerts: ApiHealthAlert[];
   recommendation?: string | null;
   notes?: string | null;
   takenAt: string;

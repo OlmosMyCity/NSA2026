@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Siempre definida en el build: así `process.env.NEXT_PUBLIC_USE_MOCKS === 'true'` se resuelve
+  // en compilación y el mock server (con sus credenciales de demo) no se emite si no se usa.
+  env: {
+    NEXT_PUBLIC_USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS === 'true' ? 'true' : 'false',
+  },
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: false,

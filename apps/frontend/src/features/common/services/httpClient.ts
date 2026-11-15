@@ -1,15 +1,6 @@
-/**
- * Shared HTTP client for the OrbVital backend API.
- * Injects Bearer credentials from `authStorage`, serializes JSON payloads,
- * broadcasts 401 session-expiration events, and normalizes errors into `ApiError`.
- *
- * @module features/common/services/httpClient
- */
-
 import { ENV } from '../config/env';
 import { authStorage } from './storage';
 
-/** Structured HTTP/network error carrying the response status code and raw payload. */
 export class ApiError extends Error {
   public readonly status: number;
   public readonly data?: unknown;
@@ -26,6 +17,20 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   params?: Record<string, string | number | boolean | undefined | null>;
   skipAuth?: boolean;
+}
+
+/**
+ * Transporte: el backend simulado cuando NEXT_PUBLIC_USE_MOCKS=true (solo para las rutas que
+ * simula) y el `fetch` real en cualquier otro caso. La comparación literal con process.env
+ * permite que Next.js elimine la rama y el import dinámico en los builds sin mocks.
+ */
+async function transport(url: string, init: RequestInit): Promise<Response> {
+  if (process.env.NEXT_PUBLIC_USE_MOCKS === 'true') {
+    const { mockFetch } = await import('../mocks/mockServer');
+    const mocked = await mockFetch(url, init);
+    if (mocked) return mocked;
+  }
+  return fetch(url, init);
 }
 
 class HttpClient {
@@ -66,13 +71,13 @@ class HttpClient {
 
     const headers = new Headers(customHeaders);
 
-    // Set JSON Content-Type unless sending FormData (browser injects multipart boundary)
+    // Configurar Content-Type si hay body y no es FormData
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     if (!isFormData && body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
-    // Inject stored Bearer token for authenticated endpoints
+    // Inyectar Bearer token automáticamente
     if (!skipAuth) {
       const token = authStorage.getToken();
       if (token && !headers.has('Authorization')) {
@@ -88,7 +93,7 @@ class HttpClient {
 
     let response: Response;
     try {
-      response = await fetch(url, config);
+      response = await transport(url, config);
     } catch (networkError) {
       throw new ApiError(
         'Connection failure with mission telemetry center (network error).',
@@ -97,20 +102,21 @@ class HttpClient {
       );
     }
 
-    // Broadcast session expiry or missing authentication (401)
+    // Manejo de expiración o ausencia de sesión (401). En peticiones anónimas (login,
+    // registro) un 401 es "credenciales inválidas", no una sesión vencida.
     if (response.status === 401) {
-      authStorage.notifyUnauthorized();
+      if (!skipAuth) authStorage.notifyUnauthorized();
       let errorMsg = 'Sesión no autorizada o expirada. Por favor inicie sesión nuevamente.';
       try {
         const errorData = await response.json();
         if (errorData?.error) errorMsg = errorData.error;
       } catch {
-        // Ignore JSON parse failures on 401 error payloads
+        // Ignorar fallo de parseo JSON en error
       }
       throw new ApiError(errorMsg, 401);
     }
 
-    // Handle 204 No Content responses
+    // Manejo de respuestas 204 No Content
     if (response.status === 204) {
       return {} as T;
     }
