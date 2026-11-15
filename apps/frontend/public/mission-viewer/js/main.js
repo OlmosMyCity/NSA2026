@@ -125,7 +125,7 @@ async function main() {
     site: mission.landing_site ? labels.add("Landing Site · 86.8° S", { priority: 8, kind: "site" }) : null,
     gateway: nrho ? labels.add("Gateway", { priority: 7 }) : null,
     ship: labels.add("", { priority: 10, kind: "ship" }),
-    pad: labels.add("LC-39B", { priority: 6 }),
+    pad: labels.add(mission.launch_site?.name || "LC-39B", { priority: 6 }),
     l2: labels.add("L2", { priority: 3 }),
   };
   for (const b of extraBodies) {
