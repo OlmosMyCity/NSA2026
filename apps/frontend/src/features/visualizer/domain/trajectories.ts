@@ -12,6 +12,8 @@ const TRAJECTORIES_BY_ID: Record<string, string> = {
   'mission-02': 'data/mission_iss_leo.json',
   'mission-03': 'data/mission_lunar_base.json',
   'mission-04': 'data/mission_mars_transit.json',
+  'mission-05': 'data/mission_jupiter_europa.json',
+  'mission-06': 'data/mission_venus_flyby.json',
 };
 
 const DATA_FILES = {
@@ -19,6 +21,8 @@ const DATA_FILES = {
   leo: 'data/mission_iss_leo.json',
   lunarBase: 'data/mission_lunar_base.json',
   mars: 'data/mission_mars_transit.json',
+  jupiter: 'data/mission_jupiter_europa.json',
+  venus: 'data/mission_venus_flyby.json',
 } as const;
 
 export type TrajectoryMissionInput =
@@ -40,6 +44,14 @@ export function resolveDefaultDataFile(missionOrId: TrajectoryMissionInput): str
   }
 
   const text = `${missionOrId.name} ${missionOrId.description ?? ''}`.toLowerCase();
+
+  if (/\b(jupiter|europa|jovian|outer system|saturn)\b/.test(text)) {
+    return DATA_FILES.jupiter;
+  }
+
+  if (/\b(venus|vesper|mercury|inner system)\b/.test(text)) {
+    return DATA_FILES.venus;
+  }
 
   if (
     missionOrId.environment === 'MARS_BASE' ||

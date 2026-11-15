@@ -77,7 +77,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
         dataFile: trajectoryOverride !== 'auto' ? trajectoryOverride : undefined,
       })
     : null;
-  const { ready, time, seek, play, pause } = useViewerBridge(frameRef);
+  const { ready, time, seek, play, pause } = useViewerBridge(frameRef, viewerSrc);
 
   const now = Date.now();
   const nowMetRaw = mission ? metOf(new Date(now).toISOString(), mission.startDate) : 0;

@@ -99,9 +99,14 @@ async function main() {
   // Etiquetas
   const labels = createLabels($("labels"), camera);
   const label = {
-    earth: labels.add("Tierra", { priority: 9, kind: "body" }),
-    moon: labels.add("Luna", { priority: 9, kind: "body" }),
-    site: mission.landing_site ? labels.add("Sitio de alunizaje · 86,8° S", { priority: 8, kind: "site" }) : null,
+    earth: labels.add("Earth", { priority: 9, kind: "body" }),
+    moon: labels.add("Moon", { priority: 9, kind: "body" }),
+    mercury: labels.add("Mercury", { priority: 5, kind: "body" }),
+    venus: labels.add("Venus", { priority: 6, kind: "body" }),
+    mars: labels.add("Mars", { priority: 7, kind: "body" }),
+    jupiter: labels.add("Jupiter", { priority: 6, kind: "body" }),
+    saturn: labels.add("Saturn", { priority: 5, kind: "body" }),
+    site: mission.landing_site ? labels.add("Landing Site · 86.8° S", { priority: 8, kind: "site" }) : null,
     gateway: nrho ? labels.add("Gateway", { priority: 7 }) : null,
     ship: labels.add("", { priority: 10, kind: "ship" }),
     pad: labels.add("LC-39B", { priority: 6 }),
@@ -447,7 +452,7 @@ async function main() {
             : /lunar_base/i.test(dataUrl)
               ? { id: "hls", name: VEHICLE_FULL_LABEL.hls }
               : vehicleAt(t, events);
-    const shipName = landed ? "HLS · sitio de alunizaje, 86,8° S" : SHIP_LABEL[vehicle.id];
+    const shipName = landed ? "HLS · Landing Site, 86.8° S" : SHIP_LABEL[vehicle.id];
     if (shipName !== vehicleName) {
       vehicleName = shipName;
       label.ship.el.textContent = shipName;
@@ -513,6 +518,21 @@ async function main() {
         look(gateway, "gateway", scaleNear(gateway.position));
         if (occluders.some((o) => labels.hidden(gateway.position, o))) gateway.visible = false;
         label.gateway.pos.copy(gateway.position);
+      }
+    }
+
+    // Position deep-space Solar System planets relative to focus
+    if (view.solarPlanets) {
+      const fx = focus[0] / KM_PER_UNIT;
+      const fy = focus[1] / KM_PER_UNIT;
+      const fz = focus[2] / KM_PER_UNIT;
+      for (const [key, planet] of Object.entries(view.solarPlanets)) {
+        const [bx, by, bz] = planet.userData.basePos;
+        planet.position.set(bx - fx, by - fy, bz - fz);
+        if (label[key]) {
+          label[key].pos.copy(planet.position);
+          label[key].active = true;
+        }
       }
     }
 

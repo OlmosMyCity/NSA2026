@@ -3,14 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Orbit, Dna, Clock } from 'lucide-react';
+import { Dna, Clock, Rocket } from 'lucide-react';
 import { AppLayout } from '@/features/common/components/AppLayout';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { astronautService } from '@/features/astronauts/services/astronautService';
 import { missionService } from '@/features/missions/services/missionService';
 import type { Mission } from '@/features/missions/domain/types';
 import { MissionHealthView } from '@/features/visualizer/components/MissionHealthView';
-import { OrbitTrajectoryViewer } from '@/features/visualizer/components/OrbitTrajectoryViewer';
 
 const MolecularTwinSection = dynamic(
   () =>
@@ -22,7 +21,7 @@ const MolecularTwinSection = dynamic(
 
 export default function VisualizerPage() {
   const { user, isAuthenticated } = useAuth();
-  const [tab, setTab] = useState<'moment' | 'orbit' | 'molecular'>('moment');
+  const [tab, setTab] = useState<'moment' | 'molecular'>('moment');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [loadingMissions, setLoadingMissions] = useState(true);
@@ -76,8 +75,8 @@ export default function VisualizerPage() {
               3D Mission &amp; Biophysics Visualizer
             </h1>
             <p className="mt-1.5 text-sm text-stem max-w-2xl">
-              Track your mission&apos;s live elapsed-time moment, explore full orbital trajectories
-              (Earth LEO, Moon, Mars Transit), or inspect A100 molecular docking and DNA repair.
+              Track any mission&apos;s live elapsed-time moment across Earth LEO, Moon, Mars,
+              Venus, or Jupiter, or inspect A100 molecular docking and DNA repair kinetics.
             </p>
           </div>
 
@@ -93,18 +92,6 @@ export default function VisualizerPage() {
             >
               <Clock className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Live Mission Moment</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('orbit')}
-              className={`tactile-press inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-xs font-semibold transition ${
-                tab === 'orbit'
-                  ? 'bg-blueberry text-white shadow-sm'
-                  : 'border border-line bg-surface text-stem hover:text-blueberry'
-              }`}
-            >
-              <Orbit className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Full Trajectories</span>
             </button>
             <button
               type="button"
@@ -163,22 +150,20 @@ export default function VisualizerPage() {
             ) : (
               <div className="surface-card p-8 text-center space-y-3">
                 <p className="text-sm text-blueberry font-medium">
-                  Sign in or create a mission to track its live elapsed-time simulation.
+                  Sign in or create a mission to track its live elapsed-time 3D simulation.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setTab('orbit')}
+                <Link
+                  href="/missions/new"
                   className="tactile-press inline-flex items-center gap-1.5 rounded-pill bg-blueberry px-4 py-2 text-xs font-semibold text-white"
                 >
-                  <Orbit className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Open Full Trajectories</span>
-                </button>
+                  <Rocket className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Create a Mission</span>
+                </Link>
               </div>
             )}
           </div>
         )}
 
-        {tab === 'orbit' && <OrbitTrajectoryViewer />}
         {tab === 'molecular' && <MolecularTwinSection />}
       </div>
     </AppLayout>

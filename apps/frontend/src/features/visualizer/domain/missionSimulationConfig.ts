@@ -27,6 +27,8 @@ export const TRAJECTORY_PRESETS: TrajectoryPresetOption[] = [
   { id: 'data/mission.json', label: 'Cislunar Transfer & Gateway NRHO' },
   { id: 'data/mission_lunar_base.json', label: 'Lunar South Pole & Rover Traverse' },
   { id: 'data/mission_mars_transit.json', label: 'Mars Interplanetary Transit' },
+  { id: 'data/mission_jupiter_europa.json', label: 'Jupiter / Europa Outer-System Cruise' },
+  { id: 'data/mission_venus_flyby.json', label: 'Venus Inner-System Gravity Assist' },
 ];
 
 export interface MissionSimulationConfig {
