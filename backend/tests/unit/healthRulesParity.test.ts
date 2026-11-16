@@ -15,19 +15,28 @@ import {
  */
 // vitest se ejecuta desde backend (npm test).
 const FRONTEND_EVALUATE = path.resolve(process.cwd(), "../frontend/src/domain/health/evaluate.ts");
+const FRONTEND_PROTOCOLS = path.resolve(process.cwd(), "../frontend/src/domain/health/medicalProtocols.ts");
 
 type FrontStatus = "green" | "amber" | "red" | "unknown";
 interface FrontendRules {
   evaluateIndicator: (indicator: string, value: number) => { status: FrontStatus };
-  evaluateVitals: (v: HealthReadingInput) => { status: string; alerts: Array<{ indicator: string; level: string }> };
+  evaluateVitals: (v: HealthReadingInput) => {
+    status: string;
+    alerts: Array<{ indicator: string; level: string; protocolId?: string }>;
+  };
+}
+interface FrontendProtocols {
+  MEDICAL_PROTOCOLS: Record<string, { steps: string[]; reference: string }>;
 }
 
 const TO_BACKEND: Record<FrontStatus, string> = { green: "OK", amber: "WARNING", red: "CRITICAL", unknown: "?" };
 
 let front: FrontendRules;
+let frontProtocols: FrontendProtocols;
 
 beforeAll(async () => {
   front = (await import(FRONTEND_EVALUATE)) as FrontendRules;
+  frontProtocols = (await import(FRONTEND_PROTOCOLS)) as FrontendProtocols;
 });
 
 /** Valores a probar: cada límite, ±0.05 alrededor y una rejilla fina del rango físico. */
@@ -73,7 +82,14 @@ describe("Paridad de reglas clínicas backend ↔ frontend", () => {
       const backend = evaluateReading(vitals);
       const frontend = front.evaluateVitals(vitals);
       expect(frontend.status).toBe(backend.status);
-      expect(frontend.alerts.map((a) => [a.indicator, a.level])).toEqual(backend.alerts.map((a) => [a.indicator, a.level]));
+      expect(frontend.alerts.map((a) => [a.indicator, a.level, a.protocolId])).toEqual(
+        backend.alerts.map((a) => [a.indicator, a.level, a.protocolId])
+      );
+      for (const alert of backend.alerts) {
+        const guide = frontProtocols.MEDICAL_PROTOCOLS[alert.protocolId];
+        expect(guide, `Missing guided protocol for ${alert.protocolId}`).toBeDefined();
+        expect(guide.steps.length).toBeGreaterThanOrEqual(2);
+      }
     }
   });
 });
