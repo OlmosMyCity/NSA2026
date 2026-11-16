@@ -14,6 +14,7 @@ import {
 import { API_STATUS } from '../../../domain/health/api-adapter';
 import { INDICATOR_GUIDES } from '../../../domain/health/education';
 import { nominalLabel } from '../../../domain/health/evaluate';
+import { loadActiveFollowUpNote, setFollowUpItemDone } from '../../../domain/health/followUpStorage';
 import { INDICATORS } from '../../../domain/health/indicators';
 import {
   getMedicalProtocolsForAlerts,
@@ -32,20 +33,24 @@ export type CriticalVerificationPhase =
 interface AssessmentPanelProps {
   evaluation: EvaluationResult;
   vitals: Vitals;
+  astronautId?: string | null;
   astronautName: string | undefined;
   verificationPhase: CriticalVerificationPhase;
   onApplyRecheck: (updatedVitals: Vitals) => void;
   onEmergencyBypass: () => void;
+  onCheckedStepsChange?: (steps: Record<string, boolean>) => void;
 }
 
 /** Vista previa del veredicto (misma tabla clínica que usa el backend al guardar). */
 export function AssessmentPanel({
   evaluation,
   vitals,
+  astronautId,
   astronautName,
   verificationPhase,
   onApplyRecheck,
   onEmergencyBypass,
+  onCheckedStepsChange,
 }: AssessmentPanelProps) {
   const status = API_STATUS[evaluation.status];
   const protocols = useMemo(
@@ -65,11 +70,29 @@ export function AssessmentPanel({
   }, [vitals]);
 
   useEffect(() => {
-    setCheckedSteps({});
-  }, [evaluation.alerts, astronautName]);
+    const initial: Record<string, boolean> = {};
+    if (astronautId) {
+      const existing = loadActiveFollowUpNote(astronautId);
+      if (existing) {
+        for (const item of existing.items) {
+          if (item.done) initial[item.id] = true;
+        }
+      }
+    }
+    setCheckedSteps(initial);
+    onCheckedStepsChange?.(initial);
+  }, [evaluation.alerts, astronautId, astronautName, onCheckedStepsChange]);
 
   const toggleStep = (key: string) => {
-    setCheckedSteps((prev) => ({ ...prev, [key]: !prev[key] }));
+    setCheckedSteps((prev) => {
+      const nextVal = !prev[key];
+      const next = { ...prev, [key]: nextVal };
+      if (astronautId) {
+        setFollowUpItemDone(astronautId, key, nextVal);
+      }
+      onCheckedStepsChange?.(next);
+      return next;
+    });
   };
 
   const totalSteps = protocols.reduce((acc, p) => acc + p.steps.length, 0);

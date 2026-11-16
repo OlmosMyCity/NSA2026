@@ -50,12 +50,18 @@ const EVALUATED_FIELDS: Array<{ indicator: IndicatorId; field: keyof Vitals }> =
 
 type OpticalSyncField = 'heartRateBpm' | 'sleepHours';
 
-export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?: string }) {
+export function ReadingFormWizard({
+  initialAstronautId,
+  initialStep = 0,
+}: {
+  initialAstronautId?: string;
+  initialStep?: number;
+}) {
   const router = useRouter();
   const crew = useCrewSelection(initialAstronautId);
   const vitalsSectionRef = useRef<HTMLDivElement | null>(null);
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(initialStep);
   const [scannerOpen, setScannerOpen] = useState(true);
   const [vitals, setVitals] = useState<Vitals>(DEFAULT_VITALS);
   const [manuallyEdited, setManuallyEdited] = useState<Partial<Record<OpticalSyncField, boolean>>>({});
@@ -67,6 +73,10 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [prefilledFromLog, setPrefilledFromLog] = useState(false);
   const userTouchedVitalsRef = useRef(false);
+  const checkedStepsRef = useRef<Record<string, boolean>>({});
+  const handleCheckedStepsChange = useCallback((steps: Record<string, boolean>) => {
+    checkedStepsRef.current = steps;
+  }, []);
 
   // Scroll to top whenever switching between wizard steps (e.g. Optical Scan -> Review)
   useEffect(() => {
@@ -298,11 +308,15 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
       if (evaluation.status === 'WARNING') {
         const protocols = getMedicalProtocolsForAlerts(evaluation.alerts);
         const primary = protocols[0];
-        const items = (primary?.steps ?? []).slice(0, 3).map((s, idx) => ({
-          id: `${primary?.protocolId ?? 'warn'}-${idx}`,
-          text: s.action,
-          howTo: s.howTo,
-        }));
+        const items = (primary?.steps ?? []).slice(0, 3).map((s, idx) => {
+          const id = `${primary?.protocolId ?? 'warn'}-${idx}`;
+          return {
+            id,
+            text: s.action,
+            howTo: s.howTo,
+            done: Boolean(checkedStepsRef.current[id]),
+          };
+        });
         if (items.length > 0) {
           saveFollowUpNote({
             astronautId: crew.selectedId,
@@ -534,10 +548,12 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
             <AssessmentPanel
               evaluation={evaluation}
               vitals={vitals}
+              astronautId={crew.selectedId}
               astronautName={crew.selected?.name}
               verificationPhase={verificationPhase}
               onApplyRecheck={handleApplyRecheck}
               onEmergencyBypass={() => setVerificationPhase('emergency_bypass')}
+              onCheckedStepsChange={handleCheckedStepsChange}
             />
             <p className="flex items-start gap-2 border-t border-line pt-4 text-[11px] text-stem">
               <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" aria-hidden="true" />

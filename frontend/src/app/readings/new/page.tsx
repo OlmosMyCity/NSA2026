@@ -3,14 +3,23 @@ import { AppLayout } from '@/components/common/AppLayout';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { ReadingFormWizard } from '@/components/health/ReadingFormWizard';
 
-function ReadingPageContent({ searchParams }: { searchParams: { astronautId?: string } }) {
-  return <ReadingFormWizard initialAstronautId={searchParams?.astronautId} />;
+function ReadingPageContent({
+  searchParams,
+}: {
+  searchParams: { astronautId?: string; step?: string };
+}) {
+  return (
+    <ReadingFormWizard
+      initialAstronautId={searchParams?.astronautId}
+      initialStep={searchParams?.step === 'review' ? 1 : 0}
+    />
+  );
 }
 
 export default function NewReadingPage({
   searchParams,
 }: {
-  searchParams: { astronautId?: string };
+  searchParams: { astronautId?: string; step?: string };
 }) {
   return (
     <AppLayout>

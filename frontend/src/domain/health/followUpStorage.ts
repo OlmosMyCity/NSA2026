@@ -67,14 +67,13 @@ export function saveFollowUpNote(input: {
   }
 }
 
-export function loadActiveFollowUpNote(astronautId: string, nowMs = Date.now()): FollowUpStickyRecord | null {
+export function loadActiveFollowUpNote(astronautId: string): FollowUpStickyRecord | null {
   if (typeof window === 'undefined' || !astronautId) return null;
   try {
     const raw = window.localStorage.getItem(keyFor(astronautId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as FollowUpStickyRecord;
-    if (!parsed || typeof parsed.expiresAt !== 'number' || parsed.expiresAt <= nowMs) {
-      window.localStorage.removeItem(keyFor(astronautId));
+    if (!parsed || typeof parsed.expiresAt !== 'number' || !Array.isArray(parsed.items)) {
       return null;
     }
     return parsed;
@@ -85,17 +84,16 @@ export function loadActiveFollowUpNote(astronautId: string, nowMs = Date.now()):
 
 export function loadLatestActiveFollowUpNote(
   preferredAstronautId?: string,
-  nowMs = Date.now()
 ): FollowUpStickyRecord | null {
   if (typeof window === 'undefined') return null;
   if (preferredAstronautId) {
-    const own = loadActiveFollowUpNote(preferredAstronautId, nowMs);
+    const own = loadActiveFollowUpNote(preferredAstronautId);
     if (own) return own;
   }
   try {
     const latestId = window.localStorage.getItem(LATEST_KEY);
     if (!latestId) return null;
-    const found = loadActiveFollowUpNote(latestId, nowMs);
+    const found = loadActiveFollowUpNote(latestId);
     if (!found) {
       window.localStorage.removeItem(LATEST_KEY);
     }
@@ -105,12 +103,18 @@ export function loadLatestActiveFollowUpNote(
   }
 }
 
-export function toggleFollowUpItem(astronautId: string, itemId: string): FollowUpStickyRecord | null {
+export function setFollowUpItemDone(
+  astronautId: string,
+  itemId: string,
+  done: boolean,
+): FollowUpStickyRecord | null {
   const current = loadActiveFollowUpNote(astronautId);
   if (!current || typeof window === 'undefined') return null;
+  const hasItem = current.items.some((it) => it.id === itemId);
+  if (!hasItem) return current;
   const updated: FollowUpStickyRecord = {
     ...current,
-    items: current.items.map((it) => (it.id === itemId ? { ...it, done: !it.done } : it)),
+    items: current.items.map((it) => (it.id === itemId ? { ...it, done } : it)),
   };
   try {
     window.localStorage.setItem(keyFor(astronautId), JSON.stringify(updated));
@@ -119,6 +123,14 @@ export function toggleFollowUpItem(astronautId: string, itemId: string): FollowU
     // Ignore storage failures.
   }
   return updated;
+}
+
+export function toggleFollowUpItem(astronautId: string, itemId: string): FollowUpStickyRecord | null {
+  const current = loadActiveFollowUpNote(astronautId);
+  if (!current || typeof window === 'undefined') return null;
+  const target = current.items.find((it) => it.id === itemId);
+  if (!target) return current;
+  return setFollowUpItemDone(astronautId, itemId, !target.done);
 }
 
 export function clearFollowUpNote(astronautId: string): void {
