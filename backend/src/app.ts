@@ -31,7 +31,10 @@ function buildAllowedOrigins(): Set<string> {
     "http://127.0.0.1:3000",
   ]);
 
-  const envOrigins = process.env.ALLOWED_ORIGINS?.split(",") ?? [];
+  const envOrigins = [
+    ...(process.env.ALLOWED_ORIGINS?.split(",") ?? []),
+    ...(process.env.CORS_ORIGIN?.split(",") ?? []),
+  ];
   for (const item of envOrigins) {
     const trimmed = item.trim().replace(/\/+$/, "");
     if (trimmed) origins.add(trimmed);

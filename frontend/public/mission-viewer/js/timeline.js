@@ -82,7 +82,7 @@ export function createTimeline(dom, mission, state, on) {
     el.className = "event-tick";
     el.style.left = `${scale.toFraction(e.t) * 100}%`;
     el.title = e.label;
-    el.setAttribute("aria-label", `Ir a ${e.label}`);
+    el.setAttribute("aria-label", `Go to ${e.label}`);
     el.addEventListener("click", () => {
       seek(e.t);
       on.jump(e);
@@ -134,7 +134,7 @@ export function createTimeline(dom, mission, state, on) {
   function setPlaying(on) {
     state.playing = on;
     dom.play.textContent = on ? "❚❚" : "▶";
-    dom.play.setAttribute("aria-label", on ? "Pausa" : "Reproducir");
+    dom.play.setAttribute("aria-label", on ? "Pause" : "Play");
   }
 
   function togglePlay() {

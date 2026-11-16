@@ -251,7 +251,7 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
             items,
           });
         }
-      } else if (evaluation.status === 'OK') {
+      } else {
         clearFollowUpNote(crew.selectedId);
       }
 

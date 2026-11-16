@@ -1,78 +1,108 @@
-# Orbvital Frontend (`frontend`)
+# Orbvital Frontend
 
-Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, and Three.js (`@react-three/fiber` / `@react-three/drei`) web console for astronaut physiological self-monitoring, 3D Digital Twin rehearsal, mission trajectory awareness, contactless camera biometrics, and Flight Surgeon oversight.
+Next.js 14 (App Router, TypeScript, Tailwind CSS) client for **Orbvital** — Autonomous Deep-Space Crew Health, Contactless Vision Biometrics & Radiation Triage ([orbvital.health](https://orbvital.health)).
+
+> Documentation index: [Root README](../README.md) · [Backend README](../backend/README.md) · [Vision README](../vision/README.md) · [Wireframes](../docs/wireframes/README.md)
 
 ---
 
-## Architectural Design
+## Key Capabilities
 
-The frontend follows a **Layered Architecture** under `src/`, keeping `src/app/` (Next.js routes) thin:
-
-| Folder | Layer | Contents |
-| :--- | :--- | :--- |
-| `src/app/` | Routing / pages | Next.js App Router pages and layouts |
-| `src/components/<feature>/` | Presentation | UI components grouped by feature (`health`, `visualizer`, `vision`, `radiation`, `admin`, `missions`, `astronauts`, `routine`, `auth`, `landing`, `common`) |
-| `src/hooks/` | State | React hooks (`useAstronauts`, `useMissions`, `useHealthReadings`, `useActiveAstronaut`, `useViewerBridge`) |
-| `src/context/` | State | `AuthContext` provider |
-| `src/services/` | Data access | API clients over `httpClient.ts` (health, digital twin, missions, astronauts, auth, radiation, vision, routine, admin triage, storage) |
-| `src/domain/<feature>/` | Domain | Types and pure client-side logic |
-| `src/config/` | Configuration | `env.ts` |
-| `src/mocks/` | Offline data | `mockDb.ts`, `healthHistory.ts`, `visionMock.ts` |
-
-Highlights by feature:
-
-- **3D Physiological Digital Twin** (`/dashboard`, `/trends`, `/readings/new`):
-  - `domain/health/`: Pure clinical evaluation engine (`evaluate.ts`, `indicators.ts`, `summary.ts`, `trends.ts`, `education.ts`, `status-theme.ts`) mirroring NASA HRP thresholds and color states (`green`, `amber`, `red`).
-  - `services/healthService.ts` (readings & mock fallback) and `services/digitalTwinService.ts` (server-side twin hydration, stateless What-If evaluation, Gemini Decision 1 triage).
-  - `components/health/`: Interactive Three.js `Body3D` anatomical twin plus the `HealthDashboard` workspace featuring `twin/TwinOverview`, `twin/ZoneSelector`, `twin/ZoneInspector`, `twin/ThresholdSlider`, `twin/ScenarioDock`, and `TriageDecisionCard`.
-- **3D Orbit & Multi-Mission Visualizer** (`/visualizer`): `components/visualizer/OrbitTrajectoryViewer.tsx` supporting Artemis IV Cislunar/Gateway NRHO, ISS LEO, Lunar Base, Mars Transit, Venus Flyby, Jupiter/Europa, custom trajectory uploads, launch vehicle overrides, and mission-clock hazard correlation (`domain/visualizer/missionClock.ts`, `phaseHazards.ts`).
-- **Contactless Vision Biometrics Client** (`/vision`): connects via WebSocket (`/ws/telemetry`) or HTTP frame fallback to `vision`, rendering real-time BVP/PSD plots, PERCLOS/fatigue alerts, and automatically syncing biometric frames every **30 seconds** into `/api/readings/vision-ingest`.
-- **Space-Weather Banner & Live Incident Alerts**: `components/radiation/RadiationStatusBanner.tsx` and SSE-powered `IncidentNotificationCenter.tsx` connected to `/api/incidents/stream`.
-- **Flight Surgeon Console** (`/admin`): priority-sorted crew triage matrix correlated with NOAA storm scale (`components/admin/FlightSurgeonConsole.tsx`) and clinical directive dispatch.
-- Missions, astronauts, routine, auth, landing and common: crew/mission management, countermeasure streaks & gamified checklists, JWT route protection, and shared mission-console UI primitives.
+- **3D Digital Twin & 5-Habitat Calibration (`/dashboard`)**: Interactive Three.js / React Three Fiber anatomical model (`Body3D.tsx`, `twin/`) mapping 7 physiological vitals across 5 anatomical zones (`Heart`, `Brain & Mood`, `Blood & Respiration`, `Bones & Muscles`, `Sleep`) and 5 operational habitats (`SPACECRAFT`, `STATION`, `ROVER`, `LUNAR_BASE`, `MARS_BASE`), plus a risk-free `WhatIfPanel` & `ScenarioDock`.
+- **Guided Reading Wizard & Bounded Critical Verification (`/readings/new`)**: 4-step clinical intake (`ReadingFormWizard.tsx`) paired with 20 deterministic NASA-STD-3001 clinical protocols (`domain/health/medicalProtocols.ts`: `PROTO_NOMINAL` + 19 caution/critical protocols). `CRITICAL` evaluations trigger a bounded verification loop (checklist + single confirmatory vitals re-check or explicit emergency bypass), while `WARNING` readings schedule a persistent **15-minute Follow-Up Sticky Note** (`FollowUpStickyNote.tsx`) with deep-linked re-evaluation.
+- **Data Freshness & Operational Triage**: `FreshnessRing.tsx`, `FreshnessReminder.tsx`, and `useFreshnessPhase.ts` track vital validity windows (`NEXT_PUBLIC_FRESHNESS_WINDOW_MIN=15`).
+- **Trends & Space-Weather Correlation (`/trends`)**: Historical biomarker charts correlated against live/fallback NOAA SWPC solar radiation scales and NASA DONKI CME telemetry.
+- **3D Orbit & Mission Health Visualizer (`/visualizer`)**: Interactive NRHO mission trajectory and health timeline (`MissionHealthView.tsx`, `MissionMomentPanel.tsx`, `MissionTimeline.tsx`, backed by `/mission-viewer/index.html`).
+- **Contactless Vision Biometrics (`/vision`)**: Live webcam/frame integration with the FastAPI `vision/` microservice (or automatic in-browser `visionMock.ts` fallback when running standalone).
+- **Role-Based Consoles**: Crew workspace, Ground Operator supervision (`/operator`, `/operator/[id]`), and Flight Surgeon command center (`/admin`) with SSE incident alerts (`IncidentNotificationCenter.tsx`).
 
 ---
 
 ## Application Routes (`src/app/`)
 
-| Route | View | Description |
-| :--- | :--- | :--- |
-| `/` | Landing | Platform overview & NASA HRP 5-Hazard matrix introduction |
-| `/dashboard` | Physiological Digital Twin | 3D anatomical twin, zone inspector, zero-token What-If Scenario Dock, and Gemini Decision 1 triage |
-| `/trends` | Longitudinal Trends | Time-series indicator charts with green/amber/red physiological bands |
-| `/vision` | AI Vision Biometrics | Webcam / simulator rPPG BPM, HRV, PERCLOS fatigue & 30s DB sync |
-| `/readings/new` | Vital Log Wizard | Step-by-step capture of the 7 NASA HRP indicators with measurement instructions |
-| `/routine` | Countermeasures & Routine | Daily crew health checklist, adherence streaks, and badges |
-| `/visualizer` | 3D Mission Trajectory | Real-time 3D orbital/interplanetary tracker and phase hazard timeline |
-| `/missions`, `/missions/new`, `/missions/[id]`, `/missions/[id]/edit` | Mission Registry | Mission lifecycle management and custom trajectory configuration |
-| `/astronauts`, `/astronauts/new`, `/astronauts/[id]/edit` | Crew Roster | Crew member registry, role profiles, and medical photos |
-| `/admin` | Flight Surgeon Console | Protected (`ADMIN`) triage matrix, radiation incident feed, and directive dispatch |
-| `/login`, `/register` | Authentication | Crew & Flight Surgeon JWT login and registration |
+| Route | View / Responsibility |
+| :--- | :--- |
+| `/` | Public landing & mission overview |
+| `/login`, `/register`, `/profile` | Authentication & user profile |
+| `/dashboard` | 3D Digital Twin, 5-zone inspector, habitat calibration, What-If dock |
+| `/readings/new` | 4-step health intake wizard, protocol checklist, critical re-check, 15-min follow-up trigger |
+| `/trends` | Longitudinal vitals & solar-wind correlation (`TrendsView.tsx`) |
+| `/vision` | Contactless rPPG / PERCLOS / mood / identity telemetry (`VisionBiometricsPanel.tsx`) |
+| `/routine` | Crew circadian, exercise & countermeasure routines |
+| `/visualizer` | 3D NRHO Orbit & Mission Health Timeline |
+| `/missions`, `/missions/new`, `/missions/[id]`, `/missions/[id]/edit` | Mission catalog & CRUD management |
+| `/astronauts`, `/astronauts/new`, `/astronauts/[id]/edit` | Crew roster, profile & face biometrics manager |
+| `/operator`, `/operator/[id]` | Ground Operator crew overview & location/health record |
+| `/admin` | Flight Surgeon Console: triage matrix, clinical directives, radiation incidents, operator provisioning |
 
 ---
 
-## Environment Variables (`frontend/.env.local`)
+## Project Structure (`src/`)
 
-See `frontend/.env.example`:
-
-| Variable | Example | Purpose |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_HOST` | `http://localhost:4000/api` | Base URL for backend REST endpoints and SSE stream |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Root backend URL consumed by the 3D Trajectory Viewer |
-| `NEXT_PUBLIC_VISION_URL` | `http://localhost:8000` | Optional `vision` FastAPI & WebSocket server URL |
-| `NEXT_PUBLIC_USE_MOCKS` | `false` | Toggle offline client mock storage during UI-only development |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | Optional Supabase URL for asset storage |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `<anon-key>` | Optional public anon key for Supabase client storage |
-| `NEXT_PUBLIC_SUPABASE_BUCKET` | `artemis-assets` | Asset storage bucket name |
-
----
-
-## Scripts
-
-```bash
-npm run dev      # Start Next.js development server on http://localhost:3000
-npx tsc --noEmit # Typecheck TypeScript strictly
-npm run lint     # Run Next.js ESLint checks
-npm run build    # Production bundle build
+```text
+frontend/src/
+├── app/                   # Next.js 14 App Router pages
+├── components/
+│   ├── admin/             # FlightSurgeonConsole, CrewTriageCard, DirectiveDialog, OperatorAccessPanel, ...
+│   ├── astronauts/        # AstronautCard, AstronautForm, FaceBiometricsManager, AstronautsList, ...
+│   ├── auth/              # Login & registration forms
+│   ├── common/            # AppLayout, Navbar, Footer, ConfirmModal, OnboardingModal, webglSupport
+│   ├── health/            # Body3D, HealthDashboard, ReadingFormWizard, FollowUpStickyNote,
+│   │   ├── reading-form/  # AssessmentPanel, MoodCheckIn, VitalField, steps.ts
+│   │   └── twin/          # ScenarioDock, ThresholdSlider, TwinOverview, ZoneInspector, ZoneSelector
+│   ├── landing/           # Hero & feature showcases
+│   ├── missions/          # MissionCard, MissionForm, MissionsList
+│   ├── operator/          # OperatorConsole, OperatorCrewRecord
+│   ├── radiation/         # IncidentNotificationCenter, RadiationStatusBanner
+│   ├── routine/           # Routine tracking components
+│   ├── vision/            # VisionBiometricsPanel
+│   └── visualizer/        # MissionHealthView, MissionMomentPanel, MissionTimeline
+├── config/                # Client runtime configuration
+├── context/               # Auth & active crew contexts
+├── domain/                # Pure TypeScript domain models & deterministic rules
+│   ├── admin/
+│   ├── astronauts/
+│   ├── auth/
+│   ├── common/
+│   ├── health/            # evaluate.ts, medicalProtocols.ts, followUpStorage.ts, freshness.ts, ...
+│   ├── missions/
+│   ├── operator/
+│   ├── routine/
+│   ├── vision/
+│   └── visualizer/
+├── hooks/                 # useActiveAstronaut, useCrewSelection, useFreshnessPhase, useViewerBridge, ...
+├── mocks/                 # mockData.ts, mockServer.ts, visionMock.ts (only bundled when NEXT_PUBLIC_USE_MOCKS=true)
+└── services/              # httpClient.ts + typed REST/SSE service clients
 ```
 
+---
+
+## Quickstart & Commands
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Available scripts (`frontend/package.json`):
+
+- `npm run dev` — Start local development server (`http://localhost:3000`).
+- `npm run build` — Production Next.js build.
+- `npm run start` — Serve production build.
+- `npm run lint` — Run Next.js ESLint checks.
+
+---
+
+## Environment Variables (`frontend/.env.example`)
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_API_HOST` | Backend REST base URL (`http://localhost:4000/api` in dev, `/api` behind Vercel rewrites) | `http://localhost:4000/api` |
+| `NEXT_PUBLIC_API_URL` | Backend origin used by `/visualizer` (`MissionTimeline` / `mission-viewer`) | `http://localhost:4000` |
+| `NEXT_PUBLIC_USE_MOCKS` | Enable in-browser mock server (`src/mocks/`) for offline frontend-only demos | `false` |
+| `NEXT_PUBLIC_FRESHNESS_WINDOW_MIN` | Living vitals freshness window in minutes (must match backend `FRESHNESS_WINDOW_MIN`) | `15` |
+| `NEXT_PUBLIC_VISION_URL` | Optional Python `vision/` FastAPI microservice origin | `http://localhost:8000` |
+
+> Media uploads go through the backend (`POST /api/uploads/*`); no Vercel Blob or Supabase storage keys are exposed to the frontend bundle.

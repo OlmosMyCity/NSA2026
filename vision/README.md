@@ -1,54 +1,70 @@
-# Orbvital AI Vision Biometrics (`vision`)
+# Orbvital Vision — Contactless Biometrics Microservice
 
-Lightweight, **100% open-source, CPU-optimized** Python 3.11 FastAPI microservice (`astronaut_vitals`) providing non-invasive optical capture of cardiovascular vitals, sleep/fatigue biomarkers, and psychological affect from standard cabin RGB or near-infrared (NIR) video streams.
+FastAPI computer-vision service for **Orbvital** that turns a standard RGB camera or uploaded video frames into contactless astronaut biometric telemetry and biometric identity embeddings.
 
----
-
-## Core Biometric Engines (`src/`)
-
-1. **Facial Landmark & ROI Extraction (`src/vision/face_tracker.py`)**:
-   - Extracts 478 3D facial landmarks via **MediaPipe Face Landmarker** (with OpenCV geometric fallback), segmenting glabella/forehead and cheek polygons for pulse extraction while computing normalized eyelid/mouth apertures and Action Unit geometry.
-2. **Multi-Camera rPPG Heart Rate & HRV (`src/engines/rppg_engine.py`)**:
-   - Supports standard RGB via **POS** (*Plane-Orthogonal-to-Skin*, Wang et al.) and **CHROM** (*Chrominance*, De Haan & Jeanne), plus a single-channel spatial-temporal **NIR-rPPG** pipeline for low-light/infrared sleep pods.
-   - Applies detrending, Butterworth bandpass filtering ($0.75\text{–}3.0\text{ Hz} \equiv 45\text{–}180\text{ BPM}$), Welch spectral PSD with parabolic peak interpolation, **HRV (`RMSSD`, `SDNN` ms)**, respiration rate (RPM), and Signal Quality Index (**SQI `0–100%`**).
-3. **Sleep Quality, Drowsiness & Video Actigraphy (`src/engines/sleep_engine.py`)**:
-   - **`cabin_active` Mode:** Computes **EAR** (*Eye Aspect Ratio*), NASA-standard **PERCLOS** (rolling eyelid closure percentage), **MAR** (*Mouth Aspect Ratio* yawn counter), 3D head-pose pitch/yaw/roll nodding, and microsleep episode alerts.
-   - **`sleep_pod` Mode:** Inter-frame motion energy actigraphy classifying rest stages (`Deep Rest`, `Light/Restless Sleep`, `Awake`) alongside composite `sleep_quality_score` (`0–100`).
-4. **Mood & Psychological Stress (`src/engines/mood_engine.py`)**:
-   - Fuses **ONNX Runtime** neural inference (`emotion-ferplus-8.onnx`) with geometric facial Action Units (brow furrow, smile ratio, ocular droop) to output dominant operational state, Stress Index (`0–100`), Valence (`-1.0` to `+1.0`), and Cognitive Alertness (`0–100`).
+> Documentation index: [Root README](../README.md) · [Frontend README](../frontend/README.md) · [Backend README](../backend/README.md)
 
 ---
 
-## API Surface (`src/api/app.py`)
+## Computer Vision Pipeline (`src/`)
 
-- `GET /` — Built-in telemetry HUD (`src/api/static/index.html`)
-- `GET /api/health` — Model load readiness (`ferplus_onnx_loaded`, `mediapipe_landmarker_loaded`, active backends)
-- `GET /api/telemetry/latest` — Latest `AstronautTelemetryFrame` snapshot (warms up from `SyntheticAstronautGenerator` on cold start)
-- `POST /api/telemetry/tick` — Step synthetic simulator telemetry for demo/calibration modes
-- `POST /api/analyze/frame` — Analyze a single uploaded image frame (`MAX_FRAME_BYTES = 5 MB`)
-- `POST /api/analyze/video` — Batch-analyze an uploaded video clip (`.mp4`, `.avi`, `.mov`, `.webm`, `.mkv`) and summarize vitals
-- `POST /api/reset` — Reset sliding rPPG/sleep/mood temporal buffers
-- `WS /ws/telemetry` — Bidirectional real-time stream supporting live `frame` payloads (Base64 JPEG/PNG), synthetic `tick` steps, dynamic `camera_mode`/`context` switching, and `reset`
+- **Face Tracking & Synthetic Fallback (`src/vision/`)**: `face_tracker.py` (MediaPipe Face Landmarker) + `synthetic_stream.py` for offline/camera-free development.
+- **Biometric Inference Engines (`src/engines/`)**:
+  - `identity_engine.py`: Extracts facial landmark embeddings and matches crew profiles without contact.
+  - `rppg_engine.py`: Remote photoplethysmography (rPPG) heart-rate estimation via chrominance/signal filtering (`numpy`, `scipy`).
+  - `mood_engine.py`: Facial expression & stress classification with `emotion-ferplus-8.onnx` (`onnxruntime`).
+  - `sleep_engine.py`: Eye-aspect-ratio & PERCLOS fatigue/drowsiness tracking.
+- **Orchestration & API (`src/pipeline.py`, `src/api/app.py`, `src/schemas.py`, `src/config.py`)**: Combines per-frame inference into structured telemetry streams over REST and WebSockets.
 
-> When `AI_SERVICE_TOKEN` is set in production (`APP_ENV=production`), sensitive endpoints and `/ws/telemetry` require the `X-Service-Token` header.
+```text
+RGB Frame / Webcam ──▶ face_tracker (MediaPipe)
+                           ├──▶ identity_engine  (Crew ID embedding match)
+                           ├──▶ rppg_engine      (Contactless BPM)
+                           ├──▶ mood_engine      (FER+ ONNX mood & stress)
+                           └──▶ sleep_engine     (PERCLOS & fatigue state)
+                                    └──▶ REST / WS /ws/telemetry ──▶ Frontend (/vision) & Backend (/api/readings/vision-ingest)
+```
 
 ---
 
-## Quickstart & Automated Tests
+## HTTP & WebSocket Endpoints (`src/api/app.py`)
+
+| Method / Protocol | Path | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Built-in static preview page |
+| `GET` | `/api/health` | Service health & loaded model status |
+| `POST` | `/api/reset` | Reset rolling rPPG / sleep / identity buffers |
+| `GET` | `/api/telemetry/latest` | Latest aggregated telemetry frame |
+| `POST` | `/api/telemetry/tick` | Advance synthetic/active telemetry pipeline one step |
+| `GET` | `/api/biometrics/gallery` | Inspect enrolled crew biometric embeddings |
+| `POST` | `/api/biometrics/extract` | Extract normalized facial embedding from multipart image upload |
+| `POST` | `/api/biometrics/extract-json` | Extract normalized facial embedding from JSON base64 payload |
+| `POST` | `/api/analyze/frame` | Run full biometric pipeline on a single uploaded image frame |
+| `POST` | `/api/analyze/video` | Analyze an uploaded video clip across frames |
+| `WS` | `/ws/telemetry` | Real-time bidirectional frame ingest & telemetry stream |
+
+---
+
+## Quickstart & Testing
 
 ```bash
 cd vision
-
-# 1. Create Python 3.11 virtual environment and install dependencies
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# 2. Download lightweight open-source model weights (~38 MB)
-.venv/bin/python download_models.py
-
-# 3. Start FastAPI server + HUD on http://localhost:8000
-.venv/bin/python run.py --port 8000
-
-# 4. Run automated Pytest suite
-.venv/bin/pytest -v
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python download_models.py
+python run.py
 ```
+
+By default the server listens on `http://localhost:8000`.
+
+### Tests
+
+Unit tests live under `vision/tests/` (`test_api.py`, `test_identity_engine.py`, `test_mood_engine.py`, `test_rppg_engine.py`, `test_sleep_engine.py`):
+
+```bash
+cd vision
+pytest
+```
+
+> Container deployment configuration is provided in `vision/Dockerfile.vercel` and `vision/vercel.json`.

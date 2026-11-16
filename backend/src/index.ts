@@ -13,7 +13,7 @@ const app = createApp();
 if (!process.env.VERCEL) {
   const port = Number(process.env.PORT) || 4000;
   const server = app.listen(port, () => {
-    console.log(`🚀 Artemis IV API escuchando en http://localhost:${port}/api`);
+    console.log(`🚀 Orbvital API listening at http://localhost:${port}/api`);
   });
 
   // Graceful shutdown (Render/Railway send SIGTERM on redeploy).

@@ -14,6 +14,7 @@ import {
 } from '@/domain/health/followUpStorage';
 
 const SILENT_ROUTES = ['/readings/new', '/login', '/register'];
+const EXIT_MS = 200;
 
 function formatCountdown(remainingMs: number): string {
   const totalSec = Math.max(0, Math.floor(remainingMs / 1000));
@@ -33,6 +34,7 @@ export function FollowUpStickyNote() {
 
   const [note, setNote] = useState<FollowUpStickyRecord | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -67,11 +69,21 @@ export function FollowUpStickyNote() {
 
   const doneCount = note.items.filter((it) => it.done).length;
 
+  const dismiss = () => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      clearFollowUpNote(note.astronautId);
+      setIsClosing(false);
+    }, EXIT_MS);
+  };
+
   return (
     <aside
       role="status"
       aria-label="Warning follow-up reminder"
-      className="twin-panel reminder-enter fixed bottom-4 left-4 z-40 w-[min(23rem,calc(100vw-2rem))] border-l-4 border-[var(--status-caution)] shadow-lg"
+      className={`twin-panel fixed bottom-4 left-4 z-40 w-[min(23rem,calc(100vw-2rem))] border-l-4 border-[var(--status-caution)] shadow-lg ${
+        isClosing ? 'reminder-exit' : 'reminder-enter'
+      }`}
     >
       <div className="p-3.5 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
@@ -101,7 +113,7 @@ export function FollowUpStickyNote() {
             </button>
             <button
               type="button"
-              onClick={() => clearFollowUpNote(note.astronautId)}
+              onClick={dismiss}
               aria-label="Dismiss follow-up reminder"
               className="twin-btn twin-btn-ghost h-7 w-7 p-0"
             >
@@ -128,7 +140,7 @@ export function FollowUpStickyNote() {
                       className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-[background-color,border-color] duration-150 ease-out ${
                         item.done
                           ? 'border-[var(--status-nominal)] bg-[var(--status-nominal)] text-canvas'
-                          : 'border-blueberry/50 bg-canvas/40 text-transparent'
+                          : 'border-stem/60 bg-canvas/40 text-transparent'
                       }`}
                     >
                       <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
@@ -156,7 +168,10 @@ export function FollowUpStickyNote() {
               <span className="font-mono text-[10px] tabular-nums text-stem">
                 {doneCount}/{note.items.length} checked
               </span>
-              <Link href="/readings/new" className="twin-btn twin-btn-primary text-[11px] py-1 px-2.5">
+              <Link
+                href={`/readings/new?astronautId=${encodeURIComponent(note.astronautId)}`}
+                className="twin-btn twin-btn-primary text-[11px] py-1 px-2.5"
+              >
                 <Activity className="h-3 w-3" aria-hidden="true" />
                 <span>Re-check now</span>
               </Link>

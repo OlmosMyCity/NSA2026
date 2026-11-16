@@ -23,7 +23,7 @@ export class LoadDigitalTwinContextUseCase {
     const ownId = await this.repo.findAstronautIdByUserId(user.id);
     if (!ownId || ownId !== astronautId) {
       throw new ForbiddenError(
-        "No tienes permiso para consultar el gemelo digital de otro tripulante."
+        "You do not have permission to view another crewmember's digital twin."
       );
     }
   }

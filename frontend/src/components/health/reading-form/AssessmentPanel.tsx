@@ -64,6 +64,10 @@ export function AssessmentPanel({
     setRecheckDraft(vitals);
   }, [vitals]);
 
+  useEffect(() => {
+    setCheckedSteps({});
+  }, [evaluation.alerts, astronautName]);
+
   const toggleStep = (key: string) => {
     setCheckedSteps((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -233,13 +237,13 @@ export function AssessmentPanel({
                           type="button"
                           onClick={() => toggleStep(key)}
                           aria-pressed={checked}
-                          className="tactile-press w-full flex items-start gap-3 text-left p-2.5 rounded-md border border-line/70 bg-surface-tinted/20 hover:border-blueberry/50 transition-[border-color,background-color,opacity] duration-150 ease-out"
+                          className="tactile-press w-full flex items-start gap-3 text-left p-2.5 rounded-md border border-line/70 bg-surface-tinted/20 hover:border-stem/60 transition-[transform,border-color,background-color,opacity] duration-150 ease-out"
                         >
                           <span
                             className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-[background-color,border-color] duration-150 ease-out ${
                               checked
                                 ? 'border-[var(--status-nominal)] bg-[var(--status-nominal)] text-canvas'
-                                : 'border-blueberry/50 bg-canvas/40 text-transparent'
+                                : 'border-stem/60 bg-canvas/40 text-transparent'
                             }`}
                           >
                             <Check className="h-3 w-3" strokeWidth={2.5} />
@@ -316,12 +320,19 @@ export function AssessmentPanel({
                         step={def.input.step}
                         value={Number.isFinite(val) ? val : ''}
                         disabled={!allStepsDone}
-                        onChange={(e) =>
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (allStepsDone) onApplyRecheck(recheckDraft);
+                          }
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
                           setRecheckDraft((prev) => ({
                             ...prev,
-                            [field]: Number(e.target.value),
-                          }))
-                        }
+                            [field]: raw === '' ? Number.NaN : Number(raw),
+                          }));
+                        }}
                         className="mt-1 w-full border-0 border-b border-line bg-transparent py-1.5 px-0 text-sm font-mono font-semibold text-blueberry tabular-nums focus:border-blueberry focus:outline-none disabled:opacity-45"
                       />
                       <span className="block text-[10px] text-stem tabular-nums">
@@ -346,7 +357,7 @@ export function AssessmentPanel({
                 <button
                   type="button"
                   onClick={onEmergencyBypass}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--status-critical)] hover:underline"
+                  className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--status-critical)] hover:underline"
                 >
                   <ShieldAlert className="h-3.5 w-3.5" />
                   <span>Crewmate unresponsive? Skip re-check &amp; unlock Save now</span>
@@ -370,7 +381,7 @@ export function AssessmentPanel({
               <button
                 type="button"
                 onClick={onEmergencyBypass}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--status-critical)] hover:underline"
+                className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--status-critical)] hover:underline"
               >
                 <ShieldAlert className="h-3.5 w-3.5" />
                 <span>Skip &amp; unlock Save immediately</span>
