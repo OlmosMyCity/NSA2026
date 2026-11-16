@@ -65,13 +65,8 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
         (err: unknown) =>
           alive && setLoadError(err instanceof Error ? err.message : 'Unable to load mission.')
       );
-    const activeTrajectoryLabel =
-    TRAJECTORY_PRESETS.find((p) => p.id === trajectoryPreset)?.label ??
-    'Auto-detect from mission environment';
-  const activeVehicleLabel =
-    VEHICLE_OPTIONS.find((v) => v.id === vehicleId)?.label ?? 'Auto-detect';
 
-  return () => {
+    return () => {
       alive = false;
     };
   }, [missionId]);
@@ -131,13 +126,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
   }, [ready, mission, nowMet, seek]);
 
   if (loadError) {
-    const activeTrajectoryLabel =
-    TRAJECTORY_PRESETS.find((p) => p.id === trajectoryPreset)?.label ??
-    'Auto-detect from mission environment';
-  const activeVehicleLabel =
-    VEHICLE_OPTIONS.find((v) => v.id === vehicleId)?.label ?? 'Auto-detect';
-
-  return (
+    return (
       <div
         role="alert"
         className="surface-card mx-auto max-w-lg border-[var(--status-critical-border)] p-8 text-center"
@@ -164,17 +153,6 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
       trajectoryPreset: nextPreset,
       customTrajectoryJson: nextPreset === 'auto' ? existing?.customTrajectoryJson ?? null : null,
       customFileName: nextPreset === 'auto' ? existing?.customFileName ?? null : null,
-    });
-  };
-
-  const handleVehicleChange = (nextVehicle: string) => {
-    setVehicleId(nextVehicle);
-    const existing = getMissionSimConfig(mission.id);
-    saveMissionSimConfig(mission.id, {
-      vehicleId: nextVehicle,
-      trajectoryPreset,
-      customTrajectoryJson: existing?.customTrajectoryJson ?? null,
-      customFileName: existing?.customFileName ?? null,
     });
   };
 
