@@ -111,7 +111,7 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Wind className="h-4 w-4 text-amber-600" aria-hidden="true" />
+            <Wind className="h-4 w-4 text-amber-400" aria-hidden="true" />
             <h2 id="solar-corr-title" className="text-lg font-bold text-blueberry">
               Solar Wind &amp; {def.label} Correlation
             </h2>
@@ -123,12 +123,12 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="inline-flex items-center gap-1.5 font-medium text-blueberry">
-            <span className="h-0.5 w-4 rounded bg-blueberry" aria-hidden="true" />
+            <span className="h-0.5 w-4 rounded bg-sky-400" aria-hidden="true" />
             {def.label} ({def.unit})
           </span>
-          <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
+          <span className="inline-flex items-center gap-1.5 font-medium text-amber-300">
             <span
-              className="h-0.5 w-4 border-b-2 border-dashed border-amber-500"
+              className="h-0.5 w-4 border-b-2 border-dashed border-amber-400"
               aria-hidden="true"
             />
             Solar Wind (km/s)
@@ -169,8 +169,8 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
             {stats.stormAvg !== null ? `${fmt(stats.stormAvg)} ${def.unit}` : '—'}{' '}
             {stats.deltaPct !== null && (
               <span
-                className={`text-xs font-semibold ${
-                  Math.abs(stats.deltaPct) >= 5 ? 'text-amber-700' : 'text-stem'
+                className={`text-xs font-semibold tabular-nums ${
+                  Math.abs(stats.deltaPct) >= 5 ? 'text-amber-300' : 'text-stem'
                 }`}
               >
                 ({stats.deltaPct >= 0 ? '+' : ''}
@@ -231,18 +231,18 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
             />
 
             {/* Left Y labels (Vital) */}
-            <text x={m.l - 6} y={m.t + 6} textAnchor="end" className="fill-stem text-[10px] tabular-nums">
+            <text x={m.l - 6} y={m.t + 6} textAnchor="end" className="fill-[hsl(var(--hsl-ink-muted))] text-[10px] tabular-nums">
               {fmt(vHi)}
             </text>
-            <text x={m.l - 6} y={m.t + ih} textAnchor="end" className="fill-stem text-[10px] tabular-nums">
+            <text x={m.l - 6} y={m.t + ih} textAnchor="end" className="fill-[hsl(var(--hsl-ink-muted))] text-[10px] tabular-nums">
               {fmt(vLo)}
             </text>
 
             {/* Right Y labels (Solar Wind km/s) */}
-            <text x={m.l + iw + 6} y={m.t + 6} textAnchor="start" className="fill-amber-700 text-[10px] tabular-nums">
+            <text x={m.l + iw + 6} y={m.t + 6} textAnchor="start" className="fill-amber-300 text-[10px] tabular-nums">
               {sHi} km/s
             </text>
-            <text x={m.l + iw + 6} y={m.t + ih} textAnchor="start" className="fill-amber-700 text-[10px] tabular-nums">
+            <text x={m.l + iw + 6} y={m.t + ih} textAnchor="start" className="fill-amber-300 text-[10px] tabular-nums">
               {sLo} km/s
             </text>
 
@@ -261,7 +261,7 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
                         ? 'end'
                         : 'middle'
                 }
-                className="fill-stem text-[10px]"
+                className="fill-[hsl(var(--hsl-ink-muted))] text-[10px] tabular-nums"
               >
                 {dayFmt.format(points[idx].t)}
               </text>
@@ -271,19 +271,28 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
             <path
               d={solarPath}
               fill="none"
-              stroke="rgb(217, 119, 6)"
-              strokeWidth={1.75}
+              stroke="#FBBF24"
+              strokeWidth={2}
               strokeDasharray="5 3"
               strokeLinejoin="round"
             />
 
-            {/* Vital Sign solid curve */}
+            {/* Vital Sign halo & solid curve */}
             <path
               d={vitalPath}
               fill="none"
-              stroke="hsl(223, 29%, 26%)"
-              strokeWidth={2}
+              stroke="hsl(223, 29%, 6%)"
+              strokeWidth={5}
               strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            <path
+              d={vitalPath}
+              fill="none"
+              stroke="#38BDF8"
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
             />
 
             {activeIdx !== null && activePoint && activeSolar && (
@@ -293,24 +302,24 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
                   x2={xAt(activeIdx)}
                   y1={m.t}
                   y2={m.t + ih}
-                  stroke="hsl(220, 20%, 45%)"
+                  stroke="#7DD3FC"
                   strokeWidth={1}
                   strokeDasharray="3 3"
                 />
                 <circle
                   cx={xAt(activeIdx)}
                   cy={yVital(activePoint.value)}
-                  r={4}
-                  fill="hsl(223, 29%, 26%)"
-                  stroke="white"
+                  r={4.5}
+                  fill="#38BDF8"
+                  stroke="#F5F6F3"
                   strokeWidth={1.5}
                 />
                 <circle
                   cx={xAt(activeIdx)}
                   cy={ySolar(activeSolar.speedKmS)}
-                  r={4}
-                  fill="rgb(217, 119, 6)"
-                  stroke="white"
+                  r={4.5}
+                  fill="#FBBF24"
+                  stroke="#F5F6F3"
                   strokeWidth={1.5}
                 />
               </>
@@ -329,10 +338,10 @@ export function SolarWindCorrelationCard({ indicator, points }: SolarWindCorrela
               top: 8,
             }}
           >
-            <div className="font-semibold text-blueberry">
+            <div className="font-semibold text-blueberry tabular-nums">
               {fmt(activePoint.value)} {def.unit}
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-amber-700 font-medium">
+            <div className="mt-0.5 flex items-center gap-1.5 text-amber-300 font-medium tabular-nums">
               <Sun className="h-3 w-3" aria-hidden="true" />
               <span>
                 {activeSolar.speedKmS} km/s · Kp {activeSolar.kpIndex} · {activeSolar.protonFluxPfu} pfu

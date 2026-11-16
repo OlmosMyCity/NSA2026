@@ -18,6 +18,17 @@ export type NOAAStormScale =
   | 'S4_SEVERE'
   | 'S5_EXTREME';
 
+/** Spacecraft shielding zone keys modeled by the radiation dose engine. */
+export type RadiationShieldingKey = 'EVA_SUIT' | 'CREW_CABIN_NOMINAL' | 'STORM_SHELTER';
+
+export interface BiologicalDoseEstimate {
+  shieldingType: RadiationShieldingKey;
+  doseRateMicroSvPerHour: number;
+  projected30DayDoseMsv: number;
+  careerDosePercentage: number;
+  clinicalRiskLevel: 'NOMINAL' | 'ELEVATED' | 'WARNING' | 'CRITICAL';
+}
+
 export interface RadiationStatusResponse {
   timestamp: string;
   isSimulated: boolean;
@@ -39,6 +50,7 @@ export interface RadiationStatusResponse {
     estimatedProtonArrivalMinutes: number | null;
     predictedStormScale: NOAAStormScale;
   };
+  biologicalDoses?: Partial<Record<RadiationShieldingKey, BiologicalDoseEstimate>>;
   mitigation: {
     stormScale: NOAAStormScale;
     abortEvaImmediately: boolean;

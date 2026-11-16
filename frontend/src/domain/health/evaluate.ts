@@ -74,21 +74,84 @@ interface AlertGroup {
   label: string;
   checks: Array<[IndicatorId, number]>;
   shown: string;
+  protocolId: (v: Vitals, level: Exclude<ApiHealthStatus, 'OK'>) => string;
+}
+
+function isLowSide(indicator: IndicatorId, value: number): boolean {
+  const { min } = nominalBounds(indicator);
+  return min !== undefined && value < min;
 }
 
 const alertGroups = (v: Vitals): AlertGroup[] => [
-  { key: 'heartRate', label: 'Heart rate', checks: [['heartRate', v.heartRateBpm]], shown: `${v.heartRateBpm} bpm` },
+  {
+    key: 'heartRate',
+    label: 'Heart rate',
+    checks: [['heartRate', v.heartRateBpm]],
+    shown: `${v.heartRateBpm} bpm`,
+    protocolId: (x, level) =>
+      level === 'WARNING'
+        ? 'PROTO_HEART_RATE_MONITOR'
+        : isLowSide('heartRate', x.heartRateBpm)
+          ? 'PROTO_BRADYCARDIA'
+          : 'PROTO_TACHYCARDIA',
+  },
   {
     key: 'bloodPressure',
     label: 'Blood pressure',
     checks: [['systolic', v.systolicMmHg], ['diastolic', v.diastolicMmHg]],
     shown: `${v.systolicMmHg}/${v.diastolicMmHg} mmHg`,
+    protocolId: (x, level) => {
+      if (level === 'WARNING') return 'PROTO_BLOOD_PRESSURE_BORDERLINE';
+      const hypertensive =
+        evaluateIndicator('diastolic', x.diastolicMmHg).status === 'red' ||
+        (evaluateIndicator('systolic', x.systolicMmHg).status === 'red' && !isLowSide('systolic', x.systolicMmHg));
+      return hypertensive ? 'PROTO_HYPERTENSIVE_CRISIS' : 'PROTO_HYPOTENSION';
+    },
   },
-  { key: 'glucose', label: 'Blood glucose', checks: [['glucose', v.glucoseMgDl]], shown: `${v.glucoseMgDl} mg/dL` },
-  { key: 'temperature', label: 'Body temperature', checks: [['temperature', v.temperatureC]], shown: `${v.temperatureC} °C` },
-  { key: 'spo2', label: 'O₂ saturation', checks: [['spo2', v.spo2Pct]], shown: `${v.spo2Pct} %` },
-  { key: 'sleep', label: 'Sleep', checks: [['sleepHours', v.sleepHours]], shown: `${v.sleepHours} h` },
-  { key: 'mood', label: 'Mood', checks: [['mood', v.mood]], shown: `${v.mood}/5` },
+  {
+    key: 'glucose',
+    label: 'Blood glucose',
+    checks: [['glucose', v.glucoseMgDl]],
+    shown: `${v.glucoseMgDl} mg/dL`,
+    protocolId: (x, level) =>
+      level === 'WARNING'
+        ? 'PROTO_GLUCOSE_ELEVATED'
+        : isLowSide('glucose', x.glucoseMgDl)
+          ? 'PROTO_HYPOGLYCEMIA'
+          : 'PROTO_HYPERGLYCEMIA',
+  },
+  {
+    key: 'temperature',
+    label: 'Body temperature',
+    checks: [['temperature', v.temperatureC]],
+    shown: `${v.temperatureC} °C`,
+    protocolId: (x, level) => {
+      const low = isLowSide('temperature', x.temperatureC);
+      if (level === 'WARNING') return low ? 'PROTO_MILD_HYPOTHERMIA' : 'PROTO_SUBFEBRILE';
+      return low ? 'PROTO_HYPOTHERMIA' : 'PROTO_FEVER';
+    },
+  },
+  {
+    key: 'spo2',
+    label: 'O₂ saturation',
+    checks: [['spo2', v.spo2Pct]],
+    shown: `${v.spo2Pct} %`,
+    protocolId: (_x, level) => (level === 'CRITICAL' ? 'PROTO_HYPOXIA' : 'PROTO_SPO2_BORDERLINE'),
+  },
+  {
+    key: 'sleep',
+    label: 'Sleep',
+    checks: [['sleepHours', v.sleepHours]],
+    shown: `${v.sleepHours} h`,
+    protocolId: (_x, level) => (level === 'CRITICAL' ? 'PROTO_SLEEP_DEPRIVATION' : 'PROTO_SLEEP_INSUFFICIENT'),
+  },
+  {
+    key: 'mood',
+    label: 'Mood',
+    checks: [['mood', v.mood]],
+    shown: `${v.mood}/5`,
+    protocolId: (_x, level) => (level === 'CRITICAL' ? 'PROTO_PSYCHOSOCIAL_DISTRESS' : 'PROTO_MOOD_SUPPORT'),
+  },
 ];
 
 export const RECOMMENDATIONS: Record<ApiHealthStatus, string> = {
@@ -112,6 +175,7 @@ export function evaluateVitals(vitals: Vitals): EvaluationResult {
     alerts.push({
       indicator: group.key,
       level,
+      protocolId: group.protocolId(vitals, level),
       value: group.checks[0][1],
       message: `${group.label} ${level === 'CRITICAL' ? 'critical' : 'outside nominal range'} (${group.shown}).`,
     });
