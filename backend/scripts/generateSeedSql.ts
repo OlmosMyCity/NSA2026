@@ -16,9 +16,10 @@ const OUT = path.resolve(__dirname, "../prisma/seed.sql");
 // Los IDs reales de los usuarios pueden diferir (upsert por email): se resuelven en SQL.
 const ADMIN = "__ADMIN_ID__";
 const CREW = "__CREW_ID__";
+const OPERATOR = "__OPERATOR_ID__";
 const userRef = (email: string) => `(SELECT id FROM users WHERE email = ${quote(email)})`;
 
-const data = buildSeedData({ adminId: ADMIN, commanderUserId: CREW });
+const data = buildSeedData({ adminId: ADMIN, commanderUserId: CREW, operatorUserId: OPERATOR });
 const NOW = data.now.getTime();
 
 function quote(s: string) {
@@ -29,6 +30,7 @@ function literal(v: unknown): string {
   if (v === null || v === undefined) return "NULL";
   if (v === ADMIN) return userRef(SEED_USERS.admin.email);
   if (v === CREW) return userRef(SEED_USERS.commander.email);
+  if (v === OPERATOR) return userRef(SEED_USERS.operator.email);
   if (v instanceof Date) {
     const ms = NOW - v.getTime();
     return `(timezone('utc', now()) - interval '${ms} milliseconds')`;
@@ -55,14 +57,16 @@ function insert(table: string, rows: Record<string, unknown>[], onConflict = "",
 const updateSet = (cols: string[]) => cols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(", ");
 
 async function main() {
-const [adminHash, crewHash] = await Promise.all([
+const [adminHash, crewHash, operatorHash] = await Promise.all([
   bcrypt.hash(SEED_USERS.admin.password, 10),
   bcrypt.hash(SEED_USERS.commander.password, 10),
+  bcrypt.hash(SEED_USERS.operator.password, 10),
 ]);
 const now = data.now;
 const users = [
   { ...SEED_USERS.admin, passwordHash: adminHash },
   { ...SEED_USERS.commander, passwordHash: crewHash },
+  { ...SEED_USERS.operator, passwordHash: operatorHash },
 ].map(({ id, email, name, passwordHash, role }) => ({ id, email, name, passwordHash, role, state: "ACTIVE", createdAt: now, updatedAt: now, deletedAt: null }));
 
 const readingDefaults = { isValid: true, invalidatedAt: null, invalidatedReason: null, invalidatedById: null, supersedesId: null, deletedAt: null };
@@ -79,7 +83,7 @@ const sql = `-- ================================================================
 -- Modo no destructivo: reemplaza solo filas con id 'seed-%' y hace upsert de
 -- usuarios (por email), misiones (mission-01..06) y astronautas (astro-01..15).
 -- Las fechas son relativas a now(), así que los datos quedan al día.
--- Contraseñas: ${SEED_USERS.admin.email} / ${SEED_USERS.admin.password}, ${SEED_USERS.commander.email} / ${SEED_USERS.commander.password}
+-- Contraseñas: ${SEED_USERS.admin.email} / ${SEED_USERS.admin.password}, ${SEED_USERS.commander.email} / ${SEED_USERS.commander.password}, ${SEED_USERS.operator.email} / ${SEED_USERS.operator.password}
 -- ============================================================================
 
 BEGIN;
@@ -128,7 +132,7 @@ DELETE FROM missions        WHERE id IN (SELECT id FROM legacy_missions);
 ${insert("users", users, `ON CONFLICT ("email") DO UPDATE SET ${updateSet(["name", "passwordHash", "role", "state", "updatedAt", "deletedAt"])}`)}
 
 -- Misiones (${data.missions.length})
-${insert("missions", data.missions as Record<string, unknown>[], `ON CONFLICT ("id") DO UPDATE SET ${updateSet(["name", "description", "environment", "status", "startDate", "endDate", "patchUrl", "updatedAt", "deletedAt"])}`)}
+${insert("missions", data.missions as Record<string, unknown>[], `ON CONFLICT ("id") DO UPDATE SET ${updateSet(["name", "description", "environment", "status", "startDate", "endDate", "patchUrl", "operatorId", "updatedAt", "deletedAt"])}`)}
 
 -- El usuario de demo queda ligado solo a ${COMMANDER_ASTRONAUT_ID}
 UPDATE astronauts SET "userId" = NULL

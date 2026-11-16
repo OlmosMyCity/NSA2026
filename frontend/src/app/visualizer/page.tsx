@@ -15,7 +15,7 @@ import { MissionHealthView } from '@/components/visualizer/MissionHealthView';
 
 export default function VisualizerPage() {
   const { user, isAuthenticated, isAdmin } = useAuth();
-  const canSelectMissions = isAdmin || user?.role === 'OPERATOR';
+  const canSelectMissions = user?.role === 'OPERATOR';
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [loadingMissions, setLoadingMissions] = useState(true);
@@ -94,8 +94,8 @@ export default function VisualizerPage() {
               3D Orbit &amp; Radiation Telemetry
             </h1>
             <p className="mt-1.5 text-sm text-stem max-w-2xl">
-              Track crewed mission trajectories alongside live NOAA SWPC solar radiation alerts,
-              cislunar telemetry, and shielding dose rates.
+              Follow the mission&apos;s 3D trajectory, flight-phase health watch, and live solar
+              storm safety status.
             </p>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function VisualizerPage() {
         </ErrorBoundary>
 
         <div className="space-y-5">
-          {missions.length > 0 && (canSelectMissions || missions.length > 1) ? (
+          {missions.length > 0 && canSelectMissions ? (
             <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <label className="flex flex-wrap items-center gap-2.5 text-xs font-semibold text-stem">
                 <span>Mission:</span>

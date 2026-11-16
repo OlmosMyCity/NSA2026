@@ -39,49 +39,55 @@ const S2_OR_HIGHER = new Set<NOAAStormScale>([
 
 const SCALE_STYLES: Record<
   NOAAStormScale,
-  { badge: string; border: string; bg: string; accentBar: string; label: string }
+  { badge: string; border: string; bg: string; accentBar: string; label: string; crewGuidance: string }
 > = {
   S0_NOMINAL: {
     badge: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300',
     border: 'border-emerald-500/30',
     bg: 'bg-slate-950/75',
     accentBar: 'border-l-2 border-l-emerald-400',
-    label: 'S0 Nominal',
+    label: 'S0 · Safe (Normal)',
+    crewGuidance: 'Solar weather is calm — safe for normal operations and EVA.',
   },
   S1_MINOR: {
     badge: 'border-amber-400/45 bg-amber-500/15 text-amber-200',
     border: 'border-amber-500/35',
     bg: 'bg-slate-950/80',
     accentBar: 'border-l-2 border-l-amber-400',
-    label: 'S1 Minor',
+    label: 'S1 · Mild Activity',
+    crewGuidance: 'Mild solar activity — normal cabin operations; monitor EVA updates.',
   },
   S2_MODERATE: {
     badge: 'border-amber-400/55 bg-amber-500/20 text-amber-200',
     border: 'border-amber-500/50',
     bg: 'bg-amber-950/35',
     accentBar: 'border-l-2 border-l-amber-400',
-    label: 'S2 Moderate',
+    label: 'S2 · Moderate Solar Storm',
+    crewGuidance: 'Moderate storm — pause EVA and stay inside the crew cabin.',
   },
   S3_STRONG: {
     badge: 'border-orange-400/55 bg-orange-500/20 text-orange-200',
     border: 'border-orange-500/50',
     bg: 'bg-orange-950/40',
     accentBar: 'border-l-2 border-l-orange-400',
-    label: 'S3 Strong',
+    label: 'S3 · Strong Solar Storm',
+    crewGuidance: 'Strong storm — abort EVA and prepare to move to Storm Shelter.',
   },
   S4_SEVERE: {
     badge: 'border-rose-400/60 bg-rose-500/20 text-rose-200',
     border: 'border-rose-500/60',
     bg: 'bg-rose-950/45',
     accentBar: 'border-l-2 border-l-rose-400',
-    label: 'S4 Severe',
+    label: 'S4 · Severe Solar Storm',
+    crewGuidance: 'High radiation — move to Storm Shelter immediately.',
   },
   S5_EXTREME: {
     badge: 'border-rose-400/75 bg-rose-600/30 text-rose-100',
     border: 'border-rose-500/75',
     bg: 'bg-rose-950/60',
     accentBar: 'border-l-2 border-l-rose-500',
-    label: 'S5 Extreme',
+    label: 'S5 · Extreme Solar Storm',
+    crewGuidance: 'Extreme radiation — remain in Storm Shelter until all-clear.',
   },
 };
 
@@ -319,29 +325,29 @@ export function RadiationStatusBanner() {
             <span
               className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider tabular-nums ${style.badge}`}
             >
-              Solar Radiation: {style.label}
+              Solar Weather: {style.label}
             </span>
-            <span className="font-mono text-xs font-semibold text-blueberry">
-              {universalProtocol.label}
+            <span className="font-medium text-blueberry">
+              {style.crewGuidance}
             </span>
-            {status.currentTelemetry.latestXray?.currentClass && (
-              <span className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-xs text-blueberry tabular-nums">
-                X-Ray: {status.currentTelemetry.latestXray.currentClass}
-              </span>
-            )}
-            {proton10 && (
-              <span className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-xs text-blueberry tabular-nums">
-                Protons &gt;10 MeV: {proton10.fluxPfu.toFixed(1)} pfu
-              </span>
-            )}
             {earlyWarningActive && status.earlyWarning?.triggerEvent && (
               <span className="inline-flex items-center gap-1.5 rounded-sm border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 font-mono text-xs font-semibold text-amber-200 tabular-nums">
                 <ShieldAlert className="h-3.5 w-3.5 text-amber-300 shrink-0" aria-hidden="true" />
                 <span>
-                  Early Warning: {status.earlyWarning.triggerEvent}
+                  Storm Warning
                   {status.earlyWarning.estimatedProtonArrivalMinutes != null &&
-                    ` (~${status.earlyWarning.estimatedProtonArrivalMinutes} min)`}
+                    ` — peak arriving in ~${status.earlyWarning.estimatedProtonArrivalMinutes} min`}
                 </span>
+              </span>
+            )}
+            {(status.currentTelemetry.latestXray?.currentClass || proton10) && (
+              <span
+                className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-[11px] text-stem tabular-nums"
+                title="Raw NOAA/GOES solar telemetry"
+              >
+                {status.currentTelemetry.latestXray?.currentClass ? `Flare ${status.currentTelemetry.latestXray.currentClass}` : ''}
+                {status.currentTelemetry.latestXray?.currentClass && proton10 ? ' · ' : ''}
+                {proton10 ? `Particle flux ${proton10.fluxPfu.toFixed(1)} pfu` : ''}
               </span>
             )}
             {status.telemetryDegraded && (
