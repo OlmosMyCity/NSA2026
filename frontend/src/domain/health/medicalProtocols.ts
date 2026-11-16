@@ -1,21 +1,44 @@
 /**
  * @module domain/health/medicalProtocols
  * Step-by-step onboard action guides for each deterministic `protocolId` emitted
- * by `evaluateReading` / `evaluateVitals`. Written for non-physician crewmates
- * (NASA-STD-3001 Vol. 2 usability for buddy/CMO triage) and grounded in
- * NASA-STD-3001, ISS Medical Checklist principles, and NASA HRP hazard protocols.
+ * by `evaluateReading` / `evaluateVitals`. Each step includes plain-language
+ * "how-to" instructions for dizzy or non-physician crewmates (NASA-STD-3001 Vol. 2)
+ * plus targeted `recheckFields` for the bounded critical verification loop and
+ * warning follow-up sticky reminders.
  */
 
-import type { HealthAlert } from './types';
+import type { HealthAlert, IndicatorId, Vitals } from './types';
+
+export interface ProtocolStep {
+  action: string;
+  howTo?: string;
+}
+
+export interface RecheckFieldSpec {
+  indicator: IndicatorId;
+  field: keyof Vitals;
+}
 
 export interface MedicalProtocolGuide {
   protocolId: string;
   title: string;
   recheckIn: string;
-  steps: string[];
+  steps: ProtocolStep[];
+  recheckFields: RecheckFieldSpec[];
   escalateIf: string;
   reference: string;
 }
+
+const HOW_SPO2 =
+  'Place a clean, warm finger inside the pulse oximeter and hold still for 30 s until the % stabilizes.';
+const HOW_HR =
+  'Use the pulse oximeter readout, or press two fingers lightly on the inner wrist for 30 s and multiply beats by 2.';
+const HOW_BP =
+  'Wrap cuff snugly on a bare upper arm at heart level, rest calmly without speaking, and start the auto-cuff.';
+const HOW_TEMP =
+  'Place thermometer probe under the tongue for 60 s (or use tympanic ear sensor). Avoid cold/hot drinks right before.';
+const HOW_GLUCOSE =
+  'Wash finger, prick the side of the fingertip with the glucometer lancet, and touch the test strip to the drop.';
 
 const NASA_STD_3001_V2 = 'NASA-STD-3001 Vol. 2 (Non-Physician CMO Usability)';
 const ISS_CMO_ABCDE = 'ISS Medical Checklist · ABCDE Triage & On-Orbit Medical Kit';
@@ -27,12 +50,29 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Hypoxia Response (SpO₂ < 92%)',
     recheckIn: '5 min',
     steps: [
-      'Check airway and breathing; seat or stabilize the crewmember.',
-      'Verify module cabin pressure and O₂ / CO₂ partial pressure telemetry.',
-      'Administer supplemental oxygen from the On-Orbit Medical Kit.',
-      'Recheck pulse oximetry on a warm finger and monitor consciousness.',
+      {
+        action: 'Check airway and breathing; seat or stabilize the crewmember.',
+        howTo: 'Ensure mouth/nose are clear and breathing is effortless; loosen tight collar or helmet seal.',
+      },
+      {
+        action: 'Check module cabin O₂ and CO₂ levels on the ECLSS panel.',
+        howTo: 'Confirm cabin pressure is nominal and CO₂ scrubbers are running with no cabin alarm.',
+      },
+      {
+        action: 'Administer supplemental oxygen from the On-Orbit Medical Kit.',
+        howTo: 'Connect O₂ mask or nasal cannula from the Emergency Medical Pack and open regulator flow.',
+      },
+      {
+        action: 'Re-measure SpO₂ on a warm finger and watch alertness.',
+        howTo: HOW_SPO2,
+      },
     ],
-    escalateIf: 'SpO₂ remains < 92% on O₂ or confusion/cyanosis appears — initiate module airlock/clean-cabin move and alert Flight Surgeon.',
+    recheckFields: [
+      { indicator: 'spo2', field: 'spo2Pct' },
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+    ],
+    escalateIf:
+      'SpO₂ stays < 92% on O₂ or confusion/bluish lips appear — move to clean-air module and alert Flight Surgeon.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_SPO2_BORDERLINE: {
@@ -40,10 +80,20 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Borderline SpO₂ Check (92–94%)',
     recheckIn: '15 min',
     steps: [
-      'Ensure the pulse oximeter sensor is seated cleanly on a warm finger.',
-      'Inspect cabin ventilation, airflow, and CO₂ scrubber status.',
-      'Have the crewmember rest and perform slow, deep nasal breathing.',
+      {
+        action: 'Re-seat the pulse oximeter on a warm, clean finger.',
+        howTo: HOW_SPO2,
+      },
+      {
+        action: 'Verify cabin airflow and CO₂ scrubber status.',
+        howTo: 'Check module ventilation fans are unobstructed and not blowing stale air.',
+      },
+      {
+        action: 'Rest calmly and take slow, deep nasal breaths.',
+        howTo: 'Inhale 4 s through nose, exhale 6 s slowly for 2–3 minutes before re-checking.',
+      },
     ],
+    recheckFields: [{ indicator: 'spo2', field: 'spo2Pct' }],
     escalateIf: 'SpO₂ drops below 92% or shortness of breath develops.',
     reference: `${ISS_CMO_ABCDE} · NASA HRP Hostile Closed Environments`,
   },
@@ -52,12 +102,29 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Critical Hypotension (Systolic < 90 mmHg)',
     recheckIn: '5 min',
     steps: [
-      'Place crewmember supine (or elevate legs if in partial/1-G) to restore cerebral perfusion.',
-      'Check airway, responsiveness, and signs of allergic reaction or bleeding.',
-      'Start oral electrolyte/fluid loading if conscious (or prepare IV pack per CMO kit).',
-      'Suspend any EVA or strenuous tasks and monitor BP + HR every 5 min.',
+      {
+        action: 'Lay crewmember flat (or elevate legs if under gravity) immediately.',
+        howTo: 'Keep head level with heart to prevent fainting; secure them gently if in 0-G.',
+      },
+      {
+        action: 'Check responsiveness and measure Heart Rate & Blood Pressure again.',
+        howTo: `${HOW_BP} ${HOW_HR}`,
+      },
+      {
+        action: 'Start oral electrolyte hydration if awake and able to swallow.',
+        howTo: 'Give 250–500 mL electrolyte drink in small sips. Do NOT give fluids if drowsy or nauseated.',
+      },
+      {
+        action: 'Suspend EVA/exertion and prepare IV pack if symptoms persist.',
+        howTo: 'Locate the Gray IV Supply Pack in the Medical Kit in case Flight Surgeon orders IV fluids.',
+      },
     ],
-    escalateIf: 'Syncope, chest pain, or BP stays < 90 mmHg after positioning and fluids.',
+    recheckFields: [
+      { indicator: 'systolic', field: 'systolicMmHg' },
+      { indicator: 'diastolic', field: 'diastolicMmHg' },
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+    ],
+    escalateIf: 'Fainting, chest pain, or systolic stays < 90 mmHg after positioning and fluids.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_HYPERTENSIVE_CRISIS: {
@@ -65,35 +132,78 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Hypertensive Crisis (≥ 140/90 mmHg)',
     recheckIn: '10 min',
     steps: [
-      'Pause physical exertion immediately and rest seated/neutral for 5 min.',
-      'Repeat blood pressure measurement on the opposite arm to confirm.',
-      'Screen for headache, blurred vision, chest pain, or neurological deficit.',
+      {
+        action: 'Stop all physical exertion and rest calmly for 5 minutes.',
+        howTo: 'Have the crewmember sit or tether still in a quiet area with uncrossed legs.',
+      },
+      {
+        action: 'Repeat Blood Pressure on the opposite arm to confirm.',
+        howTo: HOW_BP,
+      },
+      {
+        action: 'Ask about severe headache, blurred vision, or chest tightness.',
+        howTo: 'If any neurological or chest symptom is present, treat as urgent and contact Flight Surgeon.',
+      },
     ],
-    escalateIf: 'BP remains ≥ 140/90 mmHg on repeat check or any neuro/chest symptom is present.',
+    recheckFields: [
+      { indicator: 'systolic', field: 'systolicMmHg' },
+      { indicator: 'diastolic', field: 'diastolicMmHg' },
+    ],
+    escalateIf: 'BP remains ≥ 140/90 mmHg on repeat check or any chest/vision symptom is present.',
     reference: `${NASA_HRP_COUNTERMEASURES} · ${NASA_STD_3001_V2}`,
   },
   PROTO_BLOOD_PRESSURE_BORDERLINE: {
     protocolId: 'PROTO_BLOOD_PRESSURE_BORDERLINE',
     title: 'Borderline Blood Pressure',
-    recheckIn: '2 h',
+    recheckIn: '15 min',
     steps: [
-      'Rest quietly for 5 minutes without caffeine or exercise before re-checking.',
-      'Complete 500 mL hydration and avoid sudden posture changes.',
-      'Log any headache, dizziness, or post-EVA orthostatic symptoms.',
+      {
+        action: 'Rest quietly for 5 minutes without caffeine or exercise.',
+        howTo: 'Sit or tether comfortably before taking a confirmatory cuff reading.',
+      },
+      {
+        action: 'Drink 500 mL water/electrolytes and avoid sudden posture changes.',
+      },
+      {
+        action: 'Re-check Blood Pressure and note any dizziness or headache.',
+        howTo: HOW_BP,
+      },
+    ],
+    recheckFields: [
+      { indicator: 'systolic', field: 'systolicMmHg' },
+      { indicator: 'diastolic', field: 'diastolicMmHg' },
     ],
     escalateIf: 'Systolic rises ≥ 140 mmHg, drops < 90 mmHg, or dizziness worsens.',
     reference: NASA_HRP_COUNTERMEASURES,
   },
   PROTO_TACHYCARDIA: {
     protocolId: 'PROTO_TACHYCARDIA',
-    title: 'Critical Tachycardia (HR > 100 bpm)',
+    title: 'Critical Tachycardia (Resting HR > 100 bpm)',
     recheckIn: '5 min',
     steps: [
-      'Stop exertion immediately and place crewmember at rest.',
-      'Cross-check BP, SpO₂, and temperature to rule out shock, hypoxia, or fever.',
-      'Administer oral hydration if alert and without chest pain.',
+      {
+        action: 'Stop physical activity and rest calmly for 5 minutes.',
+        howTo: 'Remove heavy gear/restraints and keep breathing slow and steady.',
+      },
+      {
+        action: 'Measure Heart Rate & SpO₂ (blood oxygen) with the pulse oximeter.',
+        howTo: HOW_SPO2,
+      },
+      {
+        action: 'Measure Body Temperature to rule out fever or infection.',
+        howTo: HOW_TEMP,
+      },
+      {
+        action: 'Give 250 mL oral water/electrolytes if alert and without chest pain.',
+        howTo: 'Skip oral fluids if feeling nauseated, dizzy, or having chest discomfort.',
+      },
     ],
-    escalateIf: 'Resting HR stays > 100 bpm after 10 min rest, or chest pain/syncope occurs.',
+    recheckFields: [
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+      { indicator: 'spo2', field: 'spo2Pct' },
+      { indicator: 'temperature', field: 'temperatureC' },
+    ],
+    escalateIf: 'Resting HR stays > 100 bpm after rest, or chest pain, SpO₂ < 92%, or fainting occurs.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_BRADYCARDIA: {
@@ -101,23 +211,40 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Critical Bradycardia (HR < 40 bpm)',
     recheckIn: '5 min',
     steps: [
-      'Assess responsiveness, dizziness, or near-fainting immediately.',
-      'Verify pulse manually (radial/carotid) and cross-check blood pressure.',
-      'Keep crewmember horizontal/secured and suspend solo operations.',
+      {
+        action: 'Check alertness, dizziness, or near-fainting immediately.',
+        howTo: 'Ask the crewmember their name and location; keep them secured horizontally.',
+      },
+      {
+        action: 'Confirm Heart Rate manually at the wrist and check Blood Pressure.',
+        howTo: `${HOW_HR} ${HOW_BP}`,
+      },
+      {
+        action: 'Suspend solo operations and keep a buddy nearby.',
+      },
     ],
-    escalateIf: 'Dizziness, hypotension, or HR remains < 40 bpm on manual verification.',
+    recheckFields: [
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+      { indicator: 'systolic', field: 'systolicMmHg' },
+    ],
+    escalateIf: 'Dizziness, systolic < 90 mmHg, or HR remains < 40 bpm on manual verification.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_HEART_RATE_MONITOR: {
     protocolId: 'PROTO_HEART_RATE_MONITOR',
     title: 'Heart Rate Outside Nominal Band',
-    recheckIn: '30 min',
+    recheckIn: '15 min',
     steps: [
-      'Verify reading after 5 minutes of seated/resting baseline.',
-      'Check hydration intake and recent EVA or ARED/T2 exercise timing.',
-      'Repeat measurement and log any palpitations or lightheadedness.',
+      {
+        action: 'Rest quietly for 5 minutes and repeat Heart Rate measurement.',
+        howTo: HOW_HR,
+      },
+      {
+        action: 'Check hydration intake and recent EVA or ARED/T2 exercise timing.',
+      },
     ],
-    escalateIf: 'HR crosses < 40 or > 100 bpm or symptoms develop.',
+    recheckFields: [{ indicator: 'heartRate', field: 'heartRateBpm' }],
+    escalateIf: 'HR crosses < 40 or > 100 bpm or dizziness/chest symptoms develop.',
     reference: NASA_HRP_COUNTERMEASURES,
   },
   PROTO_HYPOGLYCEMIA: {
@@ -125,22 +252,46 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Critical Hypoglycemia (< 70 mg/dL)',
     recheckIn: '15 min',
     steps: [
-      'Check consciousness and ability to swallow safely.',
-      'If alert: give 15–20 g fast-acting carbohydrates (glucose gel/juice from ration kit).',
-      'If unable to swallow safely: do NOT give oral fluids; notify CMO/Flight Surgeon for IV dextrose.',
-      'Recheck blood glucose in 15 minutes and repeat carb dose if still < 70 mg/dL.',
+      {
+        action: 'Check consciousness and ability to swallow safely.',
+        howTo: 'Ensure crewmember is awake and able to hold and drink safely before giving anything by mouth.',
+      },
+      {
+        action: 'If awake: give 15–20 g fast-acting sugar (glucose gel/juice).',
+        howTo: 'Use 1 glucose gel packet or ~150 mL fruit juice from the Medical/Ration Kit.',
+      },
+      {
+        action: 'If drowsy or unable to swallow: give NO oral fluids; alert CMO for IV dextrose.',
+      },
+      {
+        action: 'Re-check blood glucose after 15 minutes.',
+        howTo: HOW_GLUCOSE,
+      },
     ],
-    escalateIf: 'Confusion, seizure, unresponsiveness, or glucose stays < 70 mg/dL after 15 min.',
+    recheckFields: [{ indicator: 'glucose', field: 'glucoseMgDl' }],
+    escalateIf: 'Confusion, seizure, unresponsiveness, or glucose stays < 70 mg/dL after carb dose.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_HYPERGLYCEMIA: {
     protocolId: 'PROTO_HYPERGLYCEMIA',
     title: 'Critical Hyperglycemia (> 180 mg/dL)',
-    recheckIn: '1 h',
+    recheckIn: '15 min',
     steps: [
-      'Confirm reading with a clean fingerstick and check time since last meal.',
-      'Encourage water/electrolyte hydration if conscious and not nauseated.',
-      'Monitor temperature and alertness for signs of infection or metabolic stress.',
+      {
+        action: 'Confirm with a fresh clean fingerstick glucose reading.',
+        howTo: HOW_GLUCOSE,
+      },
+      {
+        action: 'Encourage plain water hydration if awake and not nauseated.',
+      },
+      {
+        action: 'Check Body Temperature for possible infection or metabolic stress.',
+        howTo: HOW_TEMP,
+      },
+    ],
+    recheckFields: [
+      { indicator: 'glucose', field: 'glucoseMgDl' },
+      { indicator: 'temperature', field: 'temperatureC' },
     ],
     escalateIf: 'Vomiting, rapid breathing, confusion, or glucose remains > 180 mg/dL.',
     reference: `${NASA_HRP_COUNTERMEASURES} · ${NASA_STD_3001_V2}`,
@@ -148,12 +299,20 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
   PROTO_GLUCOSE_ELEVATED: {
     protocolId: 'PROTO_GLUCOSE_ELEVATED',
     title: 'Elevated Blood Glucose (141–180 mg/dL)',
-    recheckIn: '2 h',
+    recheckIn: '15 min',
     steps: [
-      'Note whether reading was fasting or post-meal in the log observations.',
-      'Prioritize water intake and balanced low-glycemic ration on next meal.',
-      'Recheck glucose in 2 hours.',
+      {
+        action: 'Confirm whether this was fasting or right after a meal.',
+      },
+      {
+        action: 'Drink plain water and choose low-sugar rations on next meal.',
+      },
+      {
+        action: 'Re-check glucose with a clean fingerstick if unexpected.',
+        howTo: HOW_GLUCOSE,
+      },
     ],
+    recheckFields: [{ indicator: 'glucose', field: 'glucoseMgDl' }],
     escalateIf: 'Glucose exceeds 180 mg/dL or excessive thirst/fatigue appears.',
     reference: NASA_HRP_COUNTERMEASURES,
   },
@@ -162,33 +321,62 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
     title: 'Critical Hypothermia (< 35.5 °C)',
     recheckIn: '15 min',
     steps: [
-      'Move crewmember out of cold suit/airlock into a warm, dry cabin zone.',
-      'Remove damp layers and apply thermal blankets / active warming.',
-      'Check suit/habitat thermal loop and provide warm fluids if fully alert.',
+      {
+        action: 'Move crewmember out of cold suit/airlock into a warm, dry cabin zone.',
+      },
+      {
+        action: 'Remove damp layers and apply thermal blankets / active warming.',
+      },
+      {
+        action: 'Re-check Body Temperature and Heart Rate after warming starts.',
+        howTo: `${HOW_TEMP} ${HOW_HR}`,
+      },
     ],
-    escalateIf: 'Shivering stops, confusion/lethargy appears, or temp fails to rise.',
+    recheckFields: [
+      { indicator: 'temperature', field: 'temperatureC' },
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+    ],
+    escalateIf: 'Shivering stops, confusion/lethargy appears, or temp fails to rise above 35.5 °C.',
     reference: `${ISS_CMO_ABCDE} · ${NASA_STD_3001_V2}`,
   },
   PROTO_MILD_HYPOTHERMIA: {
     protocolId: 'PROTO_MILD_HYPOTHERMIA',
     title: 'Mild Hypothermia (35.5–36.0 °C)',
-    recheckIn: '30 min',
+    recheckIn: '15 min',
     steps: [
-      'Confirm core temperature with a repeat oral/tympanic reading.',
-      'Add thermal insulation layer and check cabin/suit thermal regulation.',
-      'Provide warm hydration and recheck in 30 minutes.',
+      {
+        action: 'Add thermal layers and verify cabin/suit thermal loop settings.',
+      },
+      {
+        action: 'Provide warm fluids and re-measure Body Temperature.',
+        howTo: HOW_TEMP,
+      },
     ],
+    recheckFields: [{ indicator: 'temperature', field: 'temperatureC' }],
     escalateIf: 'Temperature drops below 35.5 °C or shivering worsens.',
     reference: NASA_HRP_COUNTERMEASURES,
   },
   PROTO_FEVER: {
     protocolId: 'PROTO_FEVER',
     title: 'High Fever (> 38.0 °C)',
-    recheckIn: '1 h',
+    recheckIn: '15 min',
     steps: [
-      'Isolate/mask if infectious symptoms are present to protect closed-cabin crew.',
-      'Cross-check NOAA solar storm status and acute radiation symptoms (nausea/fatigue).',
-      'Increase oral hydration and log temperature every hour.',
+      {
+        action: 'Confirm Body Temperature and ask crewmember to wear a mask if respiratory symptoms exist.',
+        howTo: HOW_TEMP,
+      },
+      {
+        action: 'Check Heart Rate and SpO₂, and inspect active NOAA solar storm alerts.',
+        howTo: HOW_SPO2,
+      },
+      {
+        action: 'Increase oral hydration and administer authorized antipyretic per CMO kit.',
+      },
+    ],
+    recheckFields: [
+      { indicator: 'temperature', field: 'temperatureC' },
+      { indicator: 'heartRate', field: 'heartRateBpm' },
+      { indicator: 'spo2', field: 'spo2Pct' },
     ],
     escalateIf: 'Temp stays > 38.0 °C, breathing difficulty appears, or mental status changes.',
     reference: `${NASA_HRP_COUNTERMEASURES} · NASA HRP Immune & Radiation Risks`,
@@ -196,59 +384,88 @@ export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocolGuide> = {
   PROTO_SUBFEBRILE: {
     protocolId: 'PROTO_SUBFEBRILE',
     title: 'Subfebrile Temperature (37.6–38.0 °C)',
-    recheckIn: '2 h',
+    recheckIn: '15 min',
     steps: [
-      'Confirm temperature after 15 minutes of rest.',
-      'Check hydration, recent intense exercise, and any sore throat or fatigue.',
-      'Monitor for upward trend over the next 2 hours.',
+      {
+        action: 'Rest 15 minutes (away from hot drinks/exercise) and confirm temperature.',
+        howTo: HOW_TEMP,
+      },
+      {
+        action: 'Increase oral hydration and log any sore throat, cough, or fatigue.',
+      },
     ],
+    recheckFields: [{ indicator: 'temperature', field: 'temperatureC' }],
     escalateIf: 'Temperature rises above 38.0 °C or chills/cough develop.',
     reference: NASA_HRP_COUNTERMEASURES,
   },
   PROTO_SLEEP_DEPRIVATION: {
     protocolId: 'PROTO_SLEEP_DEPRIVATION',
     title: 'Severe Sleep Deprivation (< 6 h)',
-    recheckIn: 'Next shift',
+    recheckIn: '15 min',
     steps: [
-      'Defer safety-critical EVA, robotics, or precision docking/EDL tasks if possible.',
-      'Schedule an immediate protected recovery sleep block and dim cabin blue light.',
-      'Have a rested buddy double-check any required operational checklists.',
+      {
+        action: 'Stand down from safety-critical EVA, robotics, or precision docking/EDL tasks.',
+      },
+      {
+        action: 'Have a rested buddy double-check any active operational checklists.',
+      },
+      {
+        action: 'Schedule an immediate protected recovery sleep block and dim cabin blue light.',
+      },
     ],
+    recheckFields: [{ indicator: 'sleepHours', field: 'sleepHours' }],
     escalateIf: 'Micro-sleeps, errors, or cognitive impairment occur during duty.',
     reference: 'NASA HRP Risk of Performance Decrements Due to Inadequate Sleep',
   },
   PROTO_SLEEP_INSUFFICIENT: {
     protocolId: 'PROTO_SLEEP_INSUFFICIENT',
     title: 'Insufficient Sleep (6–6.9 h)',
-    recheckIn: '24 h',
+    recheckIn: '15 min',
     steps: [
-      'Apply solid-state circadian lighting schedule (bright morning, dim pre-sleep).',
-      'Avoid caffeine within 6 hours of scheduled sleep window.',
-      'Aim for ≥ 7 hours on the next rest cycle.',
+      {
+        action: 'Apply solid-state circadian lighting schedule (bright morning, dim pre-sleep).',
+      },
+      {
+        action: 'Avoid caffeine within 6 hours of the next scheduled sleep window.',
+      },
     ],
+    recheckFields: [{ indicator: 'sleepHours', field: 'sleepHours' }],
     escalateIf: 'Sleep drops < 6 h for two consecutive cycles.',
     reference: 'NASA-STD-3001 Vol. 1 · NASA HRP Circadian Alignment',
   },
   PROTO_PSYCHOSOCIAL_DISTRESS: {
     protocolId: 'PROTO_PSYCHOSOCIAL_DISTRESS',
     title: 'Psychosocial Distress (Mood ≤ 2/5)',
-    recheckIn: '4 h',
+    recheckIn: '15 min',
     steps: [
-      'Initiate a private, supportive crew check-in without judgment.',
-      'Reduce non-essential workload and verify sleep + nutrition status.',
-      'Enable asynchronous family/Earth support message or behavioral health audio.',
+      {
+        action: 'Initiate a calm, private crew check-in without judgment.',
+        howTo: 'Ask how they are coping and confirm sleep, hydration, and recent workload.',
+      },
+      {
+        action: 'Reduce non-essential isolated tasks for the current shift.',
+      },
+      {
+        action: 'Enable asynchronous family/Earth behavioral health support link.',
+      },
     ],
+    recheckFields: [{ indicator: 'mood', field: 'mood' }],
     escalateIf: 'Severe withdrawal, panic, or safety concern — notify Flight Surgeon immediately.',
     reference: 'NASA HRP Behavioral Health & Performance (BHP)',
   },
   PROTO_MOOD_SUPPORT: {
     protocolId: 'PROTO_MOOD_SUPPORT',
     title: 'Behavioral & Mood Support (Mood 3/5)',
-    recheckIn: '24 h',
+    recheckIn: '15 min',
     steps: [
-      'Schedule brief crew social/recreation time or Earth family link.',
-      'Confirm regular aerobic/resistive exercise and circadian light exposure.',
+      {
+        action: 'Schedule brief crew social/recreation time or Earth family link.',
+      },
+      {
+        action: 'Confirm regular aerobic/resistive exercise and circadian light exposure.',
+      },
     ],
+    recheckFields: [{ indicator: 'mood', field: 'mood' }],
     escalateIf: 'Mood drops to ≤ 2/5 or persists across multiple days.',
     reference: 'NASA HRP Behavioral Health & Performance (BHP)',
   },
@@ -274,4 +491,18 @@ export function getMedicalProtocolsForAlerts(alerts: HealthAlert[]): MedicalProt
   }
 
   return guides;
+}
+
+/** Collects deduplicated vital fields that must be re-measured across active protocols. */
+export function getRecheckFieldsForProtocols(protocols: MedicalProtocolGuide[]): RecheckFieldSpec[] {
+  const seen = new Set<keyof Vitals>();
+  const fields: RecheckFieldSpec[] = [];
+  for (const protocol of protocols) {
+    for (const spec of protocol.recheckFields) {
+      if (seen.has(spec.field)) continue;
+      seen.add(spec.field);
+      fields.push(spec);
+    }
+  }
+  return fields;
 }

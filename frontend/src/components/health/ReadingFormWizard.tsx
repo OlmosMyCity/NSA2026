@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { healthService } from '../../services/healthService';
 import { evaluateVitals } from '../../domain/health/evaluate';
+import { clearFollowUpNote, saveFollowUpNote } from '../../domain/health/followUpStorage';
 import { INDICATORS } from '../../domain/health/indicators';
+import { getMedicalProtocolsForAlerts } from '../../domain/health/medicalProtocols';
 import { API_STATUS } from '../../domain/health/api-adapter';
 import type { IndicatorId, Vitals } from '../../domain/health/types';
 import { useCrewSelection } from '@/hooks/useCrewSelection';
@@ -23,7 +25,7 @@ import {
   type OpticalCapturedVitals,
 } from '../vision/VisionBiometricsPanel';
 import { StatusBadge } from './StatusBadge';
-import { AssessmentPanel } from './reading-form/AssessmentPanel';
+import { AssessmentPanel, type CriticalVerificationPhase } from './reading-form/AssessmentPanel';
 import { MoodCheckIn } from './reading-form/MoodCheckIn';
 import { VitalField } from './reading-form/VitalField';
 import { DEFAULT_VITALS } from './reading-form/steps';
@@ -55,16 +57,19 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
   const [opticalSynced, setOpticalSynced] = useState<Partial<Record<OpticalSyncField, boolean>>>({});
   const [latestOptical, setLatestOptical] = useState<OpticalCapturedVitals | null>(null);
   const [notes, setNotes] = useState('');
+  const [verificationPhase, setVerificationPhase] = useState<CriticalVerificationPhase>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const evaluation = useMemo(() => evaluateVitals(vitals), [vitals]);
+  const criticalLocked = evaluation.status === 'CRITICAL' && verificationPhase === 'idle';
 
   const setVital = (field: keyof Vitals) => (value: number) => {
     if (field === 'heartRateBpm' || field === 'sleepHours') {
       setManuallyEdited((prev) => ({ ...prev, [field]: true }));
       setOpticalSynced((prev) => ({ ...prev, [field]: false }));
     }
+    setVerificationPhase('idle');
     setVitals((v) => ({ ...v, [field]: value }));
   };
 
@@ -151,6 +156,23 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
     setStep(clamped);
   };
 
+  const handleApplyRecheck = (updatedVitals: Vitals) => {
+    setErrorMessage(null);
+    for (const { indicator, field } of EDITABLE_VITAL_FIELDS) {
+      const val = updatedVitals[field];
+      const def = INDICATORS[indicator];
+      if (!Number.isFinite(val) || val < def.input.min || val > def.input.max) {
+        setErrorMessage(
+          `${def.label} must be between ${def.input.min} and ${def.input.max} ${def.unit}.`,
+        );
+        return;
+      }
+    }
+    setVitals(updatedVitals);
+    const reEval = evaluateVitals(updatedVitals);
+    setVerificationPhase(reEval.status === 'CRITICAL' ? 'confirmed_critical' : 'stabilized');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -158,13 +180,52 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
       setErrorMessage('Please select the astronaut for this reading.');
       return;
     }
+    if (criticalLocked) {
+      setErrorMessage(
+        'Complete the immediate stabilization checklist and verification re-check (or select emergency bypass) before saving.',
+      );
+      return;
+    }
+
+    const phaseTag =
+      verificationPhase === 'confirmed_critical'
+        ? '[Confirmed CRITICAL after stabilization re-check]'
+        : verificationPhase === 'emergency_bypass'
+          ? '[Emergency bypass — immediate triage]'
+          : verificationPhase === 'stabilized'
+            ? '[Verified stabilized after re-check]'
+            : '';
+    const trimmedNotes = notes.trim();
+    const combinedNotes = [trimmedNotes, phaseTag].filter(Boolean).join(' · ') || null;
+
     try {
       setIsSubmitting(true);
       await healthService.createReading({
         astronautId: crew.selectedId,
         ...vitals,
-        notes: notes.trim() || null,
+        notes: combinedNotes,
       });
+
+      if (evaluation.status === 'WARNING') {
+        const protocols = getMedicalProtocolsForAlerts(evaluation.alerts);
+        const primary = protocols[0];
+        const items = (primary?.steps ?? []).slice(0, 3).map((s, idx) => ({
+          id: `${primary?.protocolId ?? 'warn'}-${idx}`,
+          text: s.action,
+          howTo: s.howTo,
+        }));
+        if (items.length > 0) {
+          saveFollowUpNote({
+            astronautId: crew.selectedId,
+            astronautName: crew.selected?.name,
+            title: primary?.title ?? 'Caution Follow-Up Check',
+            items,
+          });
+        }
+      } else if (evaluation.status === 'OK') {
+        clearFollowUpNote(crew.selectedId);
+      }
+
       router.push('/dashboard?recorded=true');
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to log telemetry to the system.');
@@ -356,6 +417,9 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
             evaluation={evaluation}
             vitals={vitals}
             astronautName={crew.selected?.name}
+            verificationPhase={verificationPhase}
+            onApplyRecheck={handleApplyRecheck}
+            onEmergencyBypass={() => setVerificationPhase('emergency_bypass')}
           />
         )}
 
@@ -394,8 +458,12 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
             <button
               key="submit"
               type="submit"
-              disabled={isSubmitting || !crew.selectedId}
-              className="tactile-press flex items-center gap-2 rounded-sm bg-blueberry px-7 py-3 text-xs font-semibold text-plate hover:bg-berry disabled:opacity-50"
+              disabled={isSubmitting || !crew.selectedId || criticalLocked}
+              className={`tactile-press flex items-center gap-2 rounded-sm px-7 py-3 text-xs font-semibold transition-[background-color,opacity] duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed ${
+                evaluation.status === 'CRITICAL' && !criticalLocked
+                  ? 'bg-[var(--status-critical)] text-white hover:opacity-90'
+                  : 'bg-blueberry text-plate hover:bg-berry'
+              }`}
             >
               {isSubmitting ? (
                 <>
@@ -405,7 +473,15 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Confirm &amp; Save Reading</span>
+                  <span>
+                    {criticalLocked
+                      ? 'Complete Stabilization & Verify Above'
+                      : evaluation.status === 'CRITICAL'
+                        ? 'Save & Escalate Critical Reading'
+                        : verificationPhase === 'stabilized'
+                          ? 'Confirm & Save Verified Reading'
+                          : 'Confirm & Save Reading'}
+                  </span>
                 </>
               )}
             </button>
