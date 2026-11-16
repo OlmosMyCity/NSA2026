@@ -193,6 +193,16 @@ python3.11 -m venv .venv
 
 Open `http://localhost:3000` in your browser.
 
+### 4. Demo & Judge Test Credentials
+
+Seeded automatically by `npx prisma db seed` (and `prisma/seed.sql`), as well as in offline/serverless mock mode (`NEXT_PUBLIC_USE_MOCKS=true`):
+
+| Role | Email | Password | Access & Capabilities |
+| :--- | :--- | :--- | :--- |
+| **ADMIN (Flight Surgeon)** | `elena.rodriguez@nasa.gov` | `HrpFlight#2026` | Full command access (`/admin`), multi-crew triage, clinical directives, incident acknowledgement/closure, radiation storm simulation, and mission/crew CRUD |
+| **USER (Crew / Astronaut)** | `r.wiseman@nasa.gov` | `OrionCrew#4IV` | Crew dashboard (`/dashboard` — 3D Digital Twin & What-If simulator), vital intake (`/readings/new`), daily routine (`/routine`), contactless Vision (`/vision`), and 3D mission visualizer (`/visualizer`) |
+| **OPERATOR (Ground Ops)** | `m.chen@nasa.gov` | `GroundOps#2026` | Ground supervision console (`/operator`), read-only telemetry & crew location monitoring for assigned missions (`Apollo 11` / `mission-01` by default) |
+
 ---
 
 ## Automated Testing & Verification

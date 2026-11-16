@@ -49,6 +49,13 @@ export const SEED_USERS = {
     password: "OrionCrew#4IV",
     role: "USER" as const,
   },
+  operator: {
+    id: "user-operator-01",
+    email: "m.chen@nasa.gov",
+    name: "M. Chen",
+    password: "GroundOps#2026",
+    role: "OPERATOR" as const,
+  },
 };
 
 /** Astronauta ligado a la cuenta de tripulante de demo (dashboard de astro-01). */
@@ -199,6 +206,7 @@ interface PlannedReading {
 export interface SeedIds {
   adminId: string;
   commanderUserId: string;
+  operatorUserId?: string;
 }
 
 export interface SeedData {
@@ -435,6 +443,7 @@ export function buildSeedData(ids: SeedIds, nowMs = Date.now()): SeedData {
     endDate: null,
     patchUrl: null,
     createdById: ids.adminId,
+    operatorId: m.id === "mission-01" ? (ids.operatorUserId ?? null) : null,
     createdAt: at(m.key === "ISS" ? 95 * DAY : 45 * DAY),
     updatedAt: at(0),
     deletedAt: null,

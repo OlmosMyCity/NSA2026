@@ -38,42 +38,51 @@ const S2_OR_HIGHER = new Set<NOAAStormScale>([
   'S5_EXTREME',
 ]);
 
-const SCALE_STYLES: Record<NOAAStormScale, { badge: string; border: string; bg: string; label: string }> = {
+const SCALE_STYLES: Record<
+  NOAAStormScale,
+  { badge: string; border: string; bg: string; label: string; crewGuidance: string }
+> = {
   S0_NOMINAL: {
     badge: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30',
     border: 'border-emerald-500/25',
     bg: 'bg-emerald-500/5',
-    label: 'S0 Nominal',
+    label: 'S0 · Safe (Normal)',
+    crewGuidance: 'Solar weather is calm — safe for normal operations and EVA.',
   },
   S1_MINOR: {
     badge: 'bg-amber-500/15 text-amber-800 border-amber-500/30',
     border: 'border-amber-500/30',
     bg: 'bg-amber-500/10',
-    label: 'S1 Minor',
+    label: 'S1 · Mild Activity',
+    crewGuidance: 'Mild solar activity — normal cabin operations; monitor EVA updates.',
   },
   S2_MODERATE: {
     badge: 'bg-amber-500/20 text-amber-900 border-amber-600/40',
     border: 'border-amber-500/50',
     bg: 'bg-amber-500/10',
-    label: 'S2 Moderate',
+    label: 'S2 · Moderate Solar Storm',
+    crewGuidance: 'Moderate storm — pause EVA and stay inside the crew cabin.',
   },
   S3_STRONG: {
     badge: 'bg-orange-500/20 text-orange-900 border-orange-600/40',
     border: 'border-orange-500/50',
     bg: 'bg-orange-500/10',
-    label: 'S3 Strong',
+    label: 'S3 · Strong Solar Storm',
+    crewGuidance: 'Strong storm — abort EVA and prepare to move to Storm Shelter.',
   },
   S4_SEVERE: {
     badge: 'bg-rose-500/20 text-rose-900 border-rose-600/40',
     border: 'border-rose-500/60',
     bg: 'bg-rose-500/10',
-    label: 'S4 Severe',
+    label: 'S4 · Severe Solar Storm',
+    crewGuidance: 'High radiation — move to Storm Shelter immediately.',
   },
   S5_EXTREME: {
     badge: 'bg-rose-600/25 text-rose-950 border-rose-700/50',
     border: 'border-rose-600/70',
     bg: 'bg-rose-600/15',
-    label: 'S5 Extreme',
+    label: 'S5 · Extreme Solar Storm',
+    crewGuidance: 'Extreme radiation — remain in Storm Shelter until all-clear.',
   },
 };
 
@@ -279,27 +288,27 @@ export function RadiationStatusBanner() {
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold border ${style.badge}`}
             >
-              Solar Radiation: {style.label}
+              Solar Weather: {style.label}
             </span>
-            <span className="font-mono text-[11px] font-semibold text-blueberry/80">
-              [{universalProtocol.label}]
+            <span className="font-medium text-blueberry">
+              {style.crewGuidance}
             </span>
-            {status.currentTelemetry.latestXray?.currentClass && (
-              <span className="text-blueberry/80 font-mono">
-                X-Ray: {status.currentTelemetry.latestXray.currentClass}
-              </span>
-            )}
-            {proton10 && (
-              <span className="text-blueberry/80 font-mono">
-                Protons &gt;10 MeV: {proton10.fluxPfu.toFixed(1)} pfu
-              </span>
-            )}
             {earlyWarningActive && status.earlyWarning?.triggerEvent && (
               <span className="inline-flex items-center gap-1 text-amber-900 font-semibold">
                 <ShieldAlert className="h-3.5 w-3.5 text-amber-700" aria-hidden="true" />
-                Early Warning: {status.earlyWarning.triggerEvent}
+                Storm Warning
                 {status.earlyWarning.estimatedProtonArrivalMinutes != null &&
-                  ` (~${status.earlyWarning.estimatedProtonArrivalMinutes} min)`}
+                  ` — peak arriving in ~${status.earlyWarning.estimatedProtonArrivalMinutes} min`}
+              </span>
+            )}
+            {(status.currentTelemetry.latestXray?.currentClass || proton10) && (
+              <span
+                className="text-[11px] text-stem font-mono"
+                title="Raw NOAA/GOES solar telemetry"
+              >
+                ({status.currentTelemetry.latestXray?.currentClass ? `Flare ${status.currentTelemetry.latestXray.currentClass}` : ''}
+                {status.currentTelemetry.latestXray?.currentClass && proton10 ? ' · ' : ''}
+                {proton10 ? `Particle flux ${proton10.fluxPfu.toFixed(1)} pfu` : ''})
               </span>
             )}
             {status.telemetryDegraded && (
