@@ -23,6 +23,7 @@ export interface FollowUpStickyRecord {
 }
 
 const KEY_PREFIX = 'orbvital.followup.';
+const LATEST_KEY = 'orbvital.followup.latestAstronautId';
 export const FOLLOWUP_CHANGE_EVENT = 'orbvital:followup-change';
 
 function keyFor(astronautId: string): string {
@@ -59,6 +60,7 @@ export function saveFollowUpNote(input: {
   };
   try {
     window.localStorage.setItem(keyFor(input.astronautId), JSON.stringify(record));
+    window.localStorage.setItem(LATEST_KEY, input.astronautId);
     notifyChange();
   } catch {
     // Ignore quota/private-mode storage errors without blocking telemetry save.
@@ -76,6 +78,28 @@ export function loadActiveFollowUpNote(astronautId: string, nowMs = Date.now()):
       return null;
     }
     return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function loadLatestActiveFollowUpNote(
+  preferredAstronautId?: string,
+  nowMs = Date.now()
+): FollowUpStickyRecord | null {
+  if (typeof window === 'undefined') return null;
+  if (preferredAstronautId) {
+    const own = loadActiveFollowUpNote(preferredAstronautId, nowMs);
+    if (own) return own;
+  }
+  try {
+    const latestId = window.localStorage.getItem(LATEST_KEY);
+    if (!latestId) return null;
+    const found = loadActiveFollowUpNote(latestId, nowMs);
+    if (!found) {
+      window.localStorage.removeItem(LATEST_KEY);
+    }
+    return found;
   } catch {
     return null;
   }
@@ -101,6 +125,9 @@ export function clearFollowUpNote(astronautId: string): void {
   if (typeof window === 'undefined' || !astronautId) return;
   try {
     window.localStorage.removeItem(keyFor(astronautId));
+    if (window.localStorage.getItem(LATEST_KEY) === astronautId) {
+      window.localStorage.removeItem(LATEST_KEY);
+    }
     notifyChange();
   } catch {
     // Ignore storage failures.

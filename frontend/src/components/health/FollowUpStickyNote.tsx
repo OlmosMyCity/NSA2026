@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
   clearFollowUpNote,
   FOLLOWUP_CHANGE_EVENT,
-  loadActiveFollowUpNote,
+  loadLatestActiveFollowUpNote,
   toggleFollowUpItem,
   type FollowUpStickyRecord,
 } from '@/domain/health/followUpStorage';
@@ -29,14 +29,14 @@ function formatCountdown(remainingMs: number): string {
 export function FollowUpStickyNote() {
   const { user, isAuthenticated } = useAuth();
   const pathname = usePathname();
-  const astronautId = isAuthenticated && user?.role === 'USER' ? user.astronautId : undefined;
+  const preferredAstronautId = isAuthenticated ? user?.astronautId ?? undefined : undefined;
 
   const [note, setNote] = useState<FollowUpStickyRecord | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!astronautId) {
+    if (!isAuthenticated) {
       setNote(null);
       return;
     }
@@ -44,7 +44,7 @@ export function FollowUpStickyNote() {
     const sync = () => {
       const now = Date.now();
       setNowMs(now);
-      setNote(loadActiveFollowUpNote(astronautId, now));
+      setNote(loadLatestActiveFollowUpNote(preferredAstronautId, now));
     };
 
     sync();
@@ -57,7 +57,7 @@ export function FollowUpStickyNote() {
       window.removeEventListener('storage', sync);
       window.clearInterval(timer);
     };
-  }, [astronautId, pathname]);
+  }, [isAuthenticated, preferredAstronautId, pathname]);
 
   const isSilent = SILENT_ROUTES.some((route) => pathname.startsWith(route));
   if (!note || isSilent) return null;
@@ -85,7 +85,9 @@ export function FollowUpStickyNote() {
                 {formatCountdown(remainingMs)} left
               </span>
             </div>
-            <p className="mt-1 text-xs font-semibold text-blueberry truncate">{note.title}</p>
+            <p className="mt-1 text-xs font-semibold text-blueberry truncate">
+              {note.astronautName ? `${note.astronautName} · ${note.title}` : note.title}
+            </p>
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
@@ -125,8 +127,8 @@ export function FollowUpStickyNote() {
                     <span
                       className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-[background-color,border-color] duration-150 ease-out ${
                         item.done
-                          ? 'border-status-nominal bg-status-nominal text-white'
-                          : 'border-line bg-transparent text-transparent'
+                          ? 'border-[var(--status-nominal)] bg-[var(--status-nominal)] text-canvas'
+                          : 'border-blueberry/50 bg-canvas/40 text-transparent'
                       }`}
                     >
                       <Check className="h-2.5 w-2.5" strokeWidth={2.5} />

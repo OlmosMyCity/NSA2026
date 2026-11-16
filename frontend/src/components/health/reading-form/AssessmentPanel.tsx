@@ -238,8 +238,8 @@ export function AssessmentPanel({
                           <span
                             className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border transition-[background-color,border-color] duration-150 ease-out ${
                               checked
-                                ? 'border-status-nominal bg-status-nominal text-white'
-                                : 'border-line bg-transparent text-transparent'
+                                ? 'border-[var(--status-nominal)] bg-[var(--status-nominal)] text-canvas'
+                                : 'border-blueberry/50 bg-canvas/40 text-transparent'
                             }`}
                           >
                             <Check className="h-3 w-3" strokeWidth={2.5} />
