@@ -41,7 +41,7 @@ export class ManageFaceBiometricsUseCase {
 
   async listByAstronaut(astronautId: string): Promise<FaceSampleRecord[]> {
     if (!(await this.repo.astronautExists(astronautId))) {
-      throw new NotFoundError("Astronauta no encontrado.");
+      throw new NotFoundError("Astronaut");
     }
     const rows = await this.repo.listByAstronaut(astronautId);
     return rows.map((r) => toRecord(r, normalizeEmbeddingArray(r.embedding)));
@@ -70,7 +70,7 @@ export class ManageFaceBiometricsUseCase {
   async enrollSample(dto: EnrollFaceSampleDTO): Promise<FaceSampleRecord> {
     const normed = normalizeEmbeddingArray(dto.embedding);
     if (normed.length < 16) {
-      throw new ValidationError("El vector biométrico facial no es válido.");
+      throw new ValidationError("Facial biometric vector is invalid.");
     }
 
     const result = await this.repo.createWithinLimit(
@@ -78,7 +78,7 @@ export class ManageFaceBiometricsUseCase {
         astronautId: dto.astronautId,
         imageUrl: dto.imageUrl,
         label: dto.label?.trim() || null,
-        defaultLabel: (position) => `Muestra #${position}`,
+        defaultLabel: (position) => `Sample #${position}`,
         embedding: normed,
         qualityScore: dto.qualityScore ?? 90,
         uploadedById: dto.uploadedById ?? null,
@@ -87,11 +87,11 @@ export class ManageFaceBiometricsUseCase {
     );
 
     if (result.status === "ASTRONAUT_NOT_FOUND") {
-      throw new NotFoundError("Astronauta no encontrado.");
+      throw new NotFoundError("Astronaut");
     }
     if (result.status === "LIMIT_REACHED") {
       throw new ValidationError(
-        `Máximo ${MAX_FACE_SAMPLES_PER_ASTRONAUT} muestras biométricas faciales por tripulante. Elimina una muestra antes de añadir otra.`
+        `Maximum of ${MAX_FACE_SAMPLES_PER_ASTRONAUT} facial biometric samples per crewmember. Delete a sample before adding another.`
       );
     }
     return toRecord(result.sample, normed);
@@ -99,7 +99,7 @@ export class ManageFaceBiometricsUseCase {
 
   async deleteSample(astronautId: string, sampleId: string): Promise<void> {
     if (!(await this.repo.deleteForAstronaut(astronautId, sampleId))) {
-      throw new NotFoundError("Muestra biométrica no encontrada.");
+      throw new NotFoundError("Biometric sample");
     }
   }
 }

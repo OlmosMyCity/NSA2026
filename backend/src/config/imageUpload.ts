@@ -21,7 +21,7 @@ const parser = multer({
   limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype in IMAGE_EXTENSIONS) cb(null, true);
-    else cb(new ValidationError("Formato de imagen inválido. Solo se admiten JPG, PNG o WEBP."));
+    else cb(new ValidationError("Invalid image format. Only JPG, PNG, or WEBP are supported."));
   },
 });
 
@@ -38,8 +38,8 @@ export function imageUpload(field: string, folder: StorageFolder, bodyKey: strin
         next(
           new ValidationError(
             err.code === "LIMIT_FILE_SIZE"
-              ? "El archivo excede el tamaño máximo permitido de 5 MB."
-              : `Archivo inválido en el campo '${field}'.`
+              ? "File exceeds the maximum allowed size of 5 MB."
+              : `Invalid file in field '${field}'.`
           )
         );
         return;
@@ -52,7 +52,7 @@ export function imageUpload(field: string, folder: StorageFolder, bodyKey: strin
     try {
       if (req.file) {
         if (!hasValidImageMagicBytes(req.file.buffer, req.file.mimetype)) {
-          throw new ValidationError("El contenido del archivo no coincide con un formato JPG, PNG o WEBP válido.");
+          throw new ValidationError("File content does not match a valid JPG, PNG, or WEBP format.");
         }
         req.body = { ...(req.body ?? {}), [bodyKey]: await storageService.uploadImage(req.file, folder) };
       }

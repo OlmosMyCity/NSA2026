@@ -67,7 +67,7 @@ describe("ManageFaceBiometricsUseCase", () => {
     const [data, max] = vi.mocked(repo.createWithinLimit).mock.calls[0] as [CreateFaceSampleData, number];
     expect(max).toBe(MAX_FACE_SAMPLES_PER_ASTRONAUT);
     expect(data.label).toBeNull();
-    expect(data.defaultLabel(3)).toBe("Muestra #3");
+    expect(data.defaultLabel(3)).toBe("Sample #3");
     expect(Math.hypot(...data.embedding)).toBeCloseTo(1, 4);
   });
 

@@ -13,13 +13,13 @@ import { HealthAlert, HealthEvaluationResult } from "../health/evaluateReading.j
 import { OpenIncidentUseCase } from "./OpenIncidentUseCase.js";
 
 const INDICATOR_LABELS: Record<string, string> = {
-  heartRate: "Frecuencia cardiaca",
-  bloodPressure: "Presión arterial",
-  glucose: "Glucosa en sangre",
-  temperature: "Temperatura corporal",
-  spo2: "Saturación de O2 (SpO2)",
-  sleep: "Horas de sueño",
-  mood: "Estado de ánimo",
+  heartRate: "Heart rate",
+  bloodPressure: "Blood pressure",
+  glucose: "Blood glucose",
+  temperature: "Body temperature",
+  spo2: "O2 saturation (SpO2)",
+  sleep: "Sleep duration",
+  mood: "Mood",
 };
 
 function mapAlertSeverity(level: HealthAlert["level"]): IncidentSeverity {
@@ -47,7 +47,7 @@ export async function openMedicalIncidentsFromReading(
       category: IncidentCategory.MEDICAL,
       type: alert.indicator,
       severity: mapAlertSeverity(alert.level),
-      title: `Alerta médica (${alert.level}): ${label}`,
+      title: `Medical alert (${alert.level}): ${label}`,
       description: alert.message,
       astronautId,
       source: "HEALTH_READING",
@@ -85,19 +85,19 @@ export async function openRadiationIncidentFromState(
 
   const descriptionParts = [
     state.earlyWarning.triggerEvent,
-    state.mitigation.abortEvaImmediately ? "Abortar EVA de inmediato." : null,
-    state.mitigation.evacuateToStormShelter ? "Evacuar a refugio antitormenta." : null,
+    state.mitigation.abortEvaImmediately ? "Abort EVA immediately." : null,
+    state.mitigation.evacuateToStormShelter ? "Evacuate to storm shelter." : null,
   ].filter(Boolean);
 
   const { incident } = await openIncidentUseCase.execute({
     category: IncidentCategory.RADIATION,
     type: "SOLAR_RADIATION_STORM",
     severity,
-    title: `Tormenta de radiación solar (${stormScale})`,
+    title: `Solar radiation storm (${stormScale})`,
     description:
       descriptionParts.length > 0
         ? descriptionParts.join(" ")
-        : `Nivel de tormenta solar ${stormScale} detectado por el motor de radiación.`,
+        : `Solar storm level ${stormScale} detected by the radiation engine.`,
     astronautId: null,
     source: "RADIATION_ENGINE",
     metadata: {

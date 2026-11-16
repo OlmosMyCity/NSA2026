@@ -37,14 +37,14 @@ export class AstronautController {
   private async assertSameMissionOrAdmin(req: Request, targetAstronautId: string): Promise<void> {
     if (!req.user || req.user.role === Role.ADMIN) return;
     if (!this.astronautRepo?.findByUserId || !this.astronautRepo?.findById) {
-      throw new ForbiddenError("No tienes permiso para modificar este perfil.");
+      throw new ForbiddenError("You do not have permission to modify this profile.");
     }
     const [ownAstro, targetAstro] = await Promise.all([
       this.astronautRepo.findByUserId(req.user.id),
       this.astronautRepo.findById(targetAstronautId),
     ]);
     if (!ownAstro || !targetAstro || ownAstro.missionId !== targetAstro.missionId) {
-      throw new ForbiddenError("Solo puedes gestionar perfiles y datos biométricos de compañeros de tu misma misión.");
+      throw new ForbiddenError("You can only manage profiles and biometrics for crewmates in your own mission.");
     }
   }
 
@@ -56,7 +56,7 @@ export class AstronautController {
 
       if (isNaN(page) || page <= 0 || isNaN(limit) || limit <= 0) {
         res.status(400).json({
-          error: "Los parámetros de paginación 'page' y 'limit' deben ser números enteros positivos.",
+          error: "Pagination parameters 'page' and 'limit' must be positive integers.",
         });
         return;
       }
@@ -120,7 +120,7 @@ export class AstronautController {
   listBiometrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.faceBiometricsUseCase) {
-        res.status(501).json({ error: "Biometría facial no disponible." });
+        res.status(501).json({ error: "Facial biometrics unavailable." });
         return;
       }
       const { id } = req.params;
@@ -134,7 +134,7 @@ export class AstronautController {
   getBiometricGallery = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.faceBiometricsUseCase) {
-        res.status(501).json({ error: "Biometría facial no disponible." });
+        res.status(501).json({ error: "Facial biometrics unavailable." });
         return;
       }
       let missionId = req.query.missionId as string | undefined;
@@ -152,7 +152,7 @@ export class AstronautController {
   enrollBiometric = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.faceBiometricsUseCase) {
-        res.status(501).json({ error: "Biometría facial no disponible." });
+        res.status(501).json({ error: "Facial biometrics unavailable." });
         return;
       }
       const { id } = req.params;
@@ -177,7 +177,7 @@ export class AstronautController {
   deleteBiometric = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.faceBiometricsUseCase) {
-        res.status(501).json({ error: "Biometría facial no disponible." });
+        res.status(501).json({ error: "Facial biometrics unavailable." });
         return;
       }
       const { id, sampleId } = req.params;

@@ -73,7 +73,7 @@ export class AdminTriageController {
       res.status(201).json({
         success: true,
         directive,
-        message: `Directiva clínica transmitida exitosamente a la consola de ${astronautName}.`,
+        message: `Clinical directive successfully transmitted to ${astronautName}'s console.`,
       });
     } catch (error) {
       next(error);

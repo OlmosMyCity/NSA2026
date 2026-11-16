@@ -61,7 +61,9 @@ async function main() {
   const crewPassword = process.env.SEED_CREW_PASSWORD || (isProduction ? undefined : c.password);
   const operatorPassword = process.env.SEED_OPERATOR_PASSWORD || (isProduction ? undefined : o.password);
   if (!adminPassword || !crewPassword || !operatorPassword) {
-    throw new Error("En producción defina SEED_ADMIN_PASSWORD, SEED_CREW_PASSWORD y SEED_OPERATOR_PASSWORD antes de ejecutar el seed.");
+    throw new Error(
+      "In production, define SEED_ADMIN_PASSWORD, SEED_CREW_PASSWORD, and SEED_OPERATOR_PASSWORD before running the seed."
+    );
   }
   const [adminHash, crewHash, operatorHash] = await Promise.all([
     bcrypt.hash(adminPassword, 10),

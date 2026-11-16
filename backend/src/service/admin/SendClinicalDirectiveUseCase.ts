@@ -19,7 +19,7 @@ export class SendClinicalDirectiveUseCase {
 
   async execute(input: SendClinicalDirectiveInput): Promise<{ astronautName: string; directive: Directive }> {
     const astronautName = await this.crewRepo.findAstronautName(input.astronautId);
-    if (!astronautName) throw new NotFoundError("Astronauta", input.astronautId);
+    if (!astronautName) throw new NotFoundError("Astronaut", input.astronautId);
 
     const directive = await this.directiveRepo.create({
       astronautId: input.astronautId,
@@ -40,7 +40,7 @@ export class ListAstronautDirectivesUseCase {
 
   async execute(astronautId: string): Promise<Directive[]> {
     if (!(await this.crewRepo.findAstronautName(astronautId))) {
-      throw new NotFoundError("Astronauta", astronautId);
+      throw new NotFoundError("Astronaut", astronautId);
     }
     return this.directiveRepo.findByAstronautId(astronautId);
   }

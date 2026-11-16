@@ -16,16 +16,16 @@ export class CreateAstronautUseCase {
 
   async execute(data: CreateAstronautDTO): Promise<AstronautWithMission> {
     if (!data.name || data.name.trim().length === 0) {
-      throw new ValidationError("El nombre del astronauta es obligatorio.");
+      throw new ValidationError("Astronaut name is required.");
     }
     if (!data.role || data.role.trim().length === 0) {
-      throw new ValidationError("El rol del astronauta en la misión es obligatorio.");
+      throw new ValidationError("Astronaut mission role is required.");
     }
     if (!data.missionId || data.missionId.trim().length === 0) {
-      throw new ValidationError("La misión asignada ('missionId') es obligatoria.");
+      throw new ValidationError("Assigned mission ('missionId') is required.");
     }
     if (typeof data.age !== "number" || isNaN(data.age) || data.age <= 0) {
-      throw new ValidationError("La edad del astronauta debe ser un número entero positivo.");
+      throw new ValidationError("Astronaut age must be a positive integer.");
     }
 
     return this.astronautRepo.create({

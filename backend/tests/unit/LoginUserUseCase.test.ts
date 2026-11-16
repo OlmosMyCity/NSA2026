@@ -56,14 +56,14 @@ describe("LoginUserUseCase", () => {
   it("debe responder 401 genérico si el email no existe", async () => {
     const { useCase } = setup(null);
     await expect(useCase.execute({ email: "x@nasa.gov", password: "OrionCrew#4IV" })).rejects.toThrow(
-      new UnauthorizedError("Email o contraseña incorrectos.")
+      new UnauthorizedError("Invalid email or password.")
     );
   });
 
   it("debe responder 401 genérico si la contraseña es incorrecta", async () => {
     const { useCase, tokens } = setup(commander);
     await expect(useCase.execute({ email: "r.wiseman@nasa.gov", password: "mala" })).rejects.toThrow(
-      "Email o contraseña incorrectos."
+      "Invalid email or password."
     );
     expect(tokens.sign).not.toHaveBeenCalled();
   });

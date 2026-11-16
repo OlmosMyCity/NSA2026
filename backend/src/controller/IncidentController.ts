@@ -114,7 +114,7 @@ export class IncidentController {
 
       if (isNaN(page) || page <= 0 || isNaN(limit) || limit <= 0) {
         res.status(400).json({
-          error: "Los parámetros de paginación 'page' y 'limit' deben ser números enteros positivos.",
+          error: "Pagination parameters 'page' and 'limit' must be positive integers.",
         });
         return;
       }
@@ -126,7 +126,7 @@ export class IncidentController {
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (astronautIdFilter && astronautIdFilter !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para consultar incidentes de otro tripulante.");
+          throw new ForbiddenError("You do not have permission to view another crewmember's incidents.");
         }
         if (ownAstronautId) {
           astronautIdFilter = ownAstronautId;
@@ -163,7 +163,7 @@ export class IncidentController {
       if (req.user && req.user.role !== Role.ADMIN && incident.astronautId) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (!ownAstronautId || incident.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para consultar incidentes de otro tripulante.");
+          throw new ForbiddenError("You do not have permission to view another crewmember's incidents.");
         }
       }
 
@@ -193,7 +193,7 @@ export class IncidentController {
         if (existing.astronautId) {
           const ownAstronautId = await this.resolveOwnAstronautId(req);
           if (!ownAstronautId || existing.astronautId !== ownAstronautId) {
-            throw new ForbiddenError("No tienes permiso para confirmar incidentes de otro tripulante.");
+            throw new ForbiddenError("You do not have permission to acknowledge another crewmember's incidents.");
           }
         }
       }

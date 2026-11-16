@@ -18,7 +18,7 @@ async function assertOwnOrSurgeon(
 
   const own = requester.role === Role.USER ? await astronautRepo.findByUserId?.(requester.id) : null;
   if (!own || own.id !== astronautId) {
-    throw new ForbiddenError("Solo puedes consultar o actualizar tu propia ubicación.");
+    throw new ForbiddenError("You can only view or update your own location.");
   }
 }
 
@@ -35,7 +35,7 @@ export class GetCrewLocationUseCase {
     await assertOwnOrSurgeon(this.astronautRepo, requester, astronautId);
 
     const found = await this.crewRepo.findLocation(astronautId);
-    if (!found) throw new NotFoundError("Astronauta", astronautId);
+    if (!found) throw new NotFoundError("Astronaut", astronautId);
 
     return {
       currentLocation: found.currentLocation,
@@ -61,7 +61,7 @@ export class UpdateCrewLocationUseCase {
     await assertOwnOrSurgeon(this.astronautRepo, input.requester, input.astronautId);
 
     const updated = await this.crewRepo.updateLocation(input.astronautId, input.location, this.now());
-    if (!updated) throw new NotFoundError("Astronauta", input.astronautId);
+    if (!updated) throw new NotFoundError("Astronaut", input.astronautId);
 
     return {
       currentLocation: updated.currentLocation,

@@ -30,10 +30,10 @@ export class CorrectHealthReadingUseCase {
 
     const original = await this.readingRepo.findById(originalId);
     if (!original) {
-      throw new NotFoundError("Lectura de salud", originalId);
+      throw new NotFoundError("Health reading", originalId);
     }
     if (!original.isValid) {
-      throw new ConflictError("Solo se puede corregir una lectura válida; esta ya fue invalidada o corregida.");
+      throw new ConflictError("Only a valid reading can be corrected; this reading has already been invalidated or corrected.");
     }
 
     const vitals = {
@@ -60,7 +60,7 @@ export class CorrectHealthReadingUseCase {
         // Default to the original clinical timestamp unless an explicit timestamp is supplied
         takenAt: dto.takenAt ?? original.takenAt,
       },
-      { reason: `Corregida: ${reason}`, invalidatedById: correctedById }
+      { reason: `Corrected: ${reason}`, invalidatedById: correctedById }
     );
 
     if (this.openIncidentUseCase && evaluation.alerts.length > 0) {

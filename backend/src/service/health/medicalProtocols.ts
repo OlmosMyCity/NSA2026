@@ -2,9 +2,6 @@
  * @module service/health/medicalProtocols
  * Standardized NASA HRP biomedical response protocols referenced by deterministic reading
  * evaluations (`evaluateReading`) and clinical incident workflows.
- *
- * Note: Protocol `title`, `summary`, and `immediateActions` strings are preserved in Spanish
- * to satisfy UI display and unit-test contract assertions.
  */
 
 /** Clinical severity classification aligned with Prisma `HealthStatus`. */
@@ -24,243 +21,243 @@ export interface MedicalProtocol {
 export const MEDICAL_PROTOCOLS: Record<string, MedicalProtocol> = {
   PROTO_NOMINAL: {
     id: "PROTO_NOMINAL",
-    title: "Monitoreo Biomédico Nominal",
+    title: "Nominal Biomedical Monitoring",
     indicator: "nominal",
     severity: "OK",
-    summary: "Parámetros dentro de rangos nominales de misión. Continuar con la rutina programada.",
+    summary: "Parameters within nominal mission ranges. Continue scheduled routine.",
     immediateActions: [
-      "Mantener registro biomédico según cronograma de misión.",
-      "Continuar hidratación y ciclo circadiano estándar.",
+      "Maintain biomedical logging per mission schedule.",
+      "Continue standard hydration and circadian cycle.",
     ],
   },
   PROTO_HYPOXIA: {
     id: "PROTO_HYPOXIA",
-    title: "Protocolo de Hipoxia Aguda",
+    title: "Acute Hypoxia Protocol",
     indicator: "spo2",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPOXIA]: Hipoxia detectada (SpO2 < 92%). Notificar al Cirujano de Vuelo, administrar O2 suplementario al 100%, abortar EVA y verificar presión parcial de O2/CO2 en cabina.",
+      "CRITICAL ALERT [PROTO_HYPOXIA]: Hypoxia detected (SpO2 < 92%). Notify the Flight Surgeon, administer 100% supplemental O2, abort EVA, and verify cabin O2/CO2 partial pressure.",
     immediateActions: [
-      "Administrar oxígeno suplementario inmediato y verificar sellado de traje/cabina.",
-      "Comprobar ppO2 y depuradores de CO2 del soporte vital.",
-      "Suspender EVA y notificar al Cirujano de Vuelo.",
+      "Administer immediate supplemental oxygen and verify suit/cabin seal.",
+      "Check life-support ppO2 and CO2 scrubbers.",
+      "Suspend EVA and notify the Flight Surgeon.",
     ],
   },
   PROTO_SPO2_BORDERLINE: {
     id: "PROTO_SPO2_BORDERLINE",
-    title: "Vigilancia de Saturación de Oxígeno",
+    title: "Oxygen Saturation Watch",
     indicator: "spo2",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_SPO2_BORDERLINE]: SpO2 limítrofe (92–94%). Verificar ventilación del módulo, filtros de CO2 y repetir oximetría en 30 minutos.",
+      "CAUTION [PROTO_SPO2_BORDERLINE]: Borderline SpO2 (92–94%). Verify module ventilation, CO2 filters, and repeat oximetry in 30 minutes.",
     immediateActions: [
-      "Revisar flujo de ventilación y cartuchos de CO2.",
-      "Repetir lectura de pulso-oximetría en reposo.",
+      "Inspect ventilation airflow and CO2 scrubber cartridges.",
+      "Repeat pulse oximetry reading at rest.",
     ],
   },
   PROTO_HYPOGLYCEMIA: {
     id: "PROTO_HYPOGLYCEMIA",
-    title: "Protocolo de Hipoglucemia Severa",
+    title: "Severe Hypoglycemia Protocol",
     indicator: "glucose",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPOGLYCEMIA]: Hipoglucemia (< 70 mg/dL). Notificar al Cirujano de Vuelo, administrar 15–20 g de glucosa oral de acción rápida, suspender maniobras críticas y reevaluar en 15 minutos.",
+      "CRITICAL ALERT [PROTO_HYPOGLYCEMIA]: Hypoglycemia (< 70 mg/dL). Notify the Flight Surgeon, administer 15–20 g fast-acting oral glucose, suspend critical maneuvers, and re-evaluate in 15 minutes.",
     immediateActions: [
-      "Administrar gel/tabletas de glucosa oral (15–20 g) si está consciente.",
-      "Suspender EVA o tareas de precisión y reevaluar glucemia capilar a los 15 min.",
-      "Notificar al Cirujano de Vuelo.",
+      "Administer oral glucose gel/tablets (15–20 g) if conscious.",
+      "Suspend EVA or precision tasks and recheck capillary glucose in 15 min.",
+      "Notify the Flight Surgeon.",
     ],
   },
   PROTO_HYPERGLYCEMIA: {
     id: "PROTO_HYPERGLYCEMIA",
-    title: "Protocolo de Hiperglucemia Crítica",
+    title: "Critical Hyperglycemia Protocol",
     indicator: "glucose",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPERGLYCEMIA]: Hiperglucemia severa (> 180 mg/dL). Notificar al Cirujano de Vuelo, iniciar hidratación controlada, verificar cetonas y suspender EVA.",
+      "CRITICAL ALERT [PROTO_HYPERGLYCEMIA]: Severe hyperglycemia (> 180 mg/dL). Notify the Flight Surgeon, initiate controlled hydration, check ketones, and suspend EVA.",
     immediateActions: [
-      "Iniciar hidratación oral/IV según indicación del Cirujano de Vuelo.",
-      "Evaluar síntomas metabólicos y repetir glucemia en 1 hora.",
+      "Initiate oral/IV hydration per Flight Surgeon guidance.",
+      "Assess metabolic symptoms and repeat glucose check in 1 hour.",
     ],
   },
   PROTO_GLUCOSE_ELEVATED: {
     id: "PROTO_GLUCOSE_ELEVATED",
-    title: "Control Metabólico y Nutricional",
+    title: "Metabolic & Nutritional Control",
     indicator: "glucose",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_GLUCOSE_ELEVATED]: Glucosa elevada (141–180 mg/dL). Ajustar ración nutricional, hidratar y reevaluar en 4 horas.",
+      "CAUTION [PROTO_GLUCOSE_ELEVATED]: Elevated glucose (141–180 mg/dL). Adjust nutritional ration, hydrate, and re-evaluate in 4 hours.",
     immediateActions: [
-      "Revisar ingesta de carbohidratos en la ración espacial.",
-      "Aumentar hidratación y repetir medición en 4 horas.",
+      "Review carbohydrate intake in the space ration.",
+      "Increase hydration and repeat measurement in 4 hours.",
     ],
   },
   PROTO_HYPERTENSIVE_CRISIS: {
     id: "PROTO_HYPERTENSIVE_CRISIS",
-    title: "Protocolo de Crisis Hipertensiva",
+    title: "Hypertensive Crisis Protocol",
     indicator: "bloodPressure",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPERTENSIVE_CRISIS]: Crisis hipertensiva (>= 140/90 mmHg). Notificar al Cirujano de Vuelo, colocar al tripulante en reposo, suspender EVA y evaluar redistribución de fluidos.",
+      "CRITICAL ALERT [PROTO_HYPERTENSIVE_CRISIS]: Hypertensive crisis (>= 140/90 mmHg). Notify the Flight Surgeon, place crewmember at rest, suspend EVA, and assess fluid redistribution.",
     immediateActions: [
-      "Reposo inmediato en cabina y reevaluar presión arterial en 15 minutos.",
-      "Suspender actividad física intensa y EVA.",
-      "Notificar al Cirujano de Vuelo para valoración farmacológica.",
+      "Immediate cabin rest and recheck blood pressure in 15 minutes.",
+      "Suspend strenuous physical activity and EVA.",
+      "Notify the Flight Surgeon for pharmacological evaluation.",
     ],
   },
   PROTO_HYPOTENSION: {
     id: "PROTO_HYPOTENSION",
-    title: "Protocolo de Hipotensión Aguda",
+    title: "Acute Hypotension Protocol",
     indicator: "bloodPressure",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPOTENSION]: Hipotensión severa (sistólica < 90 mmHg). Notificar al Cirujano de Vuelo, aplicar reposición de fluidos/electrolitos y compresión ortostática.",
+      "CRITICAL ALERT [PROTO_HYPOTENSION]: Severe hypotension (systolic < 90 mmHg). Notify the Flight Surgeon, initiate fluid/electrolyte replacement, and apply orthostatic compression.",
     immediateActions: [
-      "Colocar en posición supina/segura y administrar hidratación con electrolitos.",
-      "Activar prendas de compresión y notificar al Cirujano de Vuelo.",
+      "Place in supine/safe position and administer electrolyte hydration.",
+      "Activate compression garments and notify the Flight Surgeon.",
     ],
   },
   PROTO_BLOOD_PRESSURE_BORDERLINE: {
     id: "PROTO_BLOOD_PRESSURE_BORDERLINE",
-    title: "Seguimiento Hemodinámico Limítrofe",
+    title: "Borderline Hemodynamic Monitoring",
     indicator: "bloodPressure",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_BLOOD_PRESSURE_BORDERLINE]: Presión arterial limítrofe. Hidratación, reposo relativo y repetir toma en 4 horas.",
+      "CAUTION [PROTO_BLOOD_PRESSURE_BORDERLINE]: Borderline blood pressure. Hydrate, maintain relative rest, and repeat reading in 4 hours.",
     immediateActions: [
-      "Asegurar hidratación oral y reducir carga física.",
-      "Repetir toma de presión arterial en 4 horas.",
+      "Ensure oral hydration and reduce physical workload.",
+      "Repeat blood pressure check in 4 hours.",
     ],
   },
   PROTO_TACHYCARDIA: {
     id: "PROTO_TACHYCARDIA",
-    title: "Protocolo de Taquicardia Crítica",
+    title: "Critical Tachycardia Protocol",
     indicator: "heartRate",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_TACHYCARDIA]: Taquicardia severa (> 100 lpm en reposo). Notificar al Cirujano de Vuelo, registrar ECG de 12 derivaciones, hidratar y suspender EVA.",
+      "CRITICAL ALERT [PROTO_TACHYCARDIA]: Severe tachycardia (> 100 bpm at rest). Notify the Flight Surgeon, record a 12-lead ECG, hydrate, and suspend EVA.",
     immediateActions: [
-      "Capturar trazado ECG y verificar electrolitos/hidratación.",
-      "Suspender EVA y notificar al Cirujano de Vuelo.",
+      "Capture ECG trace and verify electrolytes/hydration.",
+      "Suspend EVA and notify the Flight Surgeon.",
     ],
   },
   PROTO_BRADYCARDIA: {
     id: "PROTO_BRADYCARDIA",
-    title: "Protocolo de Bradicardia Extrema",
+    title: "Extreme Bradycardia Protocol",
     indicator: "heartRate",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_BRADYCARDIA]: Bradicardia extrema (< 40 lpm). Notificar al Cirujano de Vuelo, evaluar perfusión y registrar ECG continuo.",
+      "CRITICAL ALERT [PROTO_BRADYCARDIA]: Extreme bradycardia (< 40 bpm). Notify the Flight Surgeon, assess perfusion, and record continuous ECG.",
     immediateActions: [
-      "Evaluar estado de conciencia y presión arterial inmediata.",
-      "Iniciar monitoreo ECG continuo y notificar al Cirujano de Vuelo.",
+      "Assess level of consciousness and immediate blood pressure.",
+      "Start continuous ECG monitoring and notify the Flight Surgeon.",
     ],
   },
   PROTO_HEART_RATE_MONITOR: {
     id: "PROTO_HEART_RATE_MONITOR",
-    title: "Vigilancia de Frecuencia Cardiaca",
+    title: "Heart Rate Surveillance",
     indicator: "heartRate",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_HEART_RATE_MONITOR]: Frecuencia cardiaca fuera de rango nominal. Moderar actividad física y repetir control en 4 horas.",
+      "CAUTION [PROTO_HEART_RATE_MONITOR]: Heart rate outside nominal range. Moderate physical activity and repeat check in 4 hours.",
     immediateActions: [
-      "Reducir esfuerzo físico y verificar hidratación.",
-      "Repetir lectura cardiaca en 4 horas.",
+      "Reduce physical exertion and verify hydration.",
+      "Repeat heart rate reading in 4 hours.",
     ],
   },
   PROTO_FEVER: {
     id: "PROTO_FEVER",
-    title: "Protocolo de Fiebre Aguda / Infección",
+    title: "Acute Fever / Infection Protocol",
     indicator: "temperature",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_FEVER]: Fiebre alta (> 38.0 °C). Notificar al Cirujano de Vuelo, aislar sintomáticamente si aplica, iniciar antipirético e hidratación, y suspender EVA.",
+      "CRITICAL ALERT [PROTO_FEVER]: High fever (> 38.0 °C). Notify the Flight Surgeon, apply symptomatic isolation if indicated, start antipyretic and hydration, and suspend EVA.",
     immediateActions: [
-      "Administrar antipirético autorizado e hidratación intensiva.",
-      "Evaluar foco infeccioso/inmunológico y notificar al Cirujano de Vuelo.",
+      "Administer authorized antipyretic and intensive hydration.",
+      "Assess infectious/immune focus and notify the Flight Surgeon.",
     ],
   },
   PROTO_HYPOTHERMIA: {
     id: "PROTO_HYPOTHERMIA",
-    title: "Protocolo de Hipotermia en Cabina/Traje",
+    title: "Cabin/Suit Hypothermia Protocol",
     indicator: "temperature",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_HYPOTHERMIA]: Hipotermia (< 35.5 °C). Notificar al Cirujano de Vuelo, iniciar recalentamiento activo y revisar control térmico del traje/módulo.",
+      "CRITICAL ALERT [PROTO_HYPOTHERMIA]: Hypothermia (< 35.5 °C). Notify the Flight Surgeon, begin active rewarming, and inspect suit/module thermal control.",
     immediateActions: [
-      "Aplicar recalentamiento activo y aislar térmicamente al tripulante.",
-      "Verificar bucle térmico del traje/cabina y notificar al Cirujano de Vuelo.",
+      "Apply active rewarming and thermally insulate the crewmember.",
+      "Verify suit/cabin thermal loop and notify the Flight Surgeon.",
     ],
   },
   PROTO_MILD_HYPOTHERMIA: {
     id: "PROTO_MILD_HYPOTHERMIA",
-    title: "Vigilancia de Hipotermia Leve",
+    title: "Mild Hypothermia Watch",
     indicator: "temperature",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_MILD_HYPOTHERMIA]: Hipotermia leve (35.5–36.0 °C). Revisar termorregulación del traje/cabina, abrigar y reevaluar en 2 horas.",
+      "CAUTION [PROTO_MILD_HYPOTHERMIA]: Mild hypothermia (35.5–36.0 °C). Inspect suit/cabin thermoregulation, add warming layers, and re-evaluate in 2 hours.",
     immediateActions: [
-      "Verificar la temperatura de cabina y el sistema térmico del traje.",
-      "Añadir capas térmicas e ingerir líquidos tibios.",
-      "Repetir la medición en 2 horas; escalar si baja de 35.5 °C.",
+      "Check cabin temperature and suit thermal regulation system.",
+      "Add thermal layers and provide warm fluids.",
+      "Repeat measurement in 2 hours; escalate if temperature drops below 35.5 °C.",
     ],
   },
   PROTO_SUBFEBRILE: {
     id: "PROTO_SUBFEBRILE",
-    title: "Vigilancia Térmica e Inmunológica",
+    title: "Thermal & Immune Surveillance",
     indicator: "temperature",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_SUBFEBRILE]: Febrícula (>37.5–38.0 °C). Vigilar síntomas inmunológicos, hidratar y reevaluar en 4 horas.",
+      "CAUTION [PROTO_SUBFEBRILE]: Subfebrile temperature (> 37.5–38.0 °C). Monitor immune symptoms, hydrate, and re-evaluate in 4 hours.",
     immediateActions: [
-      "Controlar temperatura cada 4 horas e hidratar.",
-      "Vigilar síntomas respiratorios o exposición a radiación.",
+      "Monitor temperature every 4 hours and maintain hydration.",
+      "Watch for respiratory symptoms or radiation exposure.",
     ],
   },
   PROTO_SLEEP_DEPRIVATION: {
     id: "PROTO_SLEEP_DEPRIVATION",
-    title: "Protocolo de Fatiga Operativa Severa",
+    title: "Severe Operational Fatigue Protocol",
     indicator: "sleep",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_SLEEP_DEPRIVATION]: Privación de sueño severa (< 6.0 h). Notificar al Cirujano de Vuelo, restringir maniobras críticas/EVA y programar descanso obligatorio.",
+      "CRITICAL ALERT [PROTO_SLEEP_DEPRIVATION]: Severe sleep deprivation (< 6.0 h). Notify the Flight Surgeon, restrict critical maneuvers/EVA, and schedule mandatory recovery rest.",
     immediateActions: [
-      "Retirar de maniobras críticas/EVA hasta completar bloque de sueño reparador.",
-      "Notificar al Cirujano de Vuelo y ajustar iluminación circadiana.",
+      "Stand down from critical maneuvers/EVA until completing a recovery sleep block.",
+      "Notify the Flight Surgeon and adjust circadian lighting.",
     ],
   },
   PROTO_SLEEP_INSUFFICIENT: {
     id: "PROTO_SLEEP_INSUFFICIENT",
-    title: "Ajuste de Ciclo Circadiano",
+    title: "Circadian Cycle Adjustment",
     indicator: "sleep",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_SLEEP_INSUFFICIENT]: Sueño insuficiente (6.0–6.9 h). Ajustar iluminación circadiana y programar descanso antes del siguiente turno.",
+      "CAUTION [PROTO_SLEEP_INSUFFICIENT]: Insufficient sleep (6.0–6.9 h). Adjust circadian lighting and schedule rest before the next shift.",
     immediateActions: [
-      "Aplicar protocolo de iluminación azul/ámbar y descanso programado.",
+      "Apply blue/amber circadian lighting protocol and scheduled rest.",
     ],
   },
   PROTO_PSYCHOSOCIAL_DISTRESS: {
     id: "PROTO_PSYCHOSOCIAL_DISTRESS",
-    title: "Protocolo de Soporte Psicosocial Crítico",
+    title: "Critical Psychosocial Support Protocol",
     indicator: "mood",
     severity: "CRITICAL",
     summary:
-      "ALERTA CRÍTICA [PROTO_PSYCHOSOCIAL_DISTRESS]: Riesgo psicosocial elevado (ánimo <= 2/5). Notificar al Cirujano de Vuelo y equipo de psicología espacial; habilitar enlace privado con tierra.",
+      "CRITICAL ALERT [PROTO_PSYCHOSOCIAL_DISTRESS]: Elevated psychosocial risk (mood <= 2/5). Notify the Flight Surgeon and space psychology team; enable a private ground link.",
     immediateActions: [
-      "Establecer sesión privada con psicología de vuelo y Cirujano de Vuelo.",
-      "Reducir carga operativa aislada y habilitar comunicación familiar.",
+      "Schedule a private session with flight psychology and the Flight Surgeon.",
+      "Reduce isolated workload and enable family communication.",
     ],
   },
   PROTO_MOOD_SUPPORT: {
     id: "PROTO_MOOD_SUPPORT",
-    title: "Acompañamiento Psicosocial Preventivo",
+    title: "Preventive Psychosocial Support",
     indicator: "mood",
     severity: "WARNING",
     summary:
-      "PRECAUCIÓN [PROTO_MOOD_SUPPORT]: Ánimo decaído (3/5). Fomentar comunicación con familiares y soporte de misión.",
+      "CAUTION [PROTO_MOOD_SUPPORT]: Low mood (3/5). Encourage family communication and mission support.",
     immediateActions: [
-      "Programar llamada familiar o actividad grupal de cohesión.",
+      "Schedule a family call or team cohesion activity.",
     ],
   },
 };

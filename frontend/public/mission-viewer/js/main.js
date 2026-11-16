@@ -83,9 +83,9 @@ async function main() {
       ? rawData
       : "data/mission.json";
   const res = await fetch(dataUrl);
-  if (!res.ok) throw new Error(`No se pudo cargar ${dataUrl} (${res.status})`);
+  if (!res.ok) throw new Error(`Failed to load ${dataUrl} (${res.status})`);
   const mission = await res.json();
-  if (mission.schema_version !== 1) throw new Error(`Versión de formato no soportada: ${mission.schema_version}`);
+  if (mission.schema_version !== 1) throw new Error(`Unsupported format version: ${mission.schema_version}`);
 
   const { phases, events, bodies } = mission;
   const samples = toTypedSamples(mission.samples);
@@ -290,12 +290,12 @@ async function main() {
   $("finale-close").addEventListener("click", () => ($("finale").hidden = true));
 
   $("finale-stats").innerHTML = [
-    [`${hud.fmt(RESULTS.touchdown_speed_ms, 1)} m/s`, "velocidad de contacto"],
-    [`${hud.fmt(RESULTS.landing_error_m * 100, 1)} cm`, "error respecto al sitio"],
-    [`${hud.fmt(RESULTS.mission_days, 2)} días`, "duración de la misión"],
-    [`${hud.fmt(hud.total / 1000, 2)} km/s`, "Δv desde la inserción"],
-    [`${hud.fmt(RESULTS.hls_mass_landed_t, 1)} t`, "masa del HLS en la superficie"],
-    [`${events.length}`, "eventos de misión"],
+    [`${hud.fmt(RESULTS.touchdown_speed_ms, 1)} m/s`, "touchdown velocity"],
+    [`${hud.fmt(RESULTS.landing_error_m * 100, 1)} cm`, "landing site error"],
+    [`${hud.fmt(RESULTS.mission_days, 2)} days`, "mission duration"],
+    [`${hud.fmt(hud.total / 1000, 2)} km/s`, "Δv since insertion"],
+    [`${hud.fmt(RESULTS.hls_mass_landed_t, 1)} t`, "HLS mass on surface"],
+    [`${events.length}`, "mission events"],
   ].map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join("");
 
   const help = $("help");
@@ -639,7 +639,7 @@ main().catch((err) => {
   console.error(err);
   const box = $("loading");
   if (box) {
-    box.textContent = `Error: ${err.message}. Sirve la carpeta frontend/ con un servidor local (ver README).`;
+    box.textContent = `Error: ${err.message}. Serve the frontend/ directory using a local server (see README).`;
     box.classList.add("error");
   }
 });

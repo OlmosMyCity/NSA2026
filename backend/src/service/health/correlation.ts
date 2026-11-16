@@ -42,7 +42,7 @@ export function correlateTriageWithRadiation(
   const stormActive = isS3OrHigherStorm(stormScale);
 
   if (stormActive && status === HealthStatus.CRITICAL) {
-    const shelterNote = `ATENCIÓN EN REFUGIO ANTITORMENTA (${stormScale}): Prohibido EVA o traslado por módulo sin blindaje; atender y estabilizar al tripulante dentro del refugio.`;
+    const shelterNote = `STORM SHELTER CARE (${stormScale}): EVA and unshielded module transit prohibited; treat and stabilize crewmember inside the shelter.`;
     return {
       priorityBoosted: true,
       triagePriorityScore: 0,

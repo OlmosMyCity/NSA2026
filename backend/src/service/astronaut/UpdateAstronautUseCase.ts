@@ -16,13 +16,13 @@ export class UpdateAstronautUseCase {
 
   async execute(id: string, data: UpdateAstronautDTO): Promise<AstronautWithMission> {
     if (data.name !== undefined && data.name.trim().length === 0) {
-      throw new ValidationError("El nombre del astronauta no puede estar vacío.");
+      throw new ValidationError("Astronaut name cannot be empty.");
     }
     if (data.role !== undefined && data.role.trim().length === 0) {
-      throw new ValidationError("El rol del astronauta no puede estar vacío.");
+      throw new ValidationError("Astronaut role cannot be empty.");
     }
     if (data.age !== undefined && (typeof data.age !== "number" || isNaN(data.age) || data.age <= 0)) {
-      throw new ValidationError("La edad del astronauta debe ser un número entero positivo.");
+      throw new ValidationError("Astronaut age must be a positive integer.");
     }
 
     const updated = await this.astronautRepo.update(id, {
@@ -32,7 +32,7 @@ export class UpdateAstronautUseCase {
     });
 
     if (!updated) {
-      throw new NotFoundError("Astronauta", id);
+      throw new NotFoundError("Astronaut", id);
     }
 
     return updated;

@@ -35,12 +35,12 @@ function finiteNumber(
       return val;
     },
     (options.int
-      ? z.number({ message: `'${label}' debe ser un número válido.` }).int(`'${label}' debe ser un entero.`)
-      : z.number({ message: `'${label}' debe ser un número válido.` })
+      ? z.number({ message: `'${label}' must be a valid number.` }).int(`'${label}' must be an integer.`)
+      : z.number({ message: `'${label}' must be a valid number.` })
     )
-      .finite(`'${label}' debe ser un número finito.`)
-      .min(min, `'${label}' debe ser mayor o igual a ${min}.`)
-      .max(max, `'${label}' debe ser menor o igual a ${max}.`)
+      .finite(`'${label}' must be a finite number.`)
+      .min(min, `'${label}' must be greater than or equal to ${min}.`)
+      .max(max, `'${label}' must be less than or equal to ${max}.`)
   );
 }
 
@@ -69,15 +69,15 @@ export const safeImageUrlSchema = z
         return false;
       }
     },
-    { message: "La URL de imagen debe usar protocolo HTTPS o data URI de imagen válido." }
+    { message: "Image URL must use HTTPS or a valid image data URI." }
   );
 
 const requiredNonEmptyString = (label: string, maxLen: number) =>
   z
-    .string({ message: `El campo '${label}' es obligatorio.` })
+    .string({ message: `Field '${label}' is required.` })
     .trim()
-    .min(1, `El campo '${label}' no puede estar vacío.`)
-    .max(maxLen, `El campo '${label}' no puede exceder ${maxLen} caracteres.`);
+    .min(1, `Field '${label}' cannot be empty.`)
+    .max(maxLen, `Field '${label}' cannot exceed ${maxLen} characters.`);
 
 const optionalDateSchema = z
   .union([z.string(), z.date(), z.null(), z.undefined()])
@@ -86,7 +86,7 @@ const optionalDateSchema = z
     if (val === null || val === "") return null;
     const date = val instanceof Date ? val : new Date(val);
     if (isNaN(date.getTime())) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Formato de fecha inválido." });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid date format." });
       return z.NEVER;
     }
     return date;
@@ -101,7 +101,7 @@ const healthVitalsShape = {
   spo2Pct: finiteNumber("spo2Pct", 30, 100),
   sleepHours: finiteNumber("sleepHours", 0, 24),
   mood: finiteNumber("mood", 1, 5, { int: true }),
-  notes: z.string().trim().max(1000, "Las notas no pueden exceder 1000 caracteres.").nullable().optional(),
+  notes: z.string().trim().max(1000, "Notes cannot exceed 1000 characters.").nullable().optional(),
   takenAt: optionalDateSchema,
 };
 
@@ -113,10 +113,10 @@ export const createHealthReadingSchema = z.object({
 
 // P1: las lecturas no se editan. Se invalidan con motivo o se corrigen con una lectura nueva.
 const readingChangeReason = z
-  .string({ required_error: "El motivo es obligatorio." })
+  .string({ required_error: "Reason is required." })
   .trim()
-  .min(5, "El motivo debe tener al menos 5 caracteres.")
-  .max(500, "El motivo no puede exceder 500 caracteres.");
+  .min(5, "Reason must be at least 5 characters long.")
+  .max(500, "Reason cannot exceed 500 characters.");
 
 export const invalidateHealthReadingSchema = z.object({
   reason: readingChangeReason,
@@ -136,14 +136,14 @@ export const createMissionSchema = z
     status: z.nativeEnum(MissionStatus).optional(),
     startDate: z
       .union([z.string(), z.date()], {
-        message: "El campo 'startDate' es obligatorio y debe ser una fecha válida.",
+        message: "Field 'startDate' is required and must be a valid date.",
       })
       .transform((val, ctx) => {
         const date = val instanceof Date ? val : new Date(val);
         if (isNaN(date.getTime())) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "El formato de 'startDate' no es una fecha válida.",
+            message: "Field 'startDate' format is not a valid date.",
           });
           return z.NEVER;
         }
@@ -153,7 +153,7 @@ export const createMissionSchema = z
     patchUrl: safeImageUrlSchema.optional(),
   })
   .refine((data) => !data.endDate || data.endDate >= data.startDate, {
-    message: "La fecha de fin ('endDate') no puede ser anterior a 'startDate'.",
+    message: "End date ('endDate') cannot be earlier than 'startDate'.",
   });
 
 export const updateMissionSchema = z.object({
@@ -167,7 +167,7 @@ export const updateMissionSchema = z.object({
       if (val === undefined) return undefined;
       const d = val instanceof Date ? val : new Date(val);
       if (isNaN(d.getTime())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El formato de 'startDate' no es válido." });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Field 'startDate' format is invalid." });
         return z.NEVER;
       }
       return d;
@@ -201,27 +201,27 @@ export const directivesSchema = z.object({
 });
 
 export const crewLocationSchema = z.object({
-  location: z.nativeEnum(CrewLocation, { message: "El campo 'location' no es una ubicación válida." }),
+  location: z.nativeEnum(CrewLocation, { message: "Field 'location' is not a valid location." }),
 });
 
 export const createUserByAdminSchema = z.object({
   name: requiredNonEmptyString("name", 120),
   email: z
-    .string({ message: "El campo 'email' es obligatorio." })
+    .string({ message: "Field 'email' is required." })
     .trim()
-    .email("El email no es válido.")
-    .max(254, "El email es demasiado largo."),
+    .email("Invalid email address.")
+    .max(254, "Email is too long."),
   // Estas cuentas ven datos de terceros: se exige más que al registro público.
   password: z
-    .string({ message: "El campo 'password' es obligatorio." })
-    .min(10, "La contraseña debe tener al menos 10 caracteres.")
-    .max(128, "La contraseña es demasiado larga."),
-  role: z.nativeEnum(Role, { message: "El campo 'role' no es un rol válido." }),
+    .string({ message: "Field 'password' is required." })
+    .min(10, "Password must be at least 10 characters long.")
+    .max(128, "Password is too long."),
+  role: z.nativeEnum(Role, { message: "Field 'role' is not a valid role." }),
 });
 
 export const assignMissionOperatorSchema = z.object({
   operatorId: z.union([z.string().trim().min(1), z.null()], {
-    message: "El campo 'operatorId' debe ser un id de usuario o null.",
+    message: "Field 'operatorId' must be a user ID or null.",
   }),
 });
 
@@ -275,13 +275,13 @@ export const visionIngestSchema = z.object({
 
 export const enrollFaceBiometricSchema = z.object({
   imageUrl: safeImageUrlSchema.refine((v) => typeof v === "string" && v.length > 0, {
-    message: "El campo 'imageUrl' es obligatorio.",
+    message: "Field 'imageUrl' is required.",
   }),
   label: z.string().trim().max(80).nullable().optional(),
   embedding: z
     .array(finiteNumber("embedding", -10, 10))
-    .min(16, "El vector biométrico debe tener al menos 16 dimensiones.")
-    .max(512, "El vector biométrico no puede exceder 512 dimensiones."),
+    .min(16, "Biometric vector must have at least 16 dimensions.")
+    .max(512, "Biometric vector cannot exceed 512 dimensions."),
   qualityScore: finiteNumber("qualityScore", 0, 100).optional(),
 });
 
@@ -296,7 +296,7 @@ export function parseWithValidation<TSchema extends z.ZodTypeAny>(
   const result = schema.safeParse(input);
   if (!result.success) {
     const first = result.error.issues[0];
-    throw new ValidationError(first?.message || "Los datos proporcionados no son válidos.");
+    throw new ValidationError(first?.message || "The provided data is invalid.");
   }
   return result.data as z.output<TSchema>;
 }

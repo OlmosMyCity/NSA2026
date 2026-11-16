@@ -26,7 +26,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
   const [scheme, token] = req.headers.authorization?.split(" ") ?? [];
 
   if (scheme !== "Bearer" || !token) {
-    next(new UnauthorizedError("Token de acceso requerido (Authorization: Bearer <token>)."));
+    next(new UnauthorizedError("Access token required (Authorization: Bearer <token>)."));
     return;
   }
 

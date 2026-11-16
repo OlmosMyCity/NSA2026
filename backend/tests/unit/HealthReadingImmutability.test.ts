@@ -84,7 +84,7 @@ describe("Inmutabilidad de lecturas de salud (P1)", () => {
       expect(data.takenAt).toEqual(original.takenAt);
       // Re-evaluada con la regla clínica: 112 lpm es taquicardia
       expect(data.status).toBe("CRITICAL");
-      expect(invalidation).toEqual({ reason: "Corregida: Se transcribió mal la FC", invalidatedById: "admin-1" });
+      expect(invalidation).toEqual({ reason: "Corrected: Se transcribió mal la FC", invalidatedById: "admin-1" });
       expect(corrected.id).toBe("r-2");
       // La nueva alerta abre su incidente médico
       expect(openIncident.execute).toHaveBeenCalled();

@@ -33,14 +33,14 @@ export class RegisterUserUseCase {
     const name = input.name?.trim();
     const email = input.email?.trim().toLowerCase();
 
-    if (!name) throw new ValidationError("El nombre es obligatorio.");
-    if (!email || !EMAIL_REGEX.test(email)) throw new ValidationError("El email no es válido.");
+    if (!name) throw new ValidationError("Name is required.");
+    if (!email || !EMAIL_REGEX.test(email)) throw new ValidationError("Invalid email address.");
     if (!input.password || input.password.length < MIN_PASSWORD_LENGTH) {
-      throw new ValidationError(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
     }
 
     if (await this.userRepo.findByEmail(email)) {
-      throw new ConflictError("Ya existe una cuenta registrada con ese email.");
+      throw new ConflictError("An account with that email already exists.");
     }
 
     // Public self-registration always creates astronaut (USER) accounts; ADMIN accounts come from seed data.

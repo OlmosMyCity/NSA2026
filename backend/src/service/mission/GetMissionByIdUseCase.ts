@@ -14,7 +14,7 @@ export class GetMissionByIdUseCase {
   async execute(id: string): Promise<Mission> {
     const mission = await this.missionRepo.findById(id);
     if (!mission) {
-      throw new NotFoundError("Misión", id);
+      throw new NotFoundError("Mission", id);
     }
     return mission;
   }

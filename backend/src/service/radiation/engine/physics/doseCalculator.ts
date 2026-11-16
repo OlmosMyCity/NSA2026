@@ -21,21 +21,21 @@ export class DoseCalculator {
       name: 'Extravehicular Activity (EVA) Spacesuit',
       arealDensityGcm2: 1.2,
       attenuationFactor: 0.95, // Transmits 95% of ionizing particle flux
-      description: 'Blindaje mínimo contra radiación ionizante. Máxima vulnerabilidad a protones solares.'
+      description: 'Minimal shielding against ionizing radiation. Maximum vulnerability to solar protons.'
     },
     CREW_CABIN_NOMINAL: {
       type: 'CREW_CABIN_NOMINAL',
       name: 'Orion / Gateway Cabin Nominal Shielding',
       arealDensityGcm2: 10.0,
       attenuationFactor: 0.25, // Transmits 25% of ionizing particle flux (75% attenuation)
-      description: 'Estructura de aleación de aluminio y polímeros del hábitat de vuelo nominal.'
+      description: 'Aluminum alloy and polymer structure of the nominal flight habitat.'
     },
     STORM_SHELTER: {
       type: 'STORM_SHELTER',
       name: 'Dedicated Crew Solar Storm Shelter',
       arealDensityGcm2: 25.0,
       attenuationFactor: 0.04, // Transmits 4% of ionizing particle flux (96% attenuation)
-      description: 'Zona central del módulo blindada con reservas de agua, víveres y paneles de polietileno hidrogenado.'
+      description: 'Central module zone shielded by water reserves, provisions, and hydrogenated polyethylene panels.'
     }
   };
 

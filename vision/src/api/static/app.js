@@ -48,7 +48,7 @@
     ws = new WebSocket(wsUrl);
     ws.onopen = () => {
       if (connPill) {
-        connPill.textContent = "EN LÍNEA";
+        connPill.textContent = "ONLINE";
         connPill.style.color = "#22c55e";
       }
       awaitingResponse = false;
@@ -62,7 +62,7 @@
     };
     ws.onclose = () => {
       if (connPill) {
-        connPill.textContent = "RECONECTANDO...";
+        connPill.textContent = "RECONNECTING...";
         connPill.style.color = "#f59e0b";
       }
       setTimeout(connectWebSocket, 1500);
@@ -124,7 +124,7 @@
         });
         webcamVideo.srcObject = webcamStream;
       } catch (err) {
-        alert("No se pudo acceder a la cámara web local. Volviendo al modo Simulador.");
+        alert("Could not access local webcam. Switching back to Simulator mode.");
         sourceSelect.value = "simulator";
         simControlsBox.hidden = false;
       }
@@ -175,11 +175,11 @@
       hudImage.src = `data:image/jpeg;base64,${t.annotated_frame_jpeg_b64}`;
     }
     if (fpsPill) fpsPill.textContent = `FPS: ${t.fps.toFixed(1)}`;
-    healthPill.textContent = `SALUD GLOBAL: ${t.overall_health_index.toFixed(0)}%`;
+    healthPill.textContent = `OVERALL HEALTH: ${t.overall_health_index.toFixed(0)}%`;
 
     if (t.alerts && t.alerts.length > 0) {
       alertsBanner.hidden = false;
-      alertsBanner.textContent = `⚠ ALERTAS DE MISIÓN: ${t.alerts.join("  |  ")}`;
+      alertsBanner.textContent = `⚠ MISSION ALERTS: ${t.alerts.join("  |  ")}`;
     } else {
       alertsBanner.hidden = true;
     }
@@ -233,7 +233,7 @@
     // 3. Sleep & Fatigue
     const sl = t.sleep;
     document.getElementById("sleep-score").textContent = sl.sleep_quality_score.toFixed(0);
-    document.getElementById("sleep-stage").textContent = `Fase: ${sl.sleep_stage_estimate}`;
+    document.getElementById("sleep-stage").textContent = `Stage: ${sl.sleep_stage_estimate}`;
     document.getElementById("fatigue-tag").textContent = sl.fatigue_level.toUpperCase();
     document.getElementById("perclos-val").textContent = `${sl.perclos.toFixed(1)}%`;
     document.getElementById("ear-val").textContent = sl.ear_mean.toFixed(3);
@@ -304,17 +304,17 @@
     formData.append("context", contextSelect.value);
 
     reportOutput.hidden = false;
-    reportOutput.textContent = "Procesando video cuadro a cuadro en CPU...";
+    reportOutput.textContent = "Processing video frame by frame on CPU...";
     try {
       const res = await fetch("/api/analyze/video", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
-        reportOutput.textContent = `Error: ${data.detail || "Fallo al procesar"}`;
+        reportOutput.textContent = `Error: ${data.detail || "Processing failed"}`;
         return;
       }
       const s = data.summary;
       const heading = document.createElement("strong");
-      heading.textContent = `Reporte de Sesión (${data.duration_seconds}s / ${data.frames_processed} cuadros):`;
+      heading.textContent = `Session Report (${data.duration_seconds}s / ${data.frames_processed} frames):`;
 
       const appendLine = (label, text) => {
         reportOutput.appendChild(document.createElement("br"));
@@ -327,19 +327,19 @@
 
       reportOutput.replaceChildren(heading);
       appendLine(
-        "Pulso Promedio:",
+        "Average Pulse:",
         `${s.mean_bpm} BPM (Final: ${s.final_bpm} BPM | HRV RMSSD: ${s.hrv_rmssd_ms} ms)`
       );
       appendLine(
-        "Estado de Ánimo Dominante:",
-        `${s.dominant_mood} (Estrés medio: ${s.mean_stress_index}%)`
+        "Dominant Mood:",
+        `${s.dominant_mood} (Mean stress: ${s.mean_stress_index}%)`
       );
       appendLine(
-        "Calidad de Sueño/Alerta:",
-        `${s.mean_sleep_quality_score}/100 | PERCLOS: ${s.final_perclos}% | Bostezos: ${s.yawn_count}`
+        "Sleep / Alertness Quality:",
+        `${s.mean_sleep_quality_score}/100 | PERCLOS: ${s.final_perclos}% | Yawns: ${s.yawn_count}`
       );
     } catch (err) {
-      reportOutput.textContent = `Error de red: ${err}`;
+      reportOutput.textContent = `Network error: ${err}`;
     }
   });
 

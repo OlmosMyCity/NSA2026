@@ -46,7 +46,7 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(400);
-    expect(body.error).toContain("parámetros de paginación");
+    expect(body.error).toContain("Pagination parameters");
   });
 
   it("debe retornar error 400 descriptivo si la paginación de astronautas tiene valores inválidos", async () => {
@@ -54,7 +54,7 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(400);
-    expect(body.error).toContain("parámetros de paginación");
+    expect(body.error).toContain("Pagination parameters");
   });
 
   it("debe retornar error 401 si se intenta consultar o modificar lecturas sin token JWT", async () => {
@@ -158,7 +158,7 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
 
     expect(res.status).toBe(404);
     expect(contentType).toContain("application/json");
-    expect(body.error).toContain("no existe");
+    expect(body.error).toContain("does not exist");
   });
 
   it("debe retornar 400 si el registro llega sin nombre", async () => {
@@ -170,7 +170,7 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(400);
-    expect(body.error).toContain("nombre");
+    expect(body.error).toContain("Name");
   });
 
   it("debe retornar 400 si el login llega sin credenciales", async () => {
@@ -178,7 +178,7 @@ describe("Integración HTTP - Rutas y Middleware de Errores", () => {
     const body = (await res.json()) as { error: string };
 
     expect(res.status).toBe(400);
-    expect(body.error).toContain("contraseña");
+    expect(body.error).toContain("password");
   });
   it("debe retornar 401 en /api/auth/me sin token", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`);

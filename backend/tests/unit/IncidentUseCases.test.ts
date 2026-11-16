@@ -289,7 +289,7 @@ describe("Fase 1 - Incidentes (open/acknowledge/close y deduplicación)", () => 
     expect(res.incident.category).toBe(IncidentCategory.MISSION);
     expect(res.incident.severity).toBe(IncidentSeverity.CRITICAL);
     expect(res.incident.protocolId).toBe("PROTO_FIRE_TOXIC_ATMOSPHERE");
-    expect(res.incident.title).toContain("Incendio");
+    expect(res.incident.title).toContain("fire");
 
     await expect(
       openUseCase.execute({

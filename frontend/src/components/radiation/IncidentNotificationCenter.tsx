@@ -146,7 +146,7 @@ export function IncidentNotificationCenter() {
       />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-blueberry">
-          {escalated ? 'Incidente sin confirmar' : 'Nuevo incidente'}
+          {escalated ? 'Unacknowledged incident' : 'New incident'}
           {extra > 0 && <span className="ml-1 font-normal text-stem">+{extra}</span>}
         </p>
         <p className="truncate text-stem">{latest.incident.title}</p>
@@ -156,13 +156,13 @@ export function IncidentNotificationCenter() {
         onClick={() => handleAck(latest.incident.id)}
         className="shrink-0 rounded px-2 py-1 font-semibold text-berry hover:bg-surface-hover"
       >
-        Confirmar
+        Acknowledge
       </button>
       <button
         type="button"
         onClick={() => setNotifications([])}
         className="shrink-0 px-1 text-stem hover:text-blueberry"
-        aria-label="Cerrar aviso"
+        aria-label="Dismiss notification"
       >
         ✕
       </button>

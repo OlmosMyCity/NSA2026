@@ -182,7 +182,7 @@ describe("GetTriageOverviewUseCase", () => {
     expect(payload.crew[0].astronautId).toBe("astro-crit");
     expect(payload.crew[0].priorityBoosted).toBe(true);
     expect(payload.crew[0].triagePriorityScore).toBe(0);
-    expect(payload.crew[0].adaptedProtocol).toContain("REFUGIO ANTITORMENTA");
+    expect(payload.crew[0].adaptedProtocol).toContain("STORM SHELTER CARE");
     expect(payload.crew[1].priorityBoosted).toBe(false);
   });
 

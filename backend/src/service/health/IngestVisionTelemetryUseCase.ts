@@ -48,13 +48,13 @@ export interface VisionIngestResult {
 }
 
 const INDICATOR_LABELS: Record<string, string> = {
-  heartRate: "Frecuencia cardiaca",
-  bloodPressure: "Presión arterial",
-  glucose: "Glucosa en sangre",
-  temperature: "Temperatura corporal",
-  spo2: "Saturación de O2 (SpO2)",
-  sleep: "Horas de sueño",
-  mood: "Estado de ánimo",
+  heartRate: "Heart rate",
+  bloodPressure: "Blood pressure",
+  glucose: "Blood glucose",
+  temperature: "Body temperature",
+  spo2: "O2 saturation (SpO2)",
+  sleep: "Sleep duration",
+  mood: "Mood",
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -127,7 +127,7 @@ export class IngestVisionTelemetryUseCase {
 
   async execute(dto: VisionTelemetryIngestDTO): Promise<VisionIngestResult> {
     if (!dto.astronautId?.trim()) {
-      throw new ValidationError("El ID del astronauta es obligatorio.");
+      throw new ValidationError("Astronaut ID is required.");
     }
 
     const pendingNotifications: Array<{ event: "incident:opened" | "incident:escalated"; incident: Incident; reason?: string }> = [];
@@ -139,7 +139,7 @@ export class IngestVisionTelemetryUseCase {
       });
 
       if (!astronaut) {
-        throw new NotFoundError("Astronauta no encontrado.");
+        throw new NotFoundError("Astronaut");
       }
 
       const latest = await tx.healthReading.findFirst({
@@ -196,7 +196,7 @@ export class IngestVisionTelemetryUseCase {
       for (const alert of evaluation.alerts as HealthAlert[]) {
         const severity = alert.level === "CRITICAL" ? IncidentSeverity.CRITICAL : IncidentSeverity.WARNING;
         const label = INDICATOR_LABELS[alert.indicator] ?? alert.indicator;
-        const title = `Alerta médica (${alert.level}): ${label}`;
+        const title = `Medical alert (${alert.level}): ${label}`;
 
         const existing = await tx.incident.findFirst({
           where: {

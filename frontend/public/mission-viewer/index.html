@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Orbvital · Visualizador 3D</title>
+    <title>Orbvital · 3D Mission Viewer</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,9 +19,9 @@
     </script>
   </head>
   <body>
-    <main id="viewport" aria-label="Escena 3D de la misión"></main>
+    <main id="viewport" aria-label="3D mission scene"></main>
     <div id="labels" aria-hidden="true"></div>
-    <div id="loading">Cargando la misión…</div>
+    <div id="loading">Loading mission…</div>
 
     <section class="panel" id="hud">
       <div class="brand">ARTEMIS IV</div>
@@ -29,31 +29,31 @@
       <div class="phase" id="hud-phase">—</div>
       <div class="vehicle" id="hud-vehicle">—</div>
       <dl>
-        <dt id="hud-alt-label">Altitud</dt><dd id="hud-alt">—</dd>
+        <dt id="hud-alt-label">Altitude</dt><dd id="hud-alt">—</dd>
         <dd class="spark"><canvas id="spark-alt"></canvas><i class="cursor"></i></dd>
-        <dt id="hud-speed-label">Velocidad</dt><dd id="hud-speed">—</dd>
+        <dt id="hud-speed-label">Velocity</dt><dd id="hud-speed">—</dd>
         <dd class="spark"><canvas id="spark-speed"></canvas><i class="cursor"></i></dd>
         <div id="hud-rates" class="rates" hidden>
           <dt>Vertical</dt><dd id="hud-vertical">—</dd>
           <dt>Horizontal</dt><dd id="hud-horizontal">—</dd>
         </div>
-        <dt class="secondary">Masa</dt><dd class="secondary" id="hud-mass">—</dd>
+        <dt class="secondary">Mass</dt><dd class="secondary" id="hud-mass">—</dd>
       </dl>
     </section>
 
-    <nav class="panel" id="views" aria-label="Opciones">
-      <button type="button" id="guide-btn" hidden>Volver a cámara guiada</button>
-      <button type="button" id="science-btn" aria-expanded="false" aria-controls="science">Ciencia</button>
-      <button type="button" id="help-btn" aria-label="Ayuda">?</button>
+    <nav class="panel" id="views" aria-label="Options">
+      <button type="button" id="guide-btn" hidden>Return to guided camera</button>
+      <button type="button" id="science-btn" aria-expanded="false" aria-controls="science">Science</button>
+      <button type="button" id="help-btn" aria-label="Help">?</button>
     </nav>
 
     <aside class="panel" id="science" hidden>
-      <h2>Ciencia de esta fase</h2>
+      <h2>Phase Science</h2>
       <p id="sci-physics"></p>
       <dl>
-        <dt>Método</dt><dd id="sci-method"></dd>
-        <dt>Resultado</dt><dd id="sci-result"></dd>
-        <dt>Marco de la vista</dt><dd id="hud-frame"></dd>
+        <dt>Method</dt><dd id="sci-method"></dd>
+        <dt>Result</dt><dd id="sci-result"></dd>
+        <dt>Reference Frame</dt><dd id="hud-frame"></dd>
       </dl>
       <h2>Δv <span id="dv-spent"></span></h2>
       <div id="dv-bar"></div>
@@ -67,81 +67,81 @@
     </article>
 
     <footer class="panel" id="timeline">
-      <button id="play" type="button" aria-label="Reproducir">▶</button>
+      <button id="play" type="button" aria-label="Play">▶</button>
       <div id="track-wrap">
         <div id="tags"></div>
         <div id="track"><div id="curtain"></div></div>
-        <input id="slider" type="range" min="0" max="1000" step="1" value="0" aria-label="Tiempo de misión" />
+        <input id="slider" type="range" min="0" max="1000" step="1" value="0" aria-label="Mission time" />
         <div id="names"></div>
       </div>
     </footer>
 
     <section class="overlay" id="intro" hidden>
       <div class="overlay-box">
-        <div class="kicker">Universidad de Medellín · Computación Científica</div>
+        <div class="kicker">Universidad de Medellín · Scientific Computing</div>
         <h1>Artemis IV</h1>
-        <p>De la plataforma LC-39B al polo sur de la Luna: 16 días de misión, simulados numéricamente de punta a punta.</p>
+        <p>From Launch Complex 39B to the Lunar South Pole: 16 mission days, simulated numerically end to end.</p>
         <div class="actions">
-          <button class="primary" id="intro-start" type="button">Iniciar misión</button>
+          <button class="primary" id="intro-start" type="button">Start mission</button>
         </div>
       </div>
     </section>
 
     <section class="overlay end" id="finale" hidden>
       <div class="overlay-box">
-        <div class="kicker">Región polar sur · 86,8° S</div>
-        <h1>Alunizaje confirmado</h1>
+        <div class="kicker">South Polar Region · 86.8° S</div>
+        <h1>Lunar touchdown confirmed</h1>
         <div class="stats" id="finale-stats"></div>
         <div class="actions">
-          <button class="primary" id="finale-replay" type="button">Ver de nuevo</button>
-          <button id="finale-close" type="button">Seguir explorando</button>
+          <button class="primary" id="finale-replay" type="button">Replay mission</button>
+          <button id="finale-close" type="button">Keep exploring</button>
         </div>
       </div>
     </section>
 
     <dialog id="help">
-      <h2>Cómo usar el visualizador</h2>
+      <h2>How to use the viewer</h2>
       <table>
-        <tr><td>Clic en un evento</td><td>Salta a él con su toma de cámara y su explicación</td></tr>
-        <tr><td><kbd>Espacio</kbd></td><td>Reproducir / pausar</td></tr>
-        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Evento anterior / siguiente (Max-Q, MECO, TLI, OPF, NRI, DOI, PDI…)</td></tr>
-        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Más / menos velocidad de reproducción (por defecto se ajusta sola a cada fase)</td></tr>
-        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Marco ECI / rotante Tierra–Luna / selenocéntrico</td></tr>
-        <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>L</kbd></td><td>Enfocar nave / Tierra / Luna</td></tr>
-        <tr><td><kbd>G</kbd></td><td>Volver a la cámara guiada (se desactiva al mover la cámara)</td></tr>
-        <tr><td><kbd>M</kbd></td><td>Vista general de la misión</td></tr>
-        <tr><td><kbd>E</kbd></td><td>Mostrar u ocultar etiquetas</td></tr>
-        <tr><td><kbd>C</kbd></td><td>Mostrar u ocultar Ciencia</td></tr>
-        <tr><td><kbd>H</kbd></td><td>Esta ayuda</td></tr>
-        <tr><td>Ratón / dedos</td><td>Girar, acercar y desplazar la cámara</td></tr>
+        <tr><td>Click an event</td><td>Jumps to it with its camera shot and explanation</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous / next event (Max-Q, MECO, TLI, OPF, NRI, DOI, PDI…)</td></tr>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Faster / slower playback speed (auto-scales by phase by default)</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>ECI / Earth–Moon Rotating / Selenocentric frame</td></tr>
+        <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>L</kbd></td><td>Focus spacecraft / Earth / Moon</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Return to guided camera (disabled on manual camera move)</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Mission overview</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Show or hide labels</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Show or hide Science panel</td></tr>
+        <tr><td><kbd>H</kbd></td><td>This help dialog</td></tr>
+        <tr><td>Mouse / touch</td><td>Orbit, zoom, and pan camera</td></tr>
       </table>
-      <h3>NRHO de Gateway</h3>
+      <h3>Gateway NRHO</h3>
       <p>
-        Órbita de halo casi rectilínea 9:2 alrededor de L2 (periodo 6,56 d; perilunio ≈ 3 250 km sobre el polo norte,
-        apolunio ≈ 71 000 km sobre el polo sur), calculada con <code>periodic_orbits.find_nrho()</code>.
-        Es periódica en el marco rotante: actívalo con <kbd>2</kbd> para verla fija.
+        9:2 Near-Rectilinear Halo Orbit around L2 (6.56-day period; perilune ≈ 3,250 km above the north pole,
+        apolune ≈ 71,000 km above the south pole), computed with <code>periodic_orbits.find_nrho()</code>.
+        It is periodic in the rotating frame: toggle with <kbd>2</kbd> to see it fixed.
       </p>
-      <h3>Descenso al polo sur (HLS)</h3>
+      <h3>South Pole Descent (HLS)</h3>
       <p>
-        Poco antes del perilunio de la NRHO el HLS hace la DOI: una elipse con perilunio a 15 km, media vuelta
-        más allá. En el PDI empieza el descenso propulsado con E-guidance (frenado → high gate → aproximación →
-        low gate a 100 m → descenso vertical a 1 m/s), integrado en el marco fijo a la Luna con la gravedad
-        GRGM1200A de GRAIL hasta grado 100. Haz clic en PDI o Contacto en la línea de tiempo para ir al sitio (86,8° S).
-        Cerca de la Luna, la velocidad se mide respecto a su superficie.
+        Shortly before NRHO perilune, HLS performs DOI: an ellipse dropping to 15 km perilune half an orbit later.
+        At PDI, powered descent begins using E-guidance (braking → high gate → approach → low gate at 100 m →
+        vertical descent at 1 m/s), integrated in the Moon-fixed frame with GRAIL GRGM1200A gravity up to degree 100.
+        Click PDI or Touchdown on the timeline to jump to the landing site (86.8° S).
+        Near the Moon, velocity is measured relative to its surface.
       </p>
-      <h3>Marcos de referencia</h3>
+      <h3>Reference Frames</h3>
       <ul>
-        <li><b>ECI J2000:</b> inercial, centrado en la Tierra. Así integra el simulador.</li>
-        <li><b>Rotante Tierra–Luna:</b> gira con la Luna (ángulo θ = n·t + φ₀ en su plano), que queda fija en el eje x a 384 400 km.</li>
-        <li><b>Selenocéntrico:</b> ejes ECI con origen en la Luna: r − r<sub>Luna</sub>(t).</li>
+        <li><b>ECI J2000:</b> inertial, Earth-centered. Used for numerical integration.</li>
+        <li><b>Earth–Moon Rotating:</b> rotates with the Moon (angle θ = n·t + φ₀ in its plane), keeping it fixed on the x-axis at 384,400 km.</li>
+        <li><b>Selenocentric:</b> ECI axes centered at the Moon: r − r<sub>Moon</sub>(t).</li>
       </ul>
       <p class="note">
-        La barra de tiempo no es lineal: cada fase ocupa un ancho proporcional al logaritmo de su duración.
-        Escala: 1 unidad = 1 000 km. La escena se recentra en el cuerpo enfocado (origen flotante) para no perder precisión en Float32.
-        Las naves no están a escala (serían invisibles): su tamaño depende del cuerpo más cercano y siempre es menor que él.
-        Datos: <code>scripts/export_mission.py</code> → <code>data/mission.json</code>. Texturas: ver <code>assets/CREDITS.md</code>.
+        The timeline is non-linear: each phase occupies width proportional to the logarithm of its duration.
+        Scale: 1 unit = 1,000 km. The scene recenters on the focused body (floating origin) to preserve Float32 precision.
+        Spacecraft are not to scale (otherwise invisible): their size scales with the nearest body while remaining smaller.
+        Data: <code>scripts/export_mission.py</code> → <code>data/mission.json</code>. Textures: see <code>assets/CREDITS.md</code>.
       </p>
-      <button id="help-close" type="button">Cerrar</button>
+      <button id="help-close" type="button">Close</button>
     </dialog>
 
     <script type="module" src="js/main.js"></script>
