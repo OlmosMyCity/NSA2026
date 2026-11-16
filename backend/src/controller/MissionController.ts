@@ -36,7 +36,7 @@ export class MissionController {
 
       if (isNaN(page) || page <= 0 || isNaN(limit) || limit <= 0) {
         res.status(400).json({
-          error: "Los parámetros de paginación 'page' y 'limit' deben ser números enteros positivos.",
+          error: "Pagination parameters 'page' and 'limit' must be positive integers.",
         });
         return;
       }

@@ -15,12 +15,12 @@ export class GetAstronautHealthSummaryUseCase {
 
   async execute(astronautId: string): Promise<AstronautHealthSummary> {
     if (!astronautId || astronautId.trim() === "") {
-      throw new NotFoundError("Astronauta", astronautId);
+      throw new NotFoundError("Astronaut", astronautId);
     }
 
     const summary = await this.readingRepo.getAstronautHealthSummary(astronautId);
     if (!summary) {
-      throw new NotFoundError("Astronauta", astronautId);
+      throw new NotFoundError("Astronaut", astronautId);
     }
 
     return summary;

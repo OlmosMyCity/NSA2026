@@ -161,7 +161,7 @@ export class BiodosimetryTriageUseCase {
     if (input.requestingUserRole && input.requestingUserRole !== Role.ADMIN) {
       if (input.healthReading !== undefined || input.radiationState !== undefined) {
         throw new ForbiddenError(
-          "Solo el cirujano de vuelo (ADMIN) puede enviar overrides manuales de telemetría."
+          "Only the Flight Surgeon (ADMIN) can submit manual telemetry overrides."
         );
       }
     }
@@ -171,7 +171,7 @@ export class BiodosimetryTriageUseCase {
         ? await this.astronautRepo.findByUserId(input.requestingUserId)
         : null;
       if (targetAstronautId && targetAstronautId !== ownAstronaut?.id) {
-        throw new ForbiddenError("No tienes permiso para ejecutar triaje sobre otro tripulante.");
+        throw new ForbiddenError("You do not have permission to run triage for another crewmember.");
       }
       targetAstronautId = ownAstronaut?.id ?? null;
     }

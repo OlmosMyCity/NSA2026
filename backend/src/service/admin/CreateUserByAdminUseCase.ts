@@ -23,7 +23,7 @@ export class CreateUserByAdminUseCase {
   async execute(input: CreateUserByAdminInput): Promise<AuthUser> {
     const email = input.email.trim().toLowerCase();
     if (await this.userRepo.findByEmail(email)) {
-      throw new ConflictError("Ya existe una cuenta registrada con ese email.");
+      throw new ConflictError("An account with that email already exists.");
     }
 
     const user = await this.userRepo.create({

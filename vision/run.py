@@ -13,7 +13,7 @@ def main() -> None:
     args = parser.parse_args()
 
     ensure_models()
-    print(f"\n🚀 Iniciando OrbVital Astronaut Biometrics en http://localhost:{args.port}\n")
+    print(f"\n🚀 Starting OrbVital Astronaut Biometrics at http://localhost:{args.port}\n")
     uvicorn.run("src.api.app:app", host=args.host, port=args.port, reload=args.reload)
 
 

@@ -89,7 +89,7 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     throw new ValidationError(
-      first ? `${first.path.join(".") || "body"}: ${first.message}` : "Datos inválidos."
+      first ? `${first.path.join(".") || "body"}: ${first.message}` : "Invalid data."
     );
   }
   return parsed.data;

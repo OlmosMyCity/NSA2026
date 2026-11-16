@@ -59,7 +59,7 @@ export class HealthReadingController {
     if (!req.user || req.user.role === Role.ADMIN) return;
     const ownAstro = await this.resolveOwnAstronaut(req);
     if (!ownAstro) {
-      throw new ForbiddenError(`No tienes permiso para ${action} mediciones de otro tripulante.`);
+      throw new ForbiddenError(`You do not have permission to ${action} measurements for another crewmember.`);
     }
     if (ownAstro.id === targetAstronautId) return;
 
@@ -70,7 +70,7 @@ export class HealthReadingController {
       }
     }
 
-    throw new ForbiddenError(`No tienes permiso para ${action} mediciones de un tripulante de otra misión.`);
+    throw new ForbiddenError(`You do not have permission to ${action} measurements for a crewmember on another mission.`);
   }
 
   /** Un tripulante solo actúa sobre sus propias lecturas; el Flight Surgeon (ADMIN) sobre todas. */
@@ -79,7 +79,7 @@ export class HealthReadingController {
     const reading = await this.getHealthReadingByIdUseCase.execute(readingId);
     const ownAstronautId = await this.resolveOwnAstronautId(req);
     if (!ownAstronautId || reading.astronautId !== ownAstronautId) {
-      throw new ForbiddenError(`No tienes permiso para ${action} mediciones de otro tripulante.`);
+      throw new ForbiddenError(`You do not have permission to ${action} measurements for another crewmember.`);
     }
   }
 
@@ -90,7 +90,7 @@ export class HealthReadingController {
 
       if (isNaN(page) || page <= 0 || isNaN(limit) || limit <= 0) {
         res.status(400).json({
-          error: "Los parámetros de paginación 'page' y 'limit' deben ser números enteros positivos.",
+          error: "Pagination parameters 'page' and 'limit' must be positive integers.",
         });
         return;
       }
@@ -101,7 +101,7 @@ export class HealthReadingController {
       if (req.query.from) {
         fromDate = new Date(req.query.from as string);
         if (isNaN(fromDate.getTime())) {
-          res.status(400).json({ error: "El parámetro de filtro 'from' no es una fecha válida." });
+          res.status(400).json({ error: "Filter parameter 'from' is not a valid date." });
           return;
         }
       }
@@ -109,7 +109,7 @@ export class HealthReadingController {
       if (req.query.to) {
         toDate = new Date(req.query.to as string);
         if (isNaN(toDate.getTime())) {
-          res.status(400).json({ error: "El parámetro de filtro 'to' no es una fecha válida." });
+          res.status(400).json({ error: "Filter parameter 'to' is not a valid date." });
           return;
         }
       }
@@ -120,7 +120,7 @@ export class HealthReadingController {
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (astronautIdFilter && astronautIdFilter !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para consultar el historial médico de otro tripulante.");
+          throw new ForbiddenError("You do not have permission to view another crewmember's medical history.");
         }
         if (!ownAstronautId) {
           res.status(200).json({
@@ -156,7 +156,7 @@ export class HealthReadingController {
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (!ownAstronautId || reading.astronautId !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para consultar mediciones de otro tripulante.");
+          throw new ForbiddenError("You do not have permission to view another crewmember's measurements.");
         }
       }
 
@@ -170,7 +170,7 @@ export class HealthReadingController {
     try {
       const payload = parseWithValidation(createHealthReadingSchema, req.body ?? {});
 
-      await this.assertCanRecordForAstronaut(req, payload.astronautId, "registrar");
+      await this.assertCanRecordForAstronaut(req, payload.astronautId, "record");
 
       const reading = await this.createHealthReadingUseCase.execute({
         ...payload,
@@ -191,14 +191,14 @@ export class HealthReadingController {
       .set("Allow", "GET")
       .json({
         error:
-          "Los datos de salud no se editan ni se borran. Use POST /api/readings/:id/invalidate o POST /api/readings/:id/corrections.",
+          "Health records cannot be edited or deleted. Use POST /api/readings/:id/invalidate or POST /api/readings/:id/corrections.",
       });
   };
 
   invalidate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      await this.assertCanActOnReading(req, id, "invalidar");
+      await this.assertCanActOnReading(req, id, "invalidate");
       const { reason } = parseWithValidation(invalidateHealthReadingSchema, req.body ?? {});
       const reading = await this.invalidateHealthReadingUseCase.execute(id, reason, req.user?.id ?? null);
       res.status(200).json(reading);
@@ -210,11 +210,11 @@ export class HealthReadingController {
   correct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.correctHealthReadingUseCase) {
-        res.status(501).json({ error: "Operación no disponible." });
+        res.status(501).json({ error: "Operation unavailable." });
         return;
       }
       const { id } = req.params;
-      await this.assertCanActOnReading(req, id, "corregir");
+      await this.assertCanActOnReading(req, id, "correct");
       const payload = parseWithValidation(correctHealthReadingSchema, req.body ?? {});
       const corrected = await this.correctHealthReadingUseCase.execute(
         id,
@@ -235,7 +235,7 @@ export class HealthReadingController {
       if (req.user && req.user.role !== Role.ADMIN) {
         const ownAstronautId = await this.resolveOwnAstronautId(req);
         if (!ownAstronautId || id !== ownAstronautId) {
-          throw new ForbiddenError("No tienes permiso para consultar el resumen clínico de otro tripulante.");
+          throw new ForbiddenError("You do not have permission to view another crewmember's clinical summary.");
         }
       }
 
@@ -249,13 +249,13 @@ export class HealthReadingController {
   ingestVision = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.ingestVisionTelemetryUseCase) {
-        res.status(501).json({ error: "Ingesta de visión no disponible." });
+        res.status(501).json({ error: "Vision ingestion unavailable." });
         return;
       }
 
       const payload = parseWithValidation(visionIngestSchema, req.body ?? {});
 
-      await this.assertCanRecordForAstronaut(req, payload.astronautId, "registrar telemetría de");
+      await this.assertCanRecordForAstronaut(req, payload.astronautId, "record telemetry");
 
       const result = await this.ingestVisionTelemetryUseCase.execute({
         ...payload,

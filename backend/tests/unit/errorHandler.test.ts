@@ -59,7 +59,7 @@ describe("errorHandler - Middleware Centralizado", () => {
     errorHandler(new UnauthorizedError(), req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Autenticación requerida o token inválido." });
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required or invalid token." });
   });
 
   it("debe responder 403 para ForbiddenError", () => {
@@ -110,7 +110,7 @@ describe("errorHandler - Middleware Centralizado", () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Ocurrió un error interno en el servidor. Por favor intente más tarde.",
+      error: "An internal server error occurred. Please try again later.",
     });
   });
 });

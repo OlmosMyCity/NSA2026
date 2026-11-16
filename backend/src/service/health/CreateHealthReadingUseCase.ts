@@ -38,15 +38,15 @@ export function assertValidVitals(metrics: {
   ];
 
   if (numericValues.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
-    throw new ValidationError("Todos los indicadores vitales deben ser números finitos válidos.");
+    throw new ValidationError("All vital indicators must be valid finite numbers.");
   }
 
   if (metrics.heartRateBpm <= 0 || metrics.systolicMmHg <= 0 || metrics.diastolicMmHg <= 0) {
-    throw new ValidationError("Los valores cardiovasculares deben ser números positivos.");
+    throw new ValidationError("Cardiovascular values must be positive numbers.");
   }
 
   if (metrics.mood < 1 || metrics.mood > 5) {
-    throw new ValidationError("El estado de ánimo debe estar entre 1 y 5.");
+    throw new ValidationError("Mood must be between 1 and 5.");
   }
 }
 
@@ -62,7 +62,7 @@ export class CreateHealthReadingUseCase {
 
   async execute(dto: CreateHealthReadingDTO): Promise<HealthReading> {
     if (!dto.astronautId) {
-      throw new ValidationError("El ID del astronauta es obligatorio.");
+      throw new ValidationError("Astronaut ID is required.");
     }
 
     assertValidVitals(dto);

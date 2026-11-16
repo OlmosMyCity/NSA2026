@@ -13,7 +13,7 @@ export class DeleteAstronautUseCase {
   async execute(id: string): Promise<void> {
     const deleted = await this.astronautRepo.softDelete(id);
     if (!deleted) {
-      throw new NotFoundError("Astronauta", id);
+      throw new NotFoundError("Astronaut", id);
     }
   }
 }

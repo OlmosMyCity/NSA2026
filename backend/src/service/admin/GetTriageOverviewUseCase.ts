@@ -103,7 +103,7 @@ function toCrewMemberTriage(record: CrewTriageRecord, stormScale: string, now: D
     astronautId: record.astronautId,
     astronautName: record.astronautName,
     missionId: record.missionId,
-    missionName: record.missionName ?? "Misión sin asignar",
+    missionName: record.missionName ?? "Unassigned mission",
     role: record.crewRole,
     environment: record.environment,
     status: latest ? latest.status : "NO_DATA",
@@ -175,8 +175,8 @@ export class GetTriageOverviewUseCase {
     } else if (stormActive) {
       activeRadiationIncident = {
         id: "storm-live",
-        title: `Tormenta de radiación solar (${stormScale})`,
-        description: "Tormenta solar >= S3 activa en telemetría.",
+        title: `Solar radiation storm (${stormScale})`,
+        description: "Solar storm >= S3 active in telemetry.",
         severity: "CRITICAL",
         status: "OPEN",
         stormScale,

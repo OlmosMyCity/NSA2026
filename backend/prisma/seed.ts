@@ -60,7 +60,7 @@ async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || (isProduction ? undefined : a.password);
   const crewPassword = process.env.SEED_CREW_PASSWORD || (isProduction ? undefined : c.password);
   if (!adminPassword || !crewPassword) {
-    throw new Error("En producción defina SEED_ADMIN_PASSWORD y SEED_CREW_PASSWORD antes de ejecutar el seed.");
+    throw new Error("In production, define SEED_ADMIN_PASSWORD and SEED_CREW_PASSWORD before running the seed.");
   }
   const [adminHash, crewHash] = await Promise.all([bcrypt.hash(adminPassword, 10), bcrypt.hash(crewPassword, 10)]);
   const admin = await prisma.user.upsert({

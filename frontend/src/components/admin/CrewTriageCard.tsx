@@ -76,7 +76,7 @@ export function CrewTriageCard({ member, onIssueDirective }: CrewTriageCardProps
           <div className="flex-shrink-0 flex flex-col items-end gap-1">
             {member.priorityBoosted && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white tracking-wide">
-                P0 · PRIORIDAD TORMENTA
+                P0 · STORM PRIORITY
               </span>
             )}
             <StatusBadge status={status} compact />

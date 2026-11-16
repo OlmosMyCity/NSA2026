@@ -55,7 +55,7 @@ function getSupabaseConfig() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error(
-      "BLOB_READ_WRITE_TOKEN o SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar configurados para subir imágenes."
+      "BLOB_READ_WRITE_TOKEN or SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured to upload images."
     );
   }
   return { url: url.replace(/\/+$/, ""), key, bucket: process.env.SUPABASE_STORAGE_BUCKET || "artemis-assets" };
@@ -73,7 +73,7 @@ export const storageService = {
   async uploadImage(file: { buffer: Buffer; mimetype: string }, folder: StorageFolder): Promise<string> {
     const ext = IMAGE_EXTENSIONS[file.mimetype];
     if (!ext || !hasValidImageMagicBytes(file.buffer, file.mimetype)) {
-      throw new ValidationError("El archivo no es una imagen JPG, PNG o WEBP válida.");
+      throw new ValidationError("File is not a valid JPG, PNG, or WEBP image.");
     }
 
     const path = `${folder}/${Date.now()}-${randomUUID()}.${ext}`;
@@ -108,7 +108,7 @@ export const storageService = {
     });
 
     if (!res.ok) {
-      throw new Error(`Supabase Storage respondió ${res.status}: ${await res.text()}`);
+      throw new Error(`Supabase Storage responded ${res.status}: ${await res.text()}`);
     }
 
     return `${url}/storage/v1/object/public/${bucket}/${path}`;

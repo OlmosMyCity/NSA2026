@@ -57,9 +57,9 @@ describe("RegisterUserUseCase", () => {
   });
 
   it.each([
-    [{ name: "", email: "a@b.co", password: "secreto1" }, "nombre"],
+    [{ name: "", email: "a@b.co", password: "secreto1" }, "Name"],
     [{ name: "Ana", email: "no-es-email", password: "secreto1" }, "email"],
-    [{ name: "Ana", email: "a@b.co", password: "123" }, "contraseña"],
+    [{ name: "Ana", email: "a@b.co", password: "123" }, "Password"],
   ])("debe lanzar ValidationError con datos inválidos (%#)", async (input, field) => {
     const { useCase } = setup();
     await expect(useCase.execute(input)).rejects.toThrow(ValidationError);

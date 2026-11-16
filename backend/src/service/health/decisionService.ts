@@ -87,10 +87,10 @@ export interface DecisionServiceConfig {
 }
 
 const SCORE_CRITERIA_LEVELS: string[] = [
-  "stable (0): Todos los indicadores de la zona en verde, tendencia estable o mejorando, medición vigente y peligros bajo umbral.",
-  "watch (1): Medición vencida con valores previos verdes, tendencia empeorando dentro de verde o peligro ambiental elevado sin desviación clínica.",
-  "elevated (2): Uno o más indicadores en ámbar, o combinación de tendencia empeorando + medición vencida + peligro activo en la zona.",
-  "critical (3): Cualquier indicador en rojo, o múltiples en ámbar agravados por radiación/ambiente cerrado crítico.",
+  "stable (0): All zone indicators green, trend stable or improving, reading current, and hazards below threshold.",
+  "watch (1): Overdue reading with prior green values, worsening trend within green, or elevated environmental hazard without clinical deviation.",
+  "elevated (2): One or more amber indicators, or worsening trend + overdue reading + active hazard in the zone.",
+  "critical (3): Any red indicator, or multiple amber indicators compounded by critical radiation or closed-environment hazard.",
 ];
 
 function buildQuestions(options?: DecideOptions): Record<string, unknown> {
@@ -99,7 +99,7 @@ function buildQuestions(options?: DecideOptions): Record<string, unknown> {
   for (const zone of BODY_ZONES) {
     questions[`risk_${zone}`] = {
       type: "score",
-      instructions: `Evalúa el nivel de riesgo operacional de la zona '${zone}' usando valor actual, tendencia, medición vencida y peligros HRP activos.`,
+      instructions: `Evaluate the operational risk level of zone '${zone}' using current value, trend, overdue status, and active HRP hazards.`,
       criteria: SCORE_CRITERIA_LEVELS,
     };
   }
@@ -107,13 +107,13 @@ function buildQuestions(options?: DecideOptions): Record<string, unknown> {
   questions.escalate_flight_surgeon = {
     type: "noul",
     instructions:
-      "¿Conviene escalar al médico de vuelo (Flight Surgeon) en Tierra ahora? SÍ si hay cualquier zona roja/crítica, >=2 zonas ámbar empeorando, o radiación S4/S5 sin Storm Shelter, o SpO2<95 en ambiente hostil. NO si todo está verde o hay un único ámbar aislado estable.",
+      "Should this be escalated to the Flight Surgeon on Earth right now? YES if any zone is red/critical, >=2 zones are amber and worsening, S4/S5 radiation without Storm Shelter, or SpO2 < 95 in a hostile environment. NO if all zones are green or there is only a single stable amber.",
   };
 
   questions.primary_action = {
     type: "choice",
     instructions:
-      "Selecciona la única acción prioritaria más segura para el astronauta en este momento.",
+      "Select the single safest priority action for the astronaut right now.",
     criteria: ACTION_DESCRIPTIONS,
   };
 
@@ -121,13 +121,13 @@ function buildQuestions(options?: DecideOptions): Record<string, unknown> {
     questions.mood_from_text = {
       type: "score",
       instructions:
-        "Clasifica el estado de ánimo del astronauta según su nota de texto libre.",
+        "Classify the astronaut's mood based on their free-text note.",
       criteria: [
-        "1/5: Crisis emocional, desesperanza o incapacidad operativa.",
-        "2/5: Muy decaído, aislado, frustrado o fatigado emocionalmente.",
-        "3/5: Neutral, tenso o levemente decaído.",
-        "4/5: Bien, estable y colaborador.",
-        "5/5: Óptimo, motivado y resiliente.",
+        "1/5: Emotional crisis, hopelessness, or operational incapacity.",
+        "2/5: Very low, isolated, frustrated, or emotionally fatigued.",
+        "3/5: Neutral, tense, or mildly low.",
+        "4/5: Good, stable, and collaborative.",
+        "5/5: Optimal, motivated, and resilient.",
       ],
     };
   }
@@ -136,18 +136,18 @@ function buildQuestions(options?: DecideOptions): Record<string, unknown> {
     questions.instrument_status = {
       type: "choice",
       instructions:
-        "Clasifica el estado visual del instrumento médico en la imagen (oxímetro, tensiómetro, glucómetro o termómetro).",
+        "Classify the visual status of the medical instrument in the image (oximeter, blood pressure monitor, glucometer, or thermometer).",
       criteria: {
-        green: "Lectura claramente visible dentro de rango nominal.",
-        amber: "Lectura visible en rango de precaución/limítrofe.",
-        red: "Lectura visible en rango crítico o pantalla con alerta roja.",
-        unreadable: "Imagen borrosa, cortada o sin lectura legible.",
+        green: "Reading clearly visible within nominal range.",
+        amber: "Reading visible in caution/borderline range.",
+        red: "Reading visible in critical range or display showing red alert.",
+        unreadable: "Image blurry, cropped, or without a legible reading.",
       },
     };
     questions.instrument_visible_alert = {
       type: "noul",
       instructions:
-        "¿La pantalla del instrumento muestra algún icono de alerta, batería crítica o valor fuera de rango?",
+        "Does the instrument screen display any alert icon, critical battery indicator, or out-of-range value?",
     };
   }
 

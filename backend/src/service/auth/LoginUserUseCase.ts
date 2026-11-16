@@ -15,7 +15,7 @@ export interface LoginUserInput {
 }
 
 // Generic message: avoids leaking whether the email exists or the password failed.
-const INVALID_CREDENTIALS = "Email o contraseña incorrectos.";
+const INVALID_CREDENTIALS = "Invalid email or password.";
 
 /**
  * Normalizes email, verifies the password hash via `PasswordHasher`, enforces `UserState.ACTIVE`,
@@ -31,7 +31,7 @@ export class LoginUserUseCase {
   async execute(input: LoginUserInput): Promise<AuthResponse> {
     const email = input.email?.trim().toLowerCase();
     if (!email || !input.password) {
-      throw new ValidationError("El email y la contraseña son obligatorios.");
+      throw new ValidationError("Email and password are required.");
     }
 
     const user = await this.userRepo.findByEmail(email);
@@ -40,7 +40,7 @@ export class LoginUserUseCase {
     }
 
     if (user.state !== UserState.ACTIVE) {
-      throw new UnauthorizedError("La cuenta está desactivada.");
+      throw new UnauthorizedError("Account is disabled.");
     }
 
     const { passwordHash: _omit, ...publicUser } = user;

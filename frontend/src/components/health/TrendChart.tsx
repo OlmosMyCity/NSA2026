@@ -136,7 +136,7 @@ export function TrendChart({
           height={height}
           role="img"
           tabIndex={compact ? -1 : 0}
-          aria-label={`${def.label}: ${points.length} mediciones${last ? `, última ${fmt(last.value)} ${def.unit}, ${STATUS_THEME[last.status].label}` : ''}. Usa las flechas para recorrer los puntos.`}
+          aria-label={`${def.label}: ${points.length} measurements${last ? `, latest ${fmt(last.value)} ${def.unit}, ${STATUS_THEME[last.status].label}` : ''}. Use arrow keys to browse points.`}
           onPointerMove={onMove}
           onPointerLeave={() => setActive(null)}
           onKeyDown={onKey}

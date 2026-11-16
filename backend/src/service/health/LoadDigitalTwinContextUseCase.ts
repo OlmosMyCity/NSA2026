@@ -36,7 +36,7 @@ export class LoadDigitalTwinContextUseCase {
     const astronaut = await this.repo.findAstronautWithReadings(astronautId, TWIN_READING_WINDOW);
 
     if (!astronaut) {
-      throw new NotFoundError("Astronauta", astronautId);
+      throw new NotFoundError("Astronaut", astronautId);
     }
 
     let stormScale: NOAAStormScale = "S0_NOMINAL";

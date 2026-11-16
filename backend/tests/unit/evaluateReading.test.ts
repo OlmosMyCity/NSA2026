@@ -18,7 +18,7 @@ describe("evaluateReading - Motor Clínico de Salud NASA Artemis", () => {
 
     expect(result.status).toBe("OK");
     expect(result.alerts).toHaveLength(0);
-    expect(result.recommendation).toContain("nominales");
+    expect(result.recommendation).toContain("nominal");
   });
 
   describe("Frecuencia Cardiaca", () => {
@@ -108,7 +108,7 @@ describe("evaluateReading - Motor Clínico de Salud NASA Artemis", () => {
     it("debe emitir CRITICAL si está por debajo de 92% (hipoxia en cabina)", () => {
       const result = evaluateReading({ ...nominalReading, spo2Pct: 89 });
       expect(result.status).toBe("CRITICAL");
-      expect(result.recommendation).toContain("Cirujano de Vuelo");
+      expect(result.recommendation).toContain("Flight Surgeon");
     });
   });
 
@@ -146,7 +146,7 @@ describe("evaluateReading - Motor Clínico de Salud NASA Artemis", () => {
     expect(result.status).toBe("CRITICAL");
     expect(result.protocolId).toBe("PROTO_HYPOXIA");
     expect(result.alerts).toHaveLength(3);
-    expect(result.recommendation).toContain("ALERTA CRÍTICA");
+    expect(result.recommendation).toContain("CRITICAL ALERT");
     expect(result.recommendation).toContain("PROTO_HYPOXIA");
   });
 

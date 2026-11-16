@@ -46,6 +46,6 @@ describe("tokenService (JWT)", () => {
       subject: "u-1",
       expiresIn: -10,
     });
-    expect(() => tokenService.verify(expired)).toThrow("expirado");
+    expect(() => tokenService.verify(expired)).toThrow("expired");
   });
 });

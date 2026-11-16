@@ -185,7 +185,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
   sleepHours: {
     id: "sleepHours",
     zone: "sleep",
-    unit: "h/día",
+    unit: "h/day",
     overdueHours: 24,
     nominalTarget: 8,
     significantDelta: 0.7,
@@ -205,7 +205,7 @@ const INDICATOR_SPECS: Record<IndicatorId, IndicatorSpec> = {
   resistanceExercise: {
     id: "resistanceExercise",
     zone: "bones",
-    unit: "min/día",
+    unit: "min/day",
     overdueHours: 48,
     nominalTarget: 75,
     significantDelta: 15,

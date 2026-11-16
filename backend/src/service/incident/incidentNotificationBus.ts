@@ -82,7 +82,7 @@ export async function escalateOverdueIncidents(
       ...meta,
       escalated: true,
       escalatedAt: now.toISOString(),
-      escalationReason: `Sin confirmación tras ${Math.round(elapsedMs / 60000)} min`,
+      escalationReason: `Unacknowledged after ${Math.round(elapsedMs / 60000)} min`,
     } as Prisma.InputJsonValue;
 
     const updated = await incidentRepo.update(incident.id, {
@@ -94,7 +94,7 @@ export async function escalateOverdueIncidents(
       incidentNotificationBus.publish(
         "incident:escalated",
         updated,
-        "Tiempo límite de confirmación excedido"
+        "Acknowledgement timeout exceeded"
       );
       escalated.push(updated);
     }

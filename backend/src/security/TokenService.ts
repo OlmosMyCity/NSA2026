@@ -11,7 +11,7 @@ import { UnauthorizedError } from "../exception/AppError.js";
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error("JWT_SECRET no está configurado en las variables de entorno.");
+    throw new Error("JWT_SECRET is not configured in environment variables.");
   }
   return secret;
 }
@@ -34,15 +34,15 @@ export const tokenService = {
     try {
       const decoded = jwt.verify(token, getSecret()) as jwt.JwtPayload;
       if (!decoded.sub || !decoded.email || !decoded.role) {
-        throw new UnauthorizedError("Token inválido.");
+        throw new UnauthorizedError("Invalid token.");
       }
       return { id: decoded.sub, email: decoded.email, role: decoded.role };
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new UnauthorizedError("El token ha expirado. Inicia sesión nuevamente.");
+        throw new UnauthorizedError("Token has expired. Please sign in again.");
       }
       if (error instanceof UnauthorizedError) throw error;
-      throw new UnauthorizedError("Token inválido.");
+      throw new UnauthorizedError("Invalid token.");
     }
   },
 };

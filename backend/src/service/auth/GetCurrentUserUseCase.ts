@@ -19,7 +19,7 @@ export class GetCurrentUserUseCase {
   async execute(userId: string): Promise<AuthUser> {
     const user = await this.userRepo.findById(userId);
     if (!user || user.state !== UserState.ACTIVE) {
-      throw new UnauthorizedError("La sesión ya no es válida. Inicia sesión nuevamente.");
+      throw new UnauthorizedError("Session is no longer valid. Please sign in again.");
     }
     return toAuthUser(user);
   }

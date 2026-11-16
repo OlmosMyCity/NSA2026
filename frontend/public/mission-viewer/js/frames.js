@@ -8,9 +8,9 @@
 //   e_Luna = cos θ p + sin θ q,   e_⊥ = −sin θ p + cos θ q.
 
 export const FRAMES = {
-  eci: "Inercial ECI J2000",
-  rot: "Rotante Tierra–Luna",
-  moon: "Selenocéntrico",
+  eci: "Inertial ECI J2000",
+  rot: "Earth–Moon Rotating",
+  moon: "Selenocentric",
 };
 
 const IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1];

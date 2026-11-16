@@ -14,15 +14,15 @@ export class CreateMissionUseCase {
 
   async execute(data: CreateMissionDTO): Promise<Mission> {
     if (!data.name || data.name.trim().length === 0) {
-      throw new ValidationError("El nombre de la misión es obligatorio.");
+      throw new ValidationError("Mission name is required.");
     }
 
     if (!data.description || data.description.trim().length === 0) {
-      throw new ValidationError("La descripción de la misión es obligatoria.");
+      throw new ValidationError("Mission description is required.");
     }
 
     if (!data.startDate) {
-      throw new ValidationError("La fecha de inicio de la misión es obligatoria.");
+      throw new ValidationError("Mission start date is required.");
     }
 
     return this.missionRepo.create({

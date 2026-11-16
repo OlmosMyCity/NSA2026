@@ -14,7 +14,7 @@ export class GetAstronautByIdUseCase {
   async execute(id: string): Promise<AstronautWithMission> {
     const astronaut = await this.astronautRepo.findById(id);
     if (!astronaut) {
-      throw new NotFoundError("Astronauta", id);
+      throw new NotFoundError("Astronaut", id);
     }
     return astronaut;
   }

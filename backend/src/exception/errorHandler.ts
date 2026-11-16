@@ -22,14 +22,14 @@ export function errorHandler(
 ): void {
   // 0. Malformed JSON in HTTP request body
   if (err instanceof SyntaxError && "status" in err && (err as { status?: number }).status === 400) {
-    res.status(400).json({ error: "Cuerpo JSON inválido en la solicitud." });
+    res.status(400).json({ error: "Invalid JSON request body." });
     return;
   }
 
   // 0b. HTTP schema validation failure (Zod)
   if (err instanceof ZodError) {
     res.status(400).json({
-      error: err.issues[0]?.message || "Los datos proporcionados no son válidos.",
+      error: err.issues[0]?.message || "The provided data is invalid.",
     });
     return;
   }
@@ -45,29 +45,29 @@ export function errorHandler(
   // 2. Prisma ORM constraint / record errors (PostgreSQL)
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2002") {
-      const target = Array.isArray(err.meta?.target) ? err.meta.target.join(", ") : "campo único";
+      const target = Array.isArray(err.meta?.target) ? err.meta.target.join(", ") : "unique field";
       res.status(409).json({
-        error: `Conflicto de unicidad: Ya existe un registro con el mismo valor para '${target}'.`,
+        error: `Uniqueness conflict: A record with the same value for '${target}' already exists.`,
       });
       return;
     }
 
     if (err.code === "P2025") {
       res.status(404).json({
-        error: "El registro solicitado no existe o fue eliminado previamente.",
+        error: "The requested record does not exist or was previously deleted.",
       });
       return;
     }
 
     if (err.code === "P2003") {
       res.status(400).json({
-        error: "Violación de restricción de llave foránea: El recurso relacionado no existe.",
+        error: "Foreign key constraint violation: The related resource does not exist.",
       });
       return;
     }
 
     res.status(400).json({
-      error: "Error de validación o restricción en la base de datos.",
+      error: "Database validation or constraint error.",
     });
     return;
   }
@@ -77,7 +77,7 @@ export function errorHandler(
   console.error("❌ [UNHANDLED_ERROR]:", err.message);
 
   res.status(500).json({
-    error: "Ocurrió un error interno en el servidor. Por favor intente más tarde.",
+    error: "An internal server error occurred. Please try again later.",
   });
 }
 

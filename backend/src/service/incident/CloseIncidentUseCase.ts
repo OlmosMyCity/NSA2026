@@ -18,12 +18,12 @@ export class CloseIncidentUseCase {
 
   async execute(dto: CloseIncidentDTO): Promise<Incident> {
     if (!dto.id || !dto.userId) {
-      throw new ValidationError("El ID del incidente y el usuario son obligatorios.");
+      throw new ValidationError("Incident ID and user are required.");
     }
 
     const existing = await this.incidentRepo.findById(dto.id);
     if (!existing) {
-      throw new NotFoundError("Incidente", dto.id);
+      throw new NotFoundError("Incident", dto.id);
     }
 
     if (existing.status === IncidentStatus.CLOSED) {
@@ -38,7 +38,7 @@ export class CloseIncidentUseCase {
     });
 
     if (!updated) {
-      throw new NotFoundError("Incidente", dto.id);
+      throw new NotFoundError("Incident", dto.id);
     }
 
     incidentNotificationBus.publish("incident:closed", updated);
