@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Activity,
@@ -65,6 +65,64 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
   const [verificationPhase, setVerificationPhase] = useState<CriticalVerificationPhase>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [prefilledFromLog, setPrefilledFromLog] = useState(false);
+  const userTouchedVitalsRef = useRef(false);
+
+  // Scroll to top whenever switching between wizard steps (e.g. Optical Scan -> Review)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [step]);
+
+  // Pre-fill vitals from the astronaut's latest valid reading (fallback to DEFAULT_VITALS)
+  useEffect(() => {
+    const selectedId = crew.selectedId;
+    if (!selectedId) return;
+    let cancelled = false;
+    userTouchedVitalsRef.current = false;
+    setPrefilledFromLog(false);
+
+    (async () => {
+      try {
+        const rows = await healthService.listReadings(selectedId);
+        if (cancelled || userTouchedVitalsRef.current) return;
+
+        if (!rows || rows.length === 0) {
+          setVitals(DEFAULT_VITALS);
+          setManuallyEdited({});
+          setOpticalSynced({});
+          setVerificationPhase('idle');
+          return;
+        }
+
+        const latest = rows.reduce((best, cur) =>
+          Date.parse(cur.takenAt) >= Date.parse(best.takenAt) ? cur : best,
+        );
+
+        setVitals({
+          heartRateBpm: Number.isFinite(latest.heartRateBpm) ? latest.heartRateBpm : DEFAULT_VITALS.heartRateBpm,
+          systolicMmHg: Number.isFinite(latest.systolicMmHg) ? latest.systolicMmHg : DEFAULT_VITALS.systolicMmHg,
+          diastolicMmHg: Number.isFinite(latest.diastolicMmHg) ? latest.diastolicMmHg : DEFAULT_VITALS.diastolicMmHg,
+          glucoseMgDl: Number.isFinite(latest.glucoseMgDl) ? latest.glucoseMgDl : DEFAULT_VITALS.glucoseMgDl,
+          temperatureC: Number.isFinite(latest.temperatureC) ? latest.temperatureC : DEFAULT_VITALS.temperatureC,
+          spo2Pct: Number.isFinite(latest.spo2Pct) ? latest.spo2Pct : DEFAULT_VITALS.spo2Pct,
+          sleepHours: Number.isFinite(latest.sleepHours) ? latest.sleepHours : DEFAULT_VITALS.sleepHours,
+          mood: Number.isFinite(latest.mood) ? latest.mood : DEFAULT_VITALS.mood,
+        });
+        setManuallyEdited({});
+        setOpticalSynced({});
+        setVerificationPhase('idle');
+        setPrefilledFromLog(true);
+      } catch {
+        if (!cancelled && !userTouchedVitalsRef.current) {
+          setVitals(DEFAULT_VITALS);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [crew.selectedId]);
 
   const evaluation = useMemo(() => evaluateVitals(vitals), [vitals]);
   const criticalLocked = evaluation.status === 'CRITICAL' && verificationPhase === 'idle';
@@ -79,6 +137,7 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
   );
 
   const setVital = (field: keyof Vitals) => (value: number) => {
+    userTouchedVitalsRef.current = true;
     if (field === 'heartRateBpm' || field === 'sleepHours') {
       setManuallyEdited((prev) => ({ ...prev, [field]: true }));
       setOpticalSynced((prev) => ({ ...prev, [field]: false }));
@@ -89,6 +148,7 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
 
   const handleApplyOptical = useCallback(
     (captured: OpticalCapturedVitals, options?: { force?: boolean }) => {
+      userTouchedVitalsRef.current = true;
       setLatestOptical(captured);
       const force = Boolean(options?.force);
 
@@ -306,6 +366,11 @@ export function ReadingFormWizard({ initialAstronautId }: { initialAstronautId?:
                 Log Vital Signs
               </h1>
               <StatusBadge status={API_STATUS[evaluation.status]} />
+              {prefilledFromLog && (
+                <span className="inline-flex items-center rounded-pill border border-line bg-surface-subtle/70 px-2.5 py-0.5 font-mono text-[11px] text-stem">
+                  Pre-filled from latest log
+                </span>
+              )}
             </div>
             <p className="text-sm text-stem max-w-2xl">
               Start with an optical scan to auto-fill pulse and sleep telemetry, review or modify any

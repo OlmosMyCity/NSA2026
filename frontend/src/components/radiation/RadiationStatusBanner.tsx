@@ -317,57 +317,68 @@ export function RadiationStatusBanner() {
     },
   ];
 
+  const scaleDotClass =
+    stormScale === 'S0_NOMINAL'
+      ? 'bg-emerald-400'
+      : stormScale === 'S1_MINOR' || stormScale === 'S2_MODERATE'
+        ? 'bg-amber-400'
+        : 'bg-rose-400 animate-pulse';
+
   return (
-    <div className={`w-full rounded-sm border ${style.border} ${style.bg} ${style.accentBar}`}>
-      <div className="max-w-container mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider tabular-nums ${style.badge}`}
-            >
-              Solar Weather: {style.label}
+    <div className={`w-full rounded-md border ${style.border} bg-surface/85 backdrop-blur-md`}>
+      <div className="max-w-container mx-auto px-4 sm:px-6 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold tracking-wide text-blueberry tabular-nums">
+              <span className={`h-2 w-2 rounded-full shrink-0 ${scaleDotClass}`} aria-hidden="true" />
+              <span>{style.label}</span>
             </span>
-            <span className="font-medium text-blueberry">
+
+            <span className="hidden sm:inline-block h-3.5 w-px bg-line/80" aria-hidden="true" />
+
+            <span className="text-blueberry/90 truncate max-w-xl">
               {style.crewGuidance}
             </span>
+
+            {(status.currentTelemetry.latestXray?.currentClass || proton10) && (
+              <span
+                className="font-mono text-[11px] text-stem tabular-nums"
+                title="NOAA/GOES solar telemetry"
+              >
+                {status.currentTelemetry.latestXray?.currentClass ? `X-Ray ${status.currentTelemetry.latestXray.currentClass}` : ''}
+                {status.currentTelemetry.latestXray?.currentClass && proton10 ? ' · ' : ''}
+                {proton10 ? `${proton10.fluxPfu.toFixed(1)} pfu` : ''}
+              </span>
+            )}
+
             {earlyWarningActive && status.earlyWarning?.triggerEvent && (
-              <span className="inline-flex items-center gap-1.5 rounded-sm border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 font-mono text-xs font-semibold text-amber-200 tabular-nums">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-300 shrink-0" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold text-amber-300 tabular-nums">
+                <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 <span>
                   Storm Warning
                   {status.earlyWarning.estimatedProtonArrivalMinutes != null &&
-                    ` — peak arriving in ~${status.earlyWarning.estimatedProtonArrivalMinutes} min`}
+                    ` (~${status.earlyWarning.estimatedProtonArrivalMinutes} min)`}
                 </span>
               </span>
             )}
-            {(status.currentTelemetry.latestXray?.currentClass || proton10) && (
-              <span
-                className="rounded-sm border border-line bg-surface-subtle/80 px-2.5 py-1 font-mono text-[11px] text-stem tabular-nums"
-                title="Raw NOAA/GOES solar telemetry"
-              >
-                {status.currentTelemetry.latestXray?.currentClass ? `Flare ${status.currentTelemetry.latestXray.currentClass}` : ''}
-                {status.currentTelemetry.latestXray?.currentClass && proton10 ? ' · ' : ''}
-                {proton10 ? `Particle flux ${proton10.fluxPfu.toFixed(1)} pfu` : ''}
-              </span>
-            )}
+
             {status.telemetryDegraded && (
-              <span className="inline-flex items-center gap-1.5 rounded-sm border border-amber-400/45 bg-amber-950/70 px-2.5 py-1 font-mono text-[11px] font-semibold text-amber-200">
+              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-amber-300">
                 <WifiOff className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span>Autonomous Onboard Mode (Local SWPC)</span>
+                <span>Local SWPC</span>
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             {incident && (
               <span
-                className={`inline-flex items-center rounded-sm border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums ${
-                  incident.status === 'ACKNOWLEDGED'
-                    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
-                    : 'border-rose-400/50 bg-rose-500/20 text-rose-200'
+                className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums ${
+                  incident.status === 'ACKNOWLEDGED' ? 'text-emerald-300' : 'text-rose-300'
                 }`}
               >
-                Incident: {incident.status}
+                <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+                <span>Incident {incident.status}</span>
               </span>
             )}
             {isAuthenticated && (
@@ -375,13 +386,13 @@ export function RadiationStatusBanner() {
                 type="button"
                 aria-expanded={expanded}
                 onClick={() => setExpanded((prev) => !prev)}
-                className="tactile-press inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-blueberry hover:border-berry hover:bg-surface-hover"
+                className="tactile-press inline-flex items-center gap-1.5 rounded border border-line/80 bg-surface-subtle/70 px-2.5 py-1 text-[11px] font-medium text-blueberry hover:border-berry hover:bg-surface-hover"
               >
-                <span>Measures · {ROLE_SHORT[activeRole]}</span>
+                <span>{activeRole === 'USER' ? 'Measures' : `Measures · ${ROLE_SHORT[activeRole]}`}</span>
                 {expanded ? (
-                  <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ChevronUp className="h-3.5 w-3.5 text-stem" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ChevronDown className="h-3.5 w-3.5 text-stem" aria-hidden="true" />
                 )}
               </button>
             )}

@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Navbar } from './Navbar';
 import { IncidentNotificationCenter } from '@/components/radiation/IncidentNotificationCenter';
 import { FreshnessReminder } from '@/components/health/FreshnessReminder';
@@ -12,6 +13,12 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [pathname]);
+
   return (
     <div className="relative flex min-h-screen flex-col bg-transparent text-blueberry overflow-x-clip">
       <Navbar />

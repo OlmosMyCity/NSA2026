@@ -68,6 +68,7 @@ export function FollowUpStickyNote() {
   if (remainingMs <= 0) return null;
 
   const doneCount = note.items.filter((it) => it.done).length;
+  const allChecked = note.items.length === 0 || doneCount === note.items.length;
 
   const dismiss = () => {
     setIsClosing(true);
@@ -87,7 +88,13 @@ export function FollowUpStickyNote() {
     >
       <div className="p-3.5 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand follow-up note' : 'Collapse follow-up note'}
+            className="min-w-0 flex-1 text-left group cursor-pointer"
+          >
             <div className="flex items-center gap-2">
               <StickyNote className="h-3.5 w-3.5 shrink-0 text-[var(--status-caution)]" aria-hidden="true" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--status-caution)]">
@@ -97,10 +104,15 @@ export function FollowUpStickyNote() {
                 {formatCountdown(remainingMs)} left
               </span>
             </div>
-            <p className="mt-1 text-xs font-semibold text-blueberry truncate">
+            <p className="mt-1 text-xs font-semibold text-blueberry truncate group-hover:underline underline-offset-2">
               {note.astronautName ? `${note.astronautName} · ${note.title}` : note.title}
             </p>
-          </div>
+            {collapsed && (
+              <p className="mt-0.5 text-[10px] text-stem">
+                Click to expand · {doneCount}/{note.items.length} checked
+              </p>
+            )}
+          </button>
 
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -166,15 +178,30 @@ export function FollowUpStickyNote() {
 
             <div className="flex items-center justify-between gap-2 pt-1">
               <span className="font-mono text-[10px] tabular-nums text-stem">
-                {doneCount}/{note.items.length} checked
+                {allChecked
+                  ? `${doneCount}/${note.items.length} checked`
+                  : `${doneCount}/${note.items.length} · Check all to re-check`}
               </span>
-              <Link
-                href={`/readings/new?astronautId=${encodeURIComponent(note.astronautId)}`}
-                className="twin-btn twin-btn-primary text-[11px] py-1 px-2.5"
-              >
-                <Activity className="h-3 w-3" aria-hidden="true" />
-                <span>Re-check now</span>
-              </Link>
+              {allChecked ? (
+                <Link
+                  href={`/readings/new?astronautId=${encodeURIComponent(note.astronautId)}`}
+                  className="twin-btn twin-btn-primary text-[11px] py-1 px-2.5"
+                >
+                  <Activity className="h-3 w-3" aria-hidden="true" />
+                  <span>Re-check now</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Check all follow-up steps above before re-checking vitals"
+                  className="twin-btn twin-btn-ghost text-[11px] py-1 px-2.5 opacity-45 cursor-not-allowed"
+                >
+                  <Activity className="h-3 w-3" aria-hidden="true" />
+                  <span>Re-check now</span>
+                </button>
+              )}
             </div>
           </>
         )}
