@@ -53,7 +53,7 @@ const iso = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
 const USERS: MockUser[] = [
   { id: 'user-admin-01', email: 'elena.rodriguez@nasa.gov', name: 'Dra. Elena Rodriguez', role: 'ADMIN', password: 'HrpFlight#2026' },
   { id: 'user-crew-01', email: 'r.wiseman@nasa.gov', name: 'Reid Wiseman', role: 'USER', password: 'OrionCrew#4IV' },
-  { id: 'user-operator-01', email: 'ops@orbvital.example', name: 'Mission Operations', role: 'OPERATOR', password: 'GroundOps#2026' },
+  { id: 'user-operator-01', email: 'm.chen@nasa.gov', name: 'M. Chen', role: 'OPERATOR', password: 'GroundOps#2026' },
 ];
 
 const mission = (m: Pick<MockMission, 'id' | 'name' | 'description' | 'environment' | 'status' | 'operatorId'> & { start: number; created: number }): MockMission => ({

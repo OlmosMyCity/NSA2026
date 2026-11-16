@@ -54,15 +54,22 @@ async function main() {
   }
 
   // 1. Usuarios (upsert por email para respetar cuentas existentes)
-  const { admin: a, commander: c } = SEED_USERS;
+  const { admin: a, commander: c, operator: o } = SEED_USERS;
   // Las contraseñas de demo (seedData.ts) solo se permiten fuera de producción; en producción deben venir del entorno.
   const isProduction = process.env.NODE_ENV === "production";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || (isProduction ? undefined : a.password);
   const crewPassword = process.env.SEED_CREW_PASSWORD || (isProduction ? undefined : c.password);
-  if (!adminPassword || !crewPassword) {
-    throw new Error("In production, define SEED_ADMIN_PASSWORD and SEED_CREW_PASSWORD before running the seed.");
+  const operatorPassword = process.env.SEED_OPERATOR_PASSWORD || (isProduction ? undefined : o.password);
+  if (!adminPassword || !crewPassword || !operatorPassword) {
+    throw new Error(
+      "In production, define SEED_ADMIN_PASSWORD, SEED_CREW_PASSWORD, and SEED_OPERATOR_PASSWORD before running the seed."
+    );
   }
-  const [adminHash, crewHash] = await Promise.all([bcrypt.hash(adminPassword, 10), bcrypt.hash(crewPassword, 10)]);
+  const [adminHash, crewHash, operatorHash] = await Promise.all([
+    bcrypt.hash(adminPassword, 10),
+    bcrypt.hash(crewPassword, 10),
+    bcrypt.hash(operatorPassword, 10),
+  ]);
   const admin = await prisma.user.upsert({
     where: { email: a.email },
     update: { name: a.name, role: Role.ADMIN, passwordHash: adminHash, deletedAt: null },
@@ -73,9 +80,14 @@ async function main() {
     update: { name: c.name, role: Role.USER, passwordHash: crewHash, deletedAt: null },
     create: { id: c.id, email: c.email, name: c.name, passwordHash: crewHash, role: Role.USER },
   });
-  console.log("✅ Usuarios: admin (Flight Surgeon) y tripulante de demo.");
+  const operator = await prisma.user.upsert({
+    where: { email: o.email },
+    update: { name: o.name, role: Role.OPERATOR, passwordHash: operatorHash, deletedAt: null },
+    create: { id: o.id, email: o.email, name: o.name, passwordHash: operatorHash, role: Role.OPERATOR },
+  });
+  console.log("✅ Usuarios: admin (Flight Surgeon), tripulante (USER) y operador de tierra (OPERATOR) de demo.");
 
-  const data = buildSeedData({ adminId: admin.id, commanderUserId: commander.id });
+  const data = buildSeedData({ adminId: admin.id, commanderUserId: commander.id, operatorUserId: operator.id });
 
   // 2. Misiones (upsert por id)
   for (const { id, createdById, createdAt, ...rest } of data.missions) {

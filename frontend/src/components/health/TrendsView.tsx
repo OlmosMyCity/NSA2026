@@ -247,6 +247,14 @@ export function TrendsView() {
             const lastP = s.at(-1);
             const d = INDICATORS[id];
             const active = id === indicator;
+            const statusUnderline =
+              lastP?.status === 'red'
+                ? 'border-b-2 border-b-[var(--status-critical)]'
+                : lastP?.status === 'amber'
+                  ? 'border-b-2 border-b-[var(--status-caution)]'
+                  : lastP?.status === 'green'
+                    ? 'border-b-2 border-b-[var(--status-nominal)]'
+                    : '';
             return (
               <button
                 key={id}
@@ -258,9 +266,9 @@ export function TrendsView() {
                     .getElementById('trend-title')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }}
-                className={`tactile-press rounded-lg p-4 text-left transition-colors ${
+                className={`tactile-press rounded-lg p-4 text-left transition-colors ${statusUnderline} ${
                   active
-                    ? 'surface-card ring-2 ring-blueberry'
+                    ? 'surface-card ring-2 ring-sky-400/80'
                     : 'surface-card hover:bg-surface-tinted/40'
                 }`}
               >

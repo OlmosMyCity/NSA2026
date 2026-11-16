@@ -37,6 +37,7 @@ const STATUS_LABEL: Record<Mission['status'], string> = {
  */
 export function MissionHealthView({ missionId }: { missionId: string }) {
   const { user, isAdmin } = useAuth();
+  const isOperator = user?.role === 'OPERATOR';
   const [mission, setMission] = useState<Mission | null>(null);
   const [crew, setCrew] = useState<Astronaut[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
         (err: unknown) =>
           alive && setLoadError(err instanceof Error ? err.message : 'Unable to load mission.')
       );
+
     return () => {
       alive = false;
     };
@@ -154,22 +156,17 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
     });
   };
 
-  const handleVehicleChange = (nextVehicle: string) => {
-    setVehicleId(nextVehicle);
-    const existing = getMissionSimConfig(mission.id);
-    saveMissionSimConfig(mission.id, {
-      vehicleId: nextVehicle,
-      trajectoryPreset,
-      customTrajectoryJson: existing?.customTrajectoryJson ?? null,
-      customFileName: existing?.customFileName ?? null,
-    });
-  };
-
   const cursorMet = time?.t ?? nowMet;
   const momentMet = pinnedMet ?? cursorMet;
   const selected = readingAt(items, Math.min(momentMet, nowMet));
   const phase = phaseAt(phases, momentMet);
   const day = Math.floor(nowMetRaw / 86400);
+
+  const activeTrajectoryLabel =
+    TRAJECTORY_PRESETS.find((p) => p.id === trajectoryPreset)?.label ??
+    'Auto-detect from mission environment';
+  const activeVehicleLabel =
+    VEHICLE_OPTIONS.find((v) => v.id === vehicleId)?.label ?? 'Auto-detect';
 
   return (
     <div className="space-y-6">
@@ -210,38 +207,38 @@ export function MissionHealthView({ missionId }: { missionId: string }) {
 
       {/* Trajectory & Vehicle Simulation Controls */}
       <div className="surface-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs font-semibold text-stem">
-            <span>Trajectory:</span>
-            <select
-              aria-label="Trajectory preset"
-              value={trajectoryPreset}
-              onChange={(e) => handleTrajectoryChange(e.target.value)}
-              className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
-            >
-              {TRAJECTORY_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          {isOperator ? (
+            <label className="flex items-center gap-2 font-semibold text-stem">
+              <span>Trajectory:</span>
+              <select
+                aria-label="Trajectory preset"
+                value={trajectoryPreset}
+                onChange={(e) => handleTrajectoryChange(e.target.value)}
+                className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
+              >
+                {TRAJECTORY_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="flex items-center gap-2 font-semibold text-stem">
+              <span>Trajectory:</span>
+              <span className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry">
+                {activeTrajectoryLabel}
+              </span>
+            </div>
+          )}
 
-          <label className="flex items-center gap-2 text-xs font-semibold text-stem">
+          <div className="flex items-center gap-2 font-semibold text-stem">
             <span>Spacecraft:</span>
-            <select
-              aria-label="Spacecraft vehicle"
-              value={vehicleId}
-              onChange={(e) => handleVehicleChange(e.target.value)}
-              className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry"
-            >
-              {VEHICLE_OPTIONS.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <span className="rounded-pill border border-line bg-surface-tinted px-3 py-1 text-xs font-semibold text-blueberry">
+              {activeVehicleLabel}
+            </span>
+          </div>
         </div>
 
         {viewerSrc && (

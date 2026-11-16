@@ -13,11 +13,12 @@ import { STATUS_THEME } from '../../domain/health/status-theme';
 import { statusBands, trendDomain, type TrendPoint } from '../../domain/health/trends';
 import type { IndicatorId } from '../../domain/health/types';
 
-/** Chart stroke and hairline colors synchronized with global HSL design tokens. */
-const LINE = 'hsl(223, 29%, 26%)';       /* Blueberry Skin */
-const SURFACE = 'hsl(80, 14%, 99%)';     /* Surface White */
-const GRID = 'hsl(27, 14%, 85%)';        /* Yogurt hairline */
-const CROSSHAIR = 'hsl(220, 20%, 45%)';  /* Berry Bloom */
+/** Chart stroke and hairline colors synchronized with high-contrast dark-UI telemetry tokens. */
+const LINE = '#38BDF8';                   /* Luminous Sky-Cyan — contrasts against dark navy AND green/amber/red bands */
+const LINE_HALO = 'hsl(223, 29%, 6%)';    /* Dark casing under-stroke so the line stays crisp across band boundaries */
+const SURFACE = 'hsl(223, 29%, 8%)';      /* Dark node ring stroke */
+const GRID = 'hsl(220, 18%, 28% / 0.45)'; /* Subtle structural grid hairline */
+const CROSSHAIR = '#7DD3FC';              /* Crisp sky-cyan crosshair */
 
 interface TrendChartProps {
   indicator: IndicatorId;
@@ -141,18 +142,28 @@ export function TrendChart({
           onPointerLeave={() => setActive(null)}
           onKeyDown={onKey}
           onBlur={() => setActive(null)}
-          className="block touch-none outline-none focus-visible:ring-2 focus-visible:ring-blueberry rounded-md"
+          className="block touch-none outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80 rounded-md"
         >
           {bands.map((b, i) => (
-            <rect
-              key={i}
-              x={m.l}
-              width={iw}
-              y={y(b.to)}
-              height={Math.max(0, y(b.from) - y(b.to))}
-              fill={STATUS_THEME[b.status].color}
-              opacity={b.status === 'green' ? 0.08 : 0.14}
-            />
+            <g key={i}>
+              <rect
+                x={m.l}
+                width={iw}
+                y={y(b.to)}
+                height={Math.max(0, y(b.from) - y(b.to))}
+                fill={STATUS_THEME[b.status].color}
+                opacity={b.status === 'green' ? 0.11 : 0.16}
+              />
+              <line
+                x1={m.l}
+                x2={m.l + iw}
+                y1={y(b.from)}
+                y2={y(b.from)}
+                stroke={STATUS_THEME[b.status].color}
+                strokeOpacity={b.status === 'green' ? 0.45 : 0.65}
+                strokeWidth={1}
+              />
+            </g>
           ))}
 
           {!compact &&
@@ -164,7 +175,7 @@ export function TrendChart({
                   y={y(t)}
                   dy="0.32em"
                   textAnchor="end"
-                  className="fill-stem text-[11px] tabular-nums"
+                  className="fill-[hsl(var(--hsl-ink-muted))] text-[11px] tabular-nums"
                 >
                   {t}
                 </text>
@@ -186,7 +197,7 @@ export function TrendChart({
                         ? 'end'
                         : 'middle'
                 }
-                className="fill-stem text-[11px]"
+                className="fill-[hsl(var(--hsl-ink-muted))] text-[11px] tabular-nums"
               >
                 {(useTimeLabels ? timeFmt : dayFmt).format(points[idx].t)}
               </text>
@@ -207,35 +218,72 @@ export function TrendChart({
           <path
             d={path}
             fill="none"
+            stroke={LINE_HALO}
+            strokeWidth={compact ? 4 : 5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <path
+            d={path}
+            fill="none"
             stroke={LINE}
-            strokeWidth={2}
+            strokeWidth={compact ? 2 : 2.75}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
 
-          {points.map((p, i) =>
-            p.status === 'amber' || p.status === 'red' || i === lastIndex || i === active ? (
+          {points.map((p, i) => {
+            const isAlert = p.status === 'amber' || p.status === 'red';
+            const isHighlight = isAlert || i === lastIndex || i === active;
+            if (compact) {
+              if (!isAlert && i !== lastIndex) return null;
+              return (
+                <circle
+                  key={`${p.t}-${i}`}
+                  cx={xAt(i)}
+                  cy={y(p.value)}
+                  r={3.5}
+                  fill={isAlert ? STATUS_THEME[p.status].color : LINE}
+                  stroke="#F5F6F3"
+                  strokeWidth={1.5}
+                />
+              );
+            }
+            if (!isHighlight) {
+              return (
+                <circle
+                  key={`${p.t}-${i}`}
+                  cx={xAt(i)}
+                  cy={y(p.value)}
+                  r={3}
+                  fill={LINE}
+                  stroke={SURFACE}
+                  strokeWidth={1.5}
+                />
+              );
+            }
+            return (
               <circle
                 key={`${p.t}-${i}`}
                 cx={xAt(i)}
                 cy={y(p.value)}
-                r={i === active ? 5 : 4}
-                fill={p.status === 'amber' || p.status === 'red' ? STATUS_THEME[p.status].color : LINE}
-                stroke={SURFACE}
+                r={i === active ? 6 : 4.5}
+                fill={isAlert ? STATUS_THEME[p.status].color : '#38BDF8'}
+                stroke="#F5F6F3"
                 strokeWidth={2}
               />
-            ) : null,
-          )}
+            );
+          })}
 
           {!compact && last && (
             <text
               x={xAt(lastIndex) + 10}
               y={y(last.value)}
               dy="0.32em"
-              className="fill-blueberry text-xs font-bold tabular-nums"
+              className="fill-[hsl(var(--hsl-ink-primary))] text-xs font-bold tabular-nums"
             >
               {fmt(last.value)}
-              <tspan className="fill-stem font-normal"> {def.unit}</tspan>
+              <tspan className="fill-[hsl(var(--hsl-ink-muted))] font-normal"> {def.unit}</tspan>
             </text>
           )}
         </svg>

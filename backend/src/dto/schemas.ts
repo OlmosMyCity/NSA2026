@@ -1,7 +1,7 @@
 /**
  * @module schemas
  * Zod request validation schemas and helper parsers for missions, astronauts,
- * physiological readings, vision telemetry, biodosimetry, incidents, and directives.
+ * physiological readings, vision telemetry, incidents, and directives.
  */
 
 import {
@@ -229,21 +229,6 @@ export const assignMissionOperatorSchema = z.object({
 export const radiationSimulateSchema = z.object({
   scenario: z
     .enum(["NOMINAL", "FLARE_EARLY_WARNING", "PEAK_STORM_S4", "SIDE_MISS_CME", "RESET"])
-    .optional(),
-});
-
-/** Schema for biodosimetry triage requests combining shielding, vitals, radiation state, and biomarkers. */
-export const biodosimetryTriageSchema = z.object({
-  astronautId: z.string().trim().min(1).max(128).optional(),
-  shieldingType: z.enum(["EVA_SUIT", "CREW_CABIN_NOMINAL", "STORM_SHELTER"]).optional(),
-  healthReading: z.record(z.unknown()).optional(),
-  radiationState: z.record(z.unknown()).optional(),
-  biomarkers: z
-    .object({
-      gammaH2axFociPerCell: finiteNumber("gammaH2axFociPerCell", 0, 50).optional(),
-      urine8OhdgNgMg: finiteNumber("urine8OhdgNgMg", 0, 200).optional(),
-      fdxrFoldChange: finiteNumber("fdxrFoldChange", 0.1, 30).optional(),
-    })
     .optional(),
 });
 

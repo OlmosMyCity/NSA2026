@@ -15,10 +15,10 @@ export default function NewReadingPage({
   return (
     <AppLayout>
       <RouteGuard requireAuth={true}>
-        <div className="py-4 sm:py-8">
+        <div className="space-y-6">
           <Suspense
             fallback={
-              <div className="surface-tinted mx-auto h-96 max-w-2xl animate-pulse rounded-lg" />
+              <div className="surface-tinted h-96 w-full animate-pulse rounded-lg" />
             }
           >
             <ReadingPageContent searchParams={searchParams} />
