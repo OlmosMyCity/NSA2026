@@ -19,6 +19,7 @@ import { INDICATORS } from '../../domain/health/indicators';
 import { getMedicalProtocolsForAlerts } from '../../domain/health/medicalProtocols';
 import { API_STATUS } from '../../domain/health/api-adapter';
 import type { IndicatorId, Vitals } from '../../domain/health/types';
+import { useAuth } from '@/context/AuthContext';
 import { useCrewSelection } from '@/hooks/useCrewSelection';
 import {
   VisionBiometricsPanel,
@@ -58,6 +59,8 @@ export function ReadingFormWizard({
   initialStep?: number;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const ownerUserId = user?.id ?? null;
   const crew = useCrewSelection(initialAstronautId);
   const vitalsSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -319,6 +322,7 @@ export function ReadingFormWizard({
         });
         if (items.length > 0) {
           saveFollowUpNote({
+            ownerUserId,
             astronautId: crew.selectedId,
             astronautName: crew.selected?.name,
             title: primary?.title ?? 'Caution Follow-Up Check',
@@ -326,7 +330,7 @@ export function ReadingFormWizard({
           });
         }
       } else {
-        clearFollowUpNote(crew.selectedId);
+        clearFollowUpNote(crew.selectedId, ownerUserId);
       }
 
       router.push('/dashboard?recorded=true');

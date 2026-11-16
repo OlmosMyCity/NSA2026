@@ -38,6 +38,7 @@ export function FollowUpStickyNote() {
   const { user, isAuthenticated } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const ownerUserId = isAuthenticated ? user?.id ?? null : null;
   const preferredAstronautId = isAuthenticated ? user?.astronautId ?? undefined : undefined;
 
   const [note, setNote] = useState<FollowUpStickyRecord | null>(null);
@@ -45,7 +46,7 @@ export function FollowUpStickyNote() {
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !ownerUserId) {
       setNote(null);
       setExpanded(false);
       return;
@@ -53,7 +54,7 @@ export function FollowUpStickyNote() {
 
     const sync = () => {
       setNowMs(Date.now());
-      setNote(loadLatestActiveFollowUpNote(preferredAstronautId));
+      setNote(loadLatestActiveFollowUpNote(preferredAstronautId, ownerUserId));
     };
 
     sync();
@@ -66,7 +67,7 @@ export function FollowUpStickyNote() {
       window.removeEventListener('storage', sync);
       window.clearInterval(timer);
     };
-  }, [isAuthenticated, preferredAstronautId, pathname]);
+  }, [isAuthenticated, ownerUserId, preferredAstronautId, pathname]);
 
   const isSilent = SILENT_ROUTES.some((route) => pathname.startsWith(route));
   if (!note || isSilent) return null;
@@ -80,7 +81,7 @@ export function FollowUpStickyNote() {
   const recheckHref = `/readings/new?astronautId=${encodeURIComponent(note.astronautId)}`;
 
   const handleMeasureAfterExpiry = () => {
-    clearFollowUpNote(note.astronautId);
+    clearFollowUpNote(note.astronautId, ownerUserId);
     setExpanded(false);
     router.push(recheckHref);
   };
@@ -92,7 +93,7 @@ export function FollowUpStickyNote() {
           <button
             type="button"
             onClick={() => {
-              const updated = toggleFollowUpItem(note.astronautId, item.id);
+              const updated = toggleFollowUpItem(note.astronautId, item.id, ownerUserId);
               if (updated) setNote(updated);
             }}
             aria-pressed={item.done}

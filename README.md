@@ -138,6 +138,14 @@ npm run dev
 
 > **Frontend-Only Mock Mode:** Set `NEXT_PUBLIC_USE_MOCKS=true` in `frontend/.env.local` to explore the full UI (auth, Digital Twin, guided reading triage, Crew/Operator/Surgeon consoles, and simulated Vision stream) using `frontend/src/mocks/` without a database or Python runtime.
 
+### Demo Credentials (Seeded Accounts)
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| `ADMIN` (Flight Surgeon) | `elena.rodriguez@nasa.gov` | `HrpFlight#2026` |
+| `USER` (Crew) | `r.wiseman@nasa.gov` | `OrionCrew#4IV` |
+| `OPERATOR` (Ground Operator) | `m.chen@nasa.gov` | `GroundOps#2026` |
+
 ### 3. Contactless Vision Microservice (`http://localhost:8000`, Optional)
 
 ```bash

@@ -11,6 +11,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { API_STATUS } from '../../../domain/health/api-adapter';
 import { INDICATOR_GUIDES } from '../../../domain/health/education';
 import { nominalLabel } from '../../../domain/health/evaluate';
@@ -52,6 +53,8 @@ export function AssessmentPanel({
   onEmergencyBypass,
   onCheckedStepsChange,
 }: AssessmentPanelProps) {
+  const { user } = useAuth();
+  const ownerUserId = user?.id ?? null;
   const status = API_STATUS[evaluation.status];
   const protocols = useMemo(
     () => getMedicalProtocolsForAlerts(evaluation.alerts),
@@ -72,7 +75,7 @@ export function AssessmentPanel({
   useEffect(() => {
     const initial: Record<string, boolean> = {};
     if (astronautId) {
-      const existing = loadActiveFollowUpNote(astronautId);
+      const existing = loadActiveFollowUpNote(astronautId, ownerUserId);
       if (existing) {
         for (const item of existing.items) {
           if (item.done) initial[item.id] = true;
@@ -81,14 +84,14 @@ export function AssessmentPanel({
     }
     setCheckedSteps(initial);
     onCheckedStepsChange?.(initial);
-  }, [evaluation.alerts, astronautId, astronautName, onCheckedStepsChange]);
+  }, [evaluation.alerts, astronautId, astronautName, ownerUserId, onCheckedStepsChange]);
 
   const toggleStep = (key: string) => {
     setCheckedSteps((prev) => {
       const nextVal = !prev[key];
       const next = { ...prev, [key]: nextVal };
       if (astronautId) {
-        setFollowUpItemDone(astronautId, key, nextVal);
+        setFollowUpItemDone(astronautId, key, nextVal, ownerUserId);
       }
       onCheckedStepsChange?.(next);
       return next;

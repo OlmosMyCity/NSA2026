@@ -78,6 +78,14 @@ Available scripts (`backend/package.json`):
 - `npm run lint` — Run ESLint.
 - `npm run prisma:generate` / `prisma:migrate` / `prisma:deploy` / `prisma:status` / `prisma:seed` / `seed:sql` — Database lifecycle commands.
 
+### Seeded Demo Credentials (`prisma/seed.ts`)
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| `ADMIN` (Flight Surgeon) | `elena.rodriguez@nasa.gov` | `HrpFlight#2026` |
+| `USER` (Crew) | `r.wiseman@nasa.gov` | `OrionCrew#4IV` |
+| `OPERATOR` (Ground Operator) | `m.chen@nasa.gov` | `GroundOps#2026` |
+
 ---
 
 ## Environment Variables (`backend/.env.example`)

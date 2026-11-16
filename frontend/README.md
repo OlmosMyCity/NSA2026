@@ -93,6 +93,14 @@ Available scripts (`frontend/package.json`):
 - `npm run start` — Serve production build.
 - `npm run lint` — Run Next.js ESLint checks.
 
+### Demo Credentials
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| `ADMIN` (Flight Surgeon) | `elena.rodriguez@nasa.gov` | `HrpFlight#2026` |
+| `USER` (Crew) | `r.wiseman@nasa.gov` | `OrionCrew#4IV` |
+| `OPERATOR` (Ground Operator) | `m.chen@nasa.gov` | `GroundOps#2026` |
+
 ---
 
 ## Environment Variables (`frontend/.env.example`)
