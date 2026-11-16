@@ -68,7 +68,7 @@ describe("imageUpload middleware + storageService", () => {
   it("debe responder 400 con un tipo de archivo no permitido", async () => {
     const res = await fetch(`${baseUrl}/echo`, { method: "POST", body: form("application/pdf") });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toContain("Formato");
+    expect(((await res.json()) as { error: string }).error).toContain("format");
   });
 
   it("debe responder 400 si la imagen supera 5 MB", async () => {

@@ -84,13 +84,13 @@ export function createApp(): Express {
   const authRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 30,
-    message: "Demasiados intentos de autenticación. Intenta de nuevo en unos minutos.",
+    message: "Too many authentication attempts. Please try again in a few minutes.",
   });
 
   const sensitiveMutationLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 60,
-    message: "Límite de solicitudes excedido para esta operación.",
+    message: "Request rate limit exceeded for this operation.",
   });
 
   // Base security, CORS, and bounded JSON body parsing middleware
@@ -122,7 +122,7 @@ export function createApp(): Express {
   // JSON catch-all 404 handler to avoid Express's default HTML error responses
   app.use((req, res) => {
     res.status(404).json({
-      error: `El recurso o ruta solicitada no existe (${req.method} ${req.originalUrl}).`,
+      error: `Requested resource or route does not exist (${req.method} ${req.originalUrl}).`,
     });
   });
 

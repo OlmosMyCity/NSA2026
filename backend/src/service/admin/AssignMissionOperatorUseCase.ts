@@ -13,13 +13,13 @@ export class AssignMissionOperatorUseCase {
   async execute(missionId: string, operatorId: string | null): Promise<void> {
     if (operatorId !== null) {
       const user = await this.userRepo.findById(operatorId);
-      if (!user) throw new NotFoundError("Usuario", operatorId);
+      if (!user) throw new NotFoundError("User", operatorId);
       if (user.role !== Role.OPERATOR) {
-        throw new ValidationError("El usuario indicado no tiene rol de operador.");
+        throw new ValidationError("The specified user does not have the operator role.");
       }
     }
 
     const assigned = await this.crewRepo.setMissionOperator(missionId, operatorId);
-    if (!assigned) throw new NotFoundError("Misión", missionId);
+    if (!assigned) throw new NotFoundError("Mission", missionId);
   }
 }

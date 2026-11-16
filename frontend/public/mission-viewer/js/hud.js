@@ -7,7 +7,7 @@ import { formatMET } from "./timeline.js";
 
 const fmt = (x, d = 1) => {
   const rounded = Number(x.toFixed(d)) || 0; // sin "-0,0"
-  return rounded.toLocaleString("es", { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: "always" });
+  return rounded.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: "always" });
 };
 
 const SPARK_POINTS = 90;
@@ -76,13 +76,13 @@ export function createHud(dom, mission, samples, frames, budget) {
   function update(t, st, phase, moonPos, frameName, vehicle, landed) {
     if (phase.id !== phaseId) showPhase(phase);
     const tm = telemetry(st, moonPos, frames, bodies);
-    const body = tm.nearMoon ? "Luna" : "Tierra";
+    const body = tm.nearMoon ? "Moon" : "Earth";
     dom.met.textContent = formatMET(t);
-    dom.phase.textContent = landed ? "En la superficie lunar" : phase.name;
+    dom.phase.textContent = landed ? "On the lunar surface" : phase.name;
     dom.vehicle.textContent = vehicle.name;
-    dom.altLabel.textContent = `Altitud (${body})`;
+    dom.altLabel.textContent = `Altitude (${body})`;
     dom.alt.textContent = formatAltitude(tm.alt, fmt);
-    dom.speedLabel.textContent = tm.nearMoon ? "Velocidad (rel. Luna)" : "Velocidad (inercial)";
+    dom.speedLabel.textContent = tm.nearMoon ? "Velocity (rel. Moon)" : "Velocity (inertial)";
     dom.speed.textContent = formatSpeed(tm.speed, fmt);
     const descending = phase.id === "landing";
     dom.rates.hidden = !descending;

@@ -106,7 +106,7 @@ class HttpClient {
     // registro) un 401 es "credenciales inválidas", no una sesión vencida.
     if (response.status === 401) {
       if (!skipAuth) authStorage.notifyUnauthorized();
-      let errorMsg = 'Sesión no autorizada o expirada. Por favor inicie sesión nuevamente.';
+      let errorMsg = 'Session unauthorized or expired. Please sign in again.';
       try {
         const errorData = await response.json();
         if (errorData?.error) errorMsg = errorData.error;

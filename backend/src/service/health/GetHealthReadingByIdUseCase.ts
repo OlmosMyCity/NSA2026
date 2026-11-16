@@ -14,7 +14,7 @@ export class GetHealthReadingByIdUseCase {
   async execute(id: string): Promise<HealthReading> {
     const reading = await this.readingRepo.findById(id);
     if (!reading) {
-      throw new NotFoundError("Lectura de salud", id);
+      throw new NotFoundError("Health reading", id);
     }
     return reading;
   }

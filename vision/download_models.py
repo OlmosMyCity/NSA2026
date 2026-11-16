@@ -15,17 +15,17 @@ from src.config import (
 
 def download_file(url: str, dest: Path, description: str) -> bool:
     if dest.exists() and dest.stat().st_size > 1024:
-        print(f"[OK] {description} ya disponible en {dest} ({dest.stat().st_size / 1024:.1f} KB)")
+        print(f"[OK] {description} already available at {dest} ({dest.stat().st_size / 1024:.1f} KB)")
         return True
     try:
-        print(f"[INFO] Descargando {description} desde {url} ...")
+        print(f"[INFO] Downloading {description} from {url} ...")
         req = urllib.request.Request(url, headers={"User-Agent": "OrbVital-AstronautVitals/0.1"})
         with urllib.request.urlopen(req, timeout=20) as response, open(dest, "wb") as out_file:
             out_file.write(response.read())
-        print(f"[OK] Guardado en {dest} ({dest.stat().st_size / 1024:.1f} KB)")
+        print(f"[OK] Saved to {dest} ({dest.stat().st_size / 1024:.1f} KB)")
         return True
     except Exception as exc:
-        print(f"[WARN] No se pudo descargar {description}: {exc}. Se usará el fallback integrado en CPU.")
+        print(f"[WARN] Could not download {description}: {exc}. Using built-in CPU fallback.")
         return False
 
 

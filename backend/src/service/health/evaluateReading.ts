@@ -141,17 +141,17 @@ const ALERT_RULES: Array<{
       if (level === "WARNING") {
         return {
           protocolId: "PROTO_HEART_RATE_MONITOR",
-          message: `Frecuencia cardiaca fuera de rango nominal (${r.heartRateBpm} lpm). Monitorear actividad física.`,
+          message: `Heart rate outside nominal range (${r.heartRateBpm} bpm). Monitor physical activity.`,
         };
       }
       return sideOf("heartRate", r.heartRateBpm) === "high"
         ? {
             protocolId: "PROTO_TACHYCARDIA",
-            message: `Frecuencia cardiaca crítica (${r.heartRateBpm} lpm). Riesgo de arritmia o evento cardiovascular en gravedad alterada.`,
+            message: `Critical heart rate (${r.heartRateBpm} bpm). Risk of arrhythmia or cardiovascular event in altered gravity.`,
           }
         : {
             protocolId: "PROTO_BRADYCARDIA",
-            message: `Bradicardia extrema (${r.heartRateBpm} lpm). Riesgo de hipoperfusión en gravedad alterada.`,
+            message: `Extreme bradycardia (${r.heartRateBpm} bpm). Risk of hypoperfusion in altered gravity.`,
           };
     },
   },
@@ -164,7 +164,7 @@ const ALERT_RULES: Array<{
       if (level === "WARNING") {
         return {
           protocolId: "PROTO_BLOOD_PRESSURE_BORDERLINE",
-          message: `Presión arterial limítrofe (${bp}). Hidratación y reposo recomendados.`,
+          message: `Borderline blood pressure (${bp}). Hydration and rest recommended.`,
         };
       }
       const hypertensive =
@@ -173,11 +173,11 @@ const ALERT_RULES: Array<{
       return hypertensive
         ? {
             protocolId: "PROTO_HYPERTENSIVE_CRISIS",
-            message: `Crisis hipertensiva (${bp}). Posible redistribución severa de fluidos.`,
+            message: `Hypertensive crisis (${bp}). Possible severe fluid redistribution.`,
           }
         : {
             protocolId: "PROTO_HYPOTENSION",
-            message: `Hipotensión arterial crítica (${bp}). Riesgo de síncope ortostático.`,
+            message: `Critical hypotension (${bp}). Risk of orthostatic syncope.`,
           };
     },
   },
@@ -189,17 +189,17 @@ const ALERT_RULES: Array<{
       if (level === "WARNING") {
         return {
           protocolId: "PROTO_GLUCOSE_ELEVATED",
-          message: `Glucosa elevada (${r.glucoseMgDl} mg/dL). Revisar ingesta nutricional de la ración espacial.`,
+          message: `Elevated blood glucose (${r.glucoseMgDl} mg/dL). Review space ration nutritional intake.`,
         };
       }
       return sideOf("glucose", r.glucoseMgDl) === "low"
         ? {
             protocolId: "PROTO_HYPOGLYCEMIA",
-            message: `Hipoglucemia crítica (${r.glucoseMgDl} mg/dL). Riesgo de déficit neurológico y desbalance metabólico severo.`,
+            message: `Critical hypoglycemia (${r.glucoseMgDl} mg/dL). Risk of neurological deficit and severe metabolic imbalance.`,
           }
         : {
             protocolId: "PROTO_HYPERGLYCEMIA",
-            message: `Hiperglucemia crítica (${r.glucoseMgDl} mg/dL). Riesgo de desbalance metabólico severo.`,
+            message: `Critical hyperglycemia (${r.glucoseMgDl} mg/dL). Risk of severe metabolic imbalance.`,
           };
     },
   },
@@ -213,21 +213,21 @@ const ALERT_RULES: Array<{
         return low
           ? {
               protocolId: "PROTO_MILD_HYPOTHERMIA",
-              message: `Hipotermia leve (${r.temperatureC} °C). Revisar termorregulación del traje/cabina y repetir la medición.`,
+              message: `Mild hypothermia (${r.temperatureC} °C). Check suit/cabin thermal regulation and repeat measurement.`,
             }
           : {
               protocolId: "PROTO_SUBFEBRILE",
-              message: `Febrícula detectada (${r.temperatureC} °C). Vigilar síntomas inmunológicos y radiación.`,
+              message: `Subfebrile temperature detected (${r.temperatureC} °C). Monitor immune symptoms and radiation exposure.`,
             };
       }
       return low
         ? {
             protocolId: "PROTO_HYPOTHERMIA",
-            message: `Hipotermia crítica (${r.temperatureC} °C). Verificar control térmico en traje/cabina.`,
+            message: `Critical hypothermia (${r.temperatureC} °C). Verify thermal control in suit/cabin.`,
           }
         : {
             protocolId: "PROTO_FEVER",
-            message: `Fiebre alta (${r.temperatureC} °C). Riesgo de infección aguda o respuesta inflamatoria en cabina.`,
+            message: `High fever (${r.temperatureC} °C). Risk of acute infection or inflammatory response in cabin.`,
           };
     },
   },
@@ -239,11 +239,11 @@ const ALERT_RULES: Array<{
       level === "CRITICAL"
         ? {
             protocolId: "PROTO_HYPOXIA",
-            message: `Saturación de O2 crítica (${r.spo2Pct}%). Hipoxia detectada; verificar presión parcial de O2 en cabina.`,
+            message: `Critical O2 saturation (${r.spo2Pct}%). Hypoxia detected; verify cabin O2 partial pressure.`,
           }
         : {
             protocolId: "PROTO_SPO2_BORDERLINE",
-            message: `SpO2 limítrofe (${r.spo2Pct}%). Controlar ventilación del módulo y filtros de CO2.`,
+            message: `Borderline SpO2 (${r.spo2Pct}%). Check module ventilation and CO2 scrubbers.`,
           },
   },
   {
@@ -254,11 +254,11 @@ const ALERT_RULES: Array<{
       level === "CRITICAL"
         ? {
             protocolId: "PROTO_SLEEP_DEPRIVATION",
-            message: `Privación de sueño severa (${r.sleepHours} h). Riesgo de fatiga operativa y pérdida de concentración en maniobras.`,
+            message: `Severe sleep deprivation (${r.sleepHours} h). Risk of operational fatigue and impaired focus during maneuvers.`,
           }
         : {
             protocolId: "PROTO_SLEEP_INSUFFICIENT",
-            message: `Sueño insuficiente (${r.sleepHours} h). Ajustar ciclo circadiano y protocolos de iluminación.`,
+            message: `Insufficient sleep (${r.sleepHours} h). Adjust circadian cycle and lighting protocols.`,
           },
   },
   {
@@ -269,11 +269,11 @@ const ALERT_RULES: Array<{
       level === "CRITICAL"
         ? {
             protocolId: "PROTO_PSYCHOSOCIAL_DISTRESS",
-            message: `Estado de ánimo bajo (${r.mood}/5). Riesgo psicosocial por aislamiento y confinamiento prolongado.`,
+            message: `Low mood (${r.mood}/5). Psychosocial risk due to prolonged isolation and confinement.`,
           }
         : {
             protocolId: "PROTO_MOOD_SUPPORT",
-            message: `Ánimo neutral/decaído (${r.mood}/5). Fomentar comunicación con familiares y soporte de misión.`,
+            message: `Neutral/low mood (${r.mood}/5). Encourage family communication and mission support.`,
           },
   },
 ];
@@ -306,7 +306,7 @@ export function evaluateReading(reading: HealthReadingInput): HealthEvaluationRe
   const protocolId = main?.protocolId ?? "PROTO_NOMINAL";
   const recommendation =
     getMedicalProtocol(protocolId)?.summary ??
-    "Parámetros dentro de rangos nominales de misión. Continuar con la rutina programada.";
+    "Parameters within nominal mission ranges. Continue scheduled routine.";
 
   return { status, protocolId, alerts, recommendation };
 }

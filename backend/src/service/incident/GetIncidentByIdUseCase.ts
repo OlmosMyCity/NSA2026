@@ -14,7 +14,7 @@ export class GetIncidentByIdUseCase {
   async execute(id: string): Promise<Incident> {
     const incident = await this.incidentRepo.findById(id);
     if (!incident) {
-      throw new NotFoundError("Incidente", id);
+      throw new NotFoundError("Incident", id);
     }
     return incident;
   }

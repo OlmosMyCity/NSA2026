@@ -23,7 +23,7 @@ function registerUploadRoute(folder: StorageFolder, allowedRoles: Role[]) {
     ...imageUpload("file", folder, "url"),
     (req, res) => {
       if (!req.body?.url) {
-        throw new ValidationError("Debe adjuntar un archivo de imagen en el campo 'file'.");
+        throw new ValidationError("You must attach an image file in the 'file' field.");
       }
       res.status(201).json({ url: req.body.url });
     }

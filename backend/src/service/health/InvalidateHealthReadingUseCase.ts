@@ -8,7 +8,7 @@ export function assertInvalidationReason(reason: unknown): string {
   const text = typeof reason === "string" ? reason.trim() : "";
   if (text.length < MIN_INVALIDATION_REASON_LENGTH) {
     throw new ValidationError(
-      `El motivo es obligatorio (mínimo ${MIN_INVALIDATION_REASON_LENGTH} caracteres) para invalidar o corregir una lectura.`
+      `Reason is required (minimum ${MIN_INVALIDATION_REASON_LENGTH} characters) to invalidate or correct a reading.`
     );
   }
   return text;
@@ -28,10 +28,10 @@ export class InvalidateHealthReadingUseCase {
 
     const existing = await this.readingRepo.findById(id);
     if (!existing) {
-      throw new NotFoundError("Lectura de salud", id);
+      throw new NotFoundError("Health reading", id);
     }
     if (!existing.isValid) {
-      throw new ConflictError("La lectura ya está invalidada; la invalidación es definitiva.");
+      throw new ConflictError("Reading is already invalidated; invalidation is permanent.");
     }
 
     return this.readingRepo.invalidate(id, { reason: cleanReason, invalidatedById });

@@ -21,7 +21,7 @@ export class NotFoundError extends AppError {
   public readonly statusCode = 404;
 
   constructor(resourceName: string, id?: string) {
-    super(id ? `${resourceName} con ID '${id}' no fue encontrado.` : `${resourceName} no encontrado.`);
+    super(id ? `${resourceName} with ID '${id}' was not found.` : `${resourceName} not found.`);
   }
 }
 
@@ -38,7 +38,7 @@ export class ValidationError extends AppError {
 export class UnauthorizedError extends AppError {
   public readonly statusCode = 401;
 
-  constructor(message = "Autenticación requerida o token inválido.") {
+  constructor(message = "Authentication required or invalid token.") {
     super(message);
   }
 }
@@ -47,7 +47,7 @@ export class UnauthorizedError extends AppError {
 export class ForbiddenError extends AppError {
   public readonly statusCode = 403;
 
-  constructor(message = "No tienes permisos para realizar esta acción.") {
+  constructor(message = "You do not have permission to perform this action.") {
     super(message);
   }
 }

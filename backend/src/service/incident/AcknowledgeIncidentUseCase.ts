@@ -18,16 +18,16 @@ export class AcknowledgeIncidentUseCase {
 
   async execute(dto: AcknowledgeIncidentDTO): Promise<Incident> {
     if (!dto.id || !dto.userId) {
-      throw new ValidationError("El ID del incidente y el usuario son obligatorios.");
+      throw new ValidationError("Incident ID and user are required.");
     }
 
     const existing = await this.incidentRepo.findById(dto.id);
     if (!existing) {
-      throw new NotFoundError("Incidente", dto.id);
+      throw new NotFoundError("Incident", dto.id);
     }
 
     if (existing.status === IncidentStatus.CLOSED) {
-      throw new ValidationError("No se puede confirmar un incidente que ya está cerrado.");
+      throw new ValidationError("Cannot acknowledge an incident that is already closed.");
     }
 
     if (existing.status === IncidentStatus.ACKNOWLEDGED) {
@@ -41,7 +41,7 @@ export class AcknowledgeIncidentUseCase {
     });
 
     if (!updated) {
-      throw new NotFoundError("Incidente", dto.id);
+      throw new NotFoundError("Incident", dto.id);
     }
 
     incidentNotificationBus.publish("incident:acknowledged", updated);

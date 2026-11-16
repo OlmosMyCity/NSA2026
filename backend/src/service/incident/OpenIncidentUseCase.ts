@@ -38,7 +38,7 @@ export class OpenIncidentUseCase {
 
   async execute(dto: OpenIncidentInput): Promise<OpenIncidentResult> {
     if (!dto.type?.trim() || !dto.source?.trim()) {
-      throw new ValidationError("Los campos type y source son obligatorios para abrir un incidente.");
+      throw new ValidationError("Fields 'type' and 'source' are required to open an incident.");
     }
 
     const normalizedType = dto.type.trim();
@@ -52,7 +52,7 @@ export class OpenIncidentUseCase {
 
     if (!resolvedTitle || !resolvedDescription) {
       throw new ValidationError(
-        "Los campos title y description son obligatorios para abrir un incidente fuera del catálogo de misión."
+        "Fields 'title' and 'description' are required to open an incident outside the mission catalog."
       );
     }
 

@@ -13,7 +13,7 @@ export class DeleteMissionUseCase {
   async execute(id: string): Promise<void> {
     const deleted = await this.missionRepo.softDelete(id);
     if (!deleted) {
-      throw new NotFoundError("Misión", id);
+      throw new NotFoundError("Mission", id);
     }
   }
 }

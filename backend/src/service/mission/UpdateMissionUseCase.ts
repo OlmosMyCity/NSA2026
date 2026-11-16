@@ -17,16 +17,16 @@ export class UpdateMissionUseCase {
 
   async execute(id: string, data: UpdateMissionDTO): Promise<Mission> {
     if (data.name !== undefined && data.name.trim().length === 0) {
-      throw new ValidationError("El nombre de la misión no puede estar vacío.");
+      throw new ValidationError("Mission name cannot be empty.");
     }
 
     if (data.description !== undefined && data.description.trim().length === 0) {
-      throw new ValidationError("La descripción de la misión no puede estar vacía.");
+      throw new ValidationError("Mission description cannot be empty.");
     }
 
     const updated = await this.missionRepo.update(id, data);
     if (!updated) {
-      throw new NotFoundError("Misión", id);
+      throw new NotFoundError("Mission", id);
     }
 
     return updated;

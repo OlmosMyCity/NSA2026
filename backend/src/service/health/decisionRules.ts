@@ -44,16 +44,16 @@ export interface DecisionOutcome {
 
 export const ACTION_DESCRIPTIONS: Record<RecommendedAction, string> = {
   re_measure:
-    "Medición vencida o lectura ámbar aislada que requiere repetir medición en 5-30 min para confirmar.",
-  rest: "Privación de sueño, fatiga o ánimo bajo sin riesgo físico agudo; priorizar descanso e higiene circadiana.",
+    "Overdue measurement or isolated amber reading requiring a repeat measurement in 5–30 min to confirm.",
+  rest: "Sleep deprivation, fatigue, or low mood without acute physical risk; prioritize rest and circadian hygiene.",
   exercise:
-    "Riesgo óseo/muscular o desacondicionamiento en microgravedad con signos vitales estables; ejecutar protocolo ARED/T2.",
+    "Bone/muscle deconditioning risk in microgravity with stable vitals; execute ARED/T2 countermeasure protocol.",
   shelter_shielding:
-    "Tormenta solar o peligro de radiación elevado sin refugio; trasladarse a Storm Shelter o incrementar blindaje.",
+    "Solar storm or elevated radiation hazard without shelter; relocate to Storm Shelter or increase shielding.",
   contact_ground:
-    "Estado crítico (rojo) o deterioro multizona que exige escalar de inmediato al Flight Surgeon en Tierra.",
+    "Critical (red) status or multi-zone deterioration requiring immediate escalation to the Flight Surgeon on Earth.",
   no_action:
-    "Todos los parámetros nominales, mediciones al día y sin peligros agudos activos.",
+    "All parameters nominal, measurements up to date, and no active acute hazards.",
 };
 
 /** Maps a numeric risk score (`0..3`) onto discrete `ZoneRiskLevel` categories. */

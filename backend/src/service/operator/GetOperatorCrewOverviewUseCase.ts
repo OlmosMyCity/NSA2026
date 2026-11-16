@@ -179,7 +179,7 @@ export class GetOperatorCrewMemberUseCase {
     const now = this.now();
     const record = await this.crewRepo.findCrewMemberForOperator(operatorId, astronautId);
     // Un tripulante de otra misión responde igual que uno inexistente: no se revela que existe.
-    if (!record) throw new NotFoundError("Astronauta", astronautId);
+    if (!record) throw new NotFoundError("Astronaut", astronautId);
 
     const twin = evaluateTwin(record, now);
     const latest = record.recentReadings[0] ?? null;

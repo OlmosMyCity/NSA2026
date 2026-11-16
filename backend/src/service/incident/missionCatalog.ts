@@ -2,9 +2,6 @@
  * @module service/incident/missionCatalog
  * Standardized mission contingency catalog (`CONT-01`..`CONT-05`) providing default severity,
  * protocol identifiers, EVA-abort / module-evacuation flags, and checklists for `OpenIncidentUseCase`.
- *
- * Note: Contingency titles, descriptions, and action checklists are preserved in Spanish for
- * operational UI and unit-test contracts.
  */
 
 import { IncidentCategory, IncidentSeverity } from "@prisma/client";
@@ -39,15 +36,15 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
     category: IncidentCategory.MISSION,
     defaultSeverity: IncidentSeverity.CRITICAL,
     protocolId: "PROTO_DEPRESSURIZATION",
-    title: "Despresurización de cabina / módulo",
+    title: "Cabin / module depressurization",
     description:
-      "Caída crítica de presión barométrica en módulo habitado. Riesgo inmediato de barotrauma, ebullismo e hipoxia.",
+      "Critical barometric pressure drop in an inhabited module. Immediate risk of barotrauma, ebullism, and hypoxia.",
     abortEva: true,
     evacuateModule: true,
     immediateActions: [
-      "Colocar cascos/trajes presurizados y verificar sellado de emergencia.",
-      "Cerrar escotillas de aislamiento del módulo afectado.",
-      "Activar suministro de O2/N2 de reserva y abortar EVA en curso.",
+      "Don helmets/pressurized suits and verify emergency seal.",
+      "Close isolation hatches on the affected module.",
+      "Activate backup O2/N2 supply and abort any active EVA.",
     ],
   },
   FIRE_TOXIC_ATMOSPHERE: {
@@ -56,15 +53,15 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
     category: IncidentCategory.MISSION,
     defaultSeverity: IncidentSeverity.CRITICAL,
     protocolId: "PROTO_FIRE_TOXIC_ATMOSPHERE",
-    title: "Incendio o atmósfera tóxica a bordo",
+    title: "Onboard fire or toxic atmosphere",
     description:
-      "Detección de humo, partículas o gases tóxicos (CO, NH3, HCN) en atmósfera cerrada.",
+      "Detection of smoke, particulates, or toxic gases (CO, NH3, HCN) in a closed cabin atmosphere.",
     abortEva: true,
     evacuateModule: true,
     immediateActions: [
-      "Colocar respiradores de emergencia (PBA) de inmediato.",
-      "Cortar ventilación del módulo afectado y desenergizar buses eléctricos no esenciales.",
-      "Descargar supresor de incendios autorizado y purgar atmósfera antes de retirar PBA.",
+      "Don emergency breathing masks (PBA) immediately.",
+      "Shut off ventilation in the affected module and de-energize non-essential electrical buses.",
+      "Discharge authorized fire suppressant and purge atmosphere before removing PBA.",
     ],
   },
   ECLSS_FAILURE: {
@@ -73,15 +70,15 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
     category: IncidentCategory.MISSION,
     defaultSeverity: IncidentSeverity.CRITICAL,
     protocolId: "PROTO_ECLSS_FAILURE",
-    title: "Fallo de soporte vital (ECLSS)",
+    title: "Life support failure (ECLSS)",
     description:
-      "Falla en subsistema de control ambiental y soporte vital (generación de O2, depuración de CO2 o bucle térmico).",
+      "Environmental control and life support subsystem failure (O2 generation, CO2 scrubbing, or thermal loop).",
     abortEva: true,
     evacuateModule: false,
     immediateActions: [
-      "Conmutar a tren redundante de depuración de CO2 (CDRA/LiOH) y reserva de O2.",
-      "Monitorear ppCO2 y SpO2 de la tripulación cada 15 minutos.",
-      "Reducir carga metabólica de la tripulación y suspender EVA.",
+      "Switch to redundant CO2 scrubbing train (CDRA/LiOH) and backup O2 reserve.",
+      "Monitor crew ppCO2 and SpO2 every 15 minutes.",
+      "Reduce crew metabolic load and suspend EVA.",
     ],
   },
   COMMS_LOSS: {
@@ -90,15 +87,15 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
     category: IncidentCategory.MISSION,
     defaultSeverity: IncidentSeverity.CRITICAL,
     protocolId: "PROTO_COMMS_LOSS",
-    title: "Pérdida de comunicaciones con Control de Misión",
+    title: "Loss of communications with Mission Control",
     description:
-      "Interrupción prolongada de enlace bidireccional de telemetría y voz (LOS) con Tierra/Gateway.",
+      "Prolonged interruption of bidirectional telemetry and voice link (LOS) with Earth/Gateway.",
     abortEva: true,
     evacuateModule: false,
     immediateActions: [
-      "Ejecutar protocolo autónomo de contingencia y conmutar a antena/banda S de respaldo.",
-      "Almacenar telemetría biomédica localmente para retransmisión al recuperar enlace.",
-      "Suspender operaciones EVA fuera de línea de vista hasta restablecer comunicaciones.",
+      "Execute autonomous contingency protocol and switch to backup S-band antenna.",
+      "Buffer biomedical telemetry locally for retransmission upon link recovery.",
+      "Suspend out-of-line-of-sight EVA operations until communications are restored.",
     ],
   },
   MISSION_ABORT: {
@@ -107,15 +104,15 @@ export const MISSION_CONTINGENCY_CATALOG: Record<MissionContingencyType, Mission
     category: IncidentCategory.MISSION,
     defaultSeverity: IncidentSeverity.CRITICAL,
     protocolId: "PROTO_MISSION_ABORT",
-    title: "Aborto de misión y retorno de emergencia",
+    title: "Mission abort and emergency return",
     description:
-      "Declaración de aborto de misión por contingencia mayor de vehículo, entorno o salud de tripulación.",
+      "Mission abort declared due to major vehicle, environmental, or crew health contingency.",
     abortEva: true,
     evacuateModule: true,
     immediateActions: [
-      "Abortar todas las actividades de superficie/EVA y asegurar tripulación en vehículo de retorno.",
-      "Preparar secuencia de desacoplamiento/ascenso de emergencia y soporte médico de reentrada.",
-      "Notificar a Flight Director y Flight Surgeon para activación de equipos de recuperación.",
+      "Abort all surface/EVA activities and secure crew inside the return vehicle.",
+      "Prepare emergency undocking/ascent sequence and re-entry medical support.",
+      "Notify Flight Director and Flight Surgeon to activate recovery teams.",
     ],
   },
 };
